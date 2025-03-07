@@ -23,6 +23,7 @@ const ForgotPasswordPage = () => {
 
     setIsSubmitting(true);
     try {
+      // In a real app, this would send an email with a token link to /reset-password?token=xyz
       await axiosInstance.post("/auth/forgot-password", { email });
       setEmailSent(true);
       toast.success("Password reset link sent to your email");
@@ -92,7 +93,8 @@ const ForgotPasswordPage = () => {
             <div className="bg-success/10 p-6 rounded-lg text-center space-y-4">
               <p>We've sent a password reset link to <strong>{email}</strong></p>
               <p className="text-sm text-base-content/60">
-                If you don't see it in your inbox, please check your spam folder.
+                Check your email and click on the link to reset your password. The link will 
+                direct you to the reset password page where you can create a new password.
               </p>
               <button 
                 className="btn btn-outline mt-4"

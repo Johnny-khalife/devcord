@@ -21,7 +21,6 @@ const SignUpPage = () => {
   const validateForm = () => {
     if (!formData.username.trim()) return toast.error("Full name is required");
     if (!formData.email.trim()) return toast.error("Email is required");
-    if (!/\S+@\S+\.\S+/.test(formData.email)) return toast.error("Invalid email format");
     if (!formData.password) return toast.error("Password is required");
     if (formData.password.length < 6) return toast.error("Password must be at least 6 characters");
 
@@ -181,8 +180,8 @@ const SignUpPage = () => {
       {/* right side */}
 
       <AuthImagePattern
-        title="Join our community"
-        subtitle="Connect with friends, share moments, and stay in touch with your loved ones."
+        title="Join our Dev-Cord"
+        subtitle="Connect with developers worlwide"
       />
     </div>
   );
