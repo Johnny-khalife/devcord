@@ -63,7 +63,7 @@ const LoginPage = () => {
                 <label className="label">
                   <span className="label-text font-medium">Password</span>
                 </label>
-                <a href="">forgot password?</a>
+                <Link to="/forgot-password" className="link link-primary text-sm">forgot password?</Link>
               </div>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
