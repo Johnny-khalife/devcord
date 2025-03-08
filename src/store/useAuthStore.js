@@ -57,34 +57,35 @@ export const useAuthStore = create((set) => ({
     }
   },
 
-  // logout: async () => {
-  //   try {
-  //     await axiosInstance.post("/auth/logout");
-  //     set({ authUser: null });
-  //     toast.success("Logged out successfully");
-  //     get().disconnectSocket();
+  logout: async () => {
+    try {
+      await axiosInstance.post("/auth/signout");
+      set({ authUser: null });
+      toast.success("Logged out successfully");
+      get().disconnectSocket();
+    } catch (error) {
+      toast.error(error.response.data.message);
+    }
+  },
+
+  // resetPassword: async () => {
+  //  try {
+  //    const res= await axiosInstance.post("/auth/reset-password", { 
+  //       password: formData.password ,
+  //       confirmPassword: formData.confirmPassword
+  //     });
+  //     setResetComplete(true);
+  //     toast.success("Password has been reset successfully");
+  //     setTimeout(() => {
+  //       navigate("/login");
+  //     }, 3000); // Navigate to login after 3 seconds
   //   } catch (error) {
-  //     toast.error(error.response.data.message);
+  //     const errorMessage = error.response?.data?.message || "Failed to reset password. The link may have expired.";
+  //     toast.error(errorMessage);
+  //   } finally {
+  //     setIsSubmitting(false);
   //   }
   // },
-
-  forgotPassword: async () => {
-    try {
-      const res = await axiosInstance.post("/auth/forgot-password");
-      toast.success(res.data.message);
-    } catch (error) {
-      toast.error(error.res.data.message);
-    }
-  },
-
-  resetPassword: async () => {
-    try {
-      const res = await axiosInstance.post("/auth/reset-password");
-      toast.success(res.data.message);
-    } catch (error) {
-      toast.error(error.res.data.message);
-    }
-  },
 
   //   updateProfile: async (data) => {
   //     set({ isUpdatingProfile: true });
