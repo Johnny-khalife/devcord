@@ -3,12 +3,13 @@ import { Link } from "react-router-dom";
 import { Loader2, Mail, MessageSquare, ArrowLeft } from "lucide-react";
 import toast from "react-hot-toast";
 import AuthImagePattern from "../components/AuthImagePattern";
-import { axiosInstance } from "../lib/axios";
+import { useAuthStore } from "../store/useAuthStore";
 
 const ForgotPasswordPage = () => {
   const [email, setEmail] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [emailSent, setEmailSent] = useState(false);
+  const { forgotPassword } = useAuthStore();
 
   const validateEmail = () => {
     if (!email.trim()) return toast.error("Email is required");
@@ -22,17 +23,7 @@ const ForgotPasswordPage = () => {
     if (validateEmail() !== true) return;
 
     setIsSubmitting(true);
-    try {
-      // In a real app, this would send an email with a token link to /reset-password?token=xyz
-      await axiosInstance.post("/auth/forgot-password", { email });
-      setEmailSent(true);
-      toast.success("Password reset link sent to your email");
-    } catch (error) {
-      const errorMessage = error.response?.data?.message || "Failed to send reset email. Please try again later.";
-      toast.error(errorMessage);
-    } finally {
-      setIsSubmitting(false);
-    }
+    forgotPassword(setEmailSent,setIsSubmitting,email);
   };
 
   return (
@@ -51,8 +42,8 @@ const ForgotPasswordPage = () => {
               </div>
               <h1 className="text-2xl font-bold mt-2">Forgot Password</h1>
               <p className="text-base-content/60">
-                {emailSent 
-                  ? "Check your email for a reset link" 
+                {emailSent
+                  ? "Check your email for a reset link"
                   : "Enter your email to receive a password reset link"}
               </p>
             </div>
@@ -78,7 +69,11 @@ const ForgotPasswordPage = () => {
                 </div>
               </div>
 
-              <button type="submit" className="btn btn-primary w-full" disabled={isSubmitting}>
+              <button
+                type="submit"
+                className="btn btn-primary w-full"
+                disabled={isSubmitting}
+              >
                 {isSubmitting ? (
                   <>
                     <Loader2 className="size-5 animate-spin" />
@@ -91,12 +86,15 @@ const ForgotPasswordPage = () => {
             </form>
           ) : (
             <div className="bg-success/10 p-6 rounded-lg text-center space-y-4">
-              <p>We've sent a password reset link to <strong>{email}</strong></p>
-              <p className="text-sm text-base-content/60">
-                Check your email and click on the link to reset your password. The link will 
-                direct you to the reset password page where you can create a new password.
+              <p>
+                We've sent a password reset link to <strong>{email}</strong>
               </p>
-              <button 
+              <p className="text-sm text-base-content/60">
+                Check your email and click on the link to reset your password.
+                The link will direct you to the reset password page where you
+                can create a new password.
+              </p>
+              <button
                 className="btn btn-outline mt-4"
                 onClick={() => setEmailSent(false)}
               >
@@ -106,7 +104,10 @@ const ForgotPasswordPage = () => {
           )}
 
           <div className="text-center">
-            <Link to="/login" className="inline-flex items-center gap-2 text-primary">
+            <Link
+              to="/login"
+              className="inline-flex items-center gap-2 text-primary"
+            >
               <ArrowLeft className="size-4" />
               Back to Sign In
             </Link>

@@ -1,27 +1,37 @@
 import { useState } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
-import { Loader2, Lock, MessageSquare, ArrowLeft, Eye, EyeOff } from "lucide-react";
+import {
+  Loader2,
+  Lock,
+  MessageSquare,
+  ArrowLeft,
+  Eye,
+  EyeOff,
+} from "lucide-react";
 import toast from "react-hot-toast";
 import AuthImagePattern from "../components/AuthImagePattern";
-import { axiosInstance } from "../lib/axios";
+import { useAuthStore } from "../store/useAuthStore";
 
 const ResetPasswordPage = () => {
+  const { resetPassword } = useAuthStore();
   const [formData, setFormData] = useState({
     password: "",
-    confirmPassword: ""
+    confirmPassword: "",
   });
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [resetComplete, setResetComplete] = useState(false);
-  
+
   const navigate = useNavigate();
   const location = useLocation();
-  const token = new URLSearchParams(location.search).get('token');
+  const token = new URLSearchParams(location.search).get("token");
 
   const validateForm = () => {
     if (!formData.password) return toast.error("Password is required");
-    if (formData.password.length < 6) return toast.error("Password must be at least 6 characters");
-    if (formData.password !== formData.confirmPassword) return toast.error("Passwords do not match");
+    if (formData.password.length < 6)
+      return toast.error("Password must be at least 6 characters");
+    if (formData.password !== formData.confirmPassword)
+      return toast.error("Passwords do not match");
     return true;
   };
 
@@ -31,22 +41,7 @@ const ResetPasswordPage = () => {
     if (validateForm() !== true) return;
 
     setIsSubmitting(true);
-    try {
-     const res= await axiosInstance.post("/auth/reset-password", { 
-        password: formData.password ,
-        confirmPassword: formData.confirmPassword
-      });
-      setResetComplete(true);
-      toast.success("Password has been reset successfully");
-      setTimeout(() => {
-        navigate("/login");
-      }, 3000); // Navigate to login after 3 seconds
-    } catch (error) {
-      const errorMessage = error.response?.data?.message || "Failed to reset password. The link may have expired.";
-      toast.error(errorMessage);
-    } finally {
-      setIsSubmitting(false);
-    }
+    resetPassword(password,confirmPassword,setResetComplete,setIsSubmitting);
   };
 
   return (
@@ -65,8 +60,8 @@ const ResetPasswordPage = () => {
               </div>
               <h1 className="text-2xl font-bold mt-2">Reset Password</h1>
               <p className="text-base-content/60">
-                {resetComplete 
-                  ? "Your password has been reset successfully" 
+                {resetComplete
+                  ? "Your password has been reset successfully"
                   : "Create a new password for your account"}
               </p>
             </div>
@@ -87,7 +82,9 @@ const ResetPasswordPage = () => {
                     className="input input-bordered w-full pl-10"
                     placeholder="••••••••"
                     value={formData.password}
-                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, password: e.target.value })
+                    }
                   />
                   <button
                     type="button"
@@ -105,7 +102,9 @@ const ResetPasswordPage = () => {
 
               <div className="form-control">
                 <label className="label">
-                  <span className="label-text font-medium">Confirm Password</span>
+                  <span className="label-text font-medium">
+                    Confirm Password
+                  </span>
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -116,7 +115,12 @@ const ResetPasswordPage = () => {
                     className="input input-bordered w-full pl-10"
                     placeholder="••••••••"
                     value={formData.confirmPassword}
-                    onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        confirmPassword: e.target.value,
+                      })
+                    }
                   />
                   <button
                     type="button"
@@ -132,7 +136,11 @@ const ResetPasswordPage = () => {
                 </div>
               </div>
 
-              <button type="submit" className="btn btn-primary w-full" disabled={isSubmitting}>
+              <button
+                type="submit"
+                className="btn btn-primary w-full"
+                disabled={isSubmitting}
+              >
                 {isSubmitting ? (
                   <>
                     <Loader2 className="size-5 animate-spin" />
@@ -156,7 +164,10 @@ const ResetPasswordPage = () => {
           )}
 
           <div className="text-center">
-            <Link to="/login" className="inline-flex items-center gap-2 text-primary">
+            <Link
+              to="/login"
+              className="inline-flex items-center gap-2 text-primary"
+            >
               <ArrowLeft className="size-4" />
               Back to Sign In
             </Link>

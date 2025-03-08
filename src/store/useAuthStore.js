@@ -68,24 +68,38 @@ export const useAuthStore = create((set) => ({
     }
   },
 
-  // resetPassword: async () => {
-  //  try {
-  //    const res= await axiosInstance.post("/auth/reset-password", { 
-  //       password: formData.password ,
-  //       confirmPassword: formData.confirmPassword
-  //     });
-  //     setResetComplete(true);
-  //     toast.success("Password has been reset successfully");
-  //     setTimeout(() => {
-  //       navigate("/login");
-  //     }, 3000); // Navigate to login after 3 seconds
-  //   } catch (error) {
-  //     const errorMessage = error.response?.data?.message || "Failed to reset password. The link may have expired.";
-  //     toast.error(errorMessage);
-  //   } finally {
-  //     setIsSubmitting(false);
-  //   }
-  // },
+  forgotPassword: async (setEmailSent,setIsSubmitting,email) => {
+    try {
+      // In a real app, this would send an email with a token link to /reset-password?token=xyz
+      const response= await axiosInstance.post("/auth/forgot-password", { email });
+      setEmailSent(true);
+      toast.success( response?.data?.message||"Password reset link sent to your email");
+    } catch (error) {
+      const errorMessage = error.response?.data?.message || "Failed to send reset email. Please try again later.";
+      toast.error(errorMessage);
+    } finally {
+      setIsSubmitting(false);
+    }
+  },
+
+  resetPassword: async (password,confirmPassword,setResetComplete,setIsSubmitting) => {
+   try {
+     const res= await axiosInstance.post("/auth/reset-password", { 
+        password ,
+        confirmPassword
+      });
+      setResetComplete(true);
+      toast.success("Password has been reset successfully");
+      setTimeout(() => {
+        navigate("/login");
+      }, 3000); // Navigate to login after 3 seconds
+    } catch (error) {
+      const errorMessage = error.response?.data?.message || "Failed to reset password. The link may have expired.";
+      toast.error(errorMessage);
+    } finally {
+      setIsSubmitting(false);
+    }
+  },
 
   //   updateProfile: async (data) => {
   //     set({ isUpdatingProfile: true });
