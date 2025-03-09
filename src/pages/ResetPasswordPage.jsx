@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useNavigate, useLocation } from "react-router-dom";
+import { Link } from "react-router-dom";
 import {
   Loader2,
   Lock,
@@ -22,10 +22,6 @@ const ResetPasswordPage = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [resetComplete, setResetComplete] = useState(false);
 
-  const navigate = useNavigate();
-  const location = useLocation();
-  const token = new URLSearchParams(location.search).get("token");
-
   const validateForm = () => {
     if (!formData.password) return toast.error("Password is required");
     if (formData.password.length < 6)
@@ -41,7 +37,12 @@ const ResetPasswordPage = () => {
     if (validateForm() !== true) return;
 
     setIsSubmitting(true);
-    resetPassword(password,confirmPassword,setResetComplete,setIsSubmitting);
+    resetPassword(
+      formData.password,
+      formData.confirmPassword,
+      setResetComplete,
+      setIsSubmitting
+    );
   };
 
   return (

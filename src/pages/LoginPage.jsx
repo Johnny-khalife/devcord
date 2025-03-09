@@ -25,12 +25,10 @@ const LoginPage = () => {
           {/* Logo */}
           <div className="text-center mb-8">
             <div className="flex flex-col items-center gap-2 group">
-              <div
-                className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center group-hover:bg-primary/20
-              transition-colors"
-              >
-                <MessageSquare className="w-6 h-6 text-primary" />
+              <div className="size-16 rounded-xl bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
+                <MessageSquare className="h-8 w-8 text-primary" />
               </div>
+
               <h1 className="text-2xl font-bold mt-2">Welcome Back</h1>
               <p className="text-base-content/60">Sign in to your account</p>
             </div>
@@ -43,12 +41,12 @@ const LoginPage = () => {
                 <span className="label-text font-medium">Email</span>
               </label>
               <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Mail className="h-5 w-5 text-base-content/40" />
+                <div className="absolute inset-y-0 left-0 flex items-center pl-3 z-10">
+                  <Mail className="h-5 w-5 text-gray-500" />
                 </div>
                 <input
                   type="email"
-                  className={`input input-bordered w-full pl-10`}
+                  className={`input input-bordered w-full pl-10 mt-2`}
                   placeholder="you@example.com"
                   value={formData.email}
                   onChange={(e) =>
@@ -63,15 +61,20 @@ const LoginPage = () => {
                 <label className="label">
                   <span className="label-text font-medium">Password</span>
                 </label>
-                <Link to="/forgot-password" className="link link-primary text-sm">forgot password?</Link>
+                <Link
+                  to="/forgot-password"
+                  className="link link-primary text-sm"
+                >
+                  forgot password?
+                </Link>
               </div>
               <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Lock className="h-5 w-5 text-base-content/40" />
+                <div className="absolute inset-y-0 left-0 flex items-center pl-3 z-10">
+                  <Lock className="h-5 w-5 text-gray-500" />
                 </div>
                 <input
                   type={showPassword ? "text" : "password"}
-                  className={`input input-bordered w-full pl-10`}
+                  className={`input input-bordered w-full pl-10 mt-2`}
                   placeholder="••••••••"
                   value={formData.password}
                   onChange={(e) =>
@@ -122,9 +125,7 @@ const LoginPage = () => {
       {/* Right Side - Image/Pattern */}
       <AuthImagePattern
         title={"Welcome back!"}
-        subtitle={
-          "Sign in to continue your conversations and catch up with your messages."
-        }
+        subtitle={"Sign in to catch up with your messages."}
       />
     </div>
   );

@@ -118,7 +118,7 @@ const ForgotPasswordPage = () => {
       {/* right side */}
       <AuthImagePattern
         title="Reset Your Password"
-        subtitle="We'll help you get back into your account quickly and securely."
+        subtitle="Back into your account quickly and securely."
       />
     </div>
   );
