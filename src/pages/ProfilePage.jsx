@@ -114,6 +114,9 @@ import {
   FileText,
   Github,
   Linkedin,
+  X,
+  Check,
+  Eye
 } from "lucide-react";
 
 const ProfilePage = () => {
@@ -127,10 +130,10 @@ const ProfilePage = () => {
   const [username, setUsername] = useState(authUser?.username || "");
   const [bio, setBio] = useState(authUser?.bio || "");
   const [skills, setSkills] = useState(authUser?.skills || "");
-  const [github, setgithub] = useState(
-    authUser?.socialLinks?.github || ""
+  const [github, setgithub] = useState(authUser?.socialLinks?.github || "");
+  const [linkedin, setlinkedin] = useState(
+    authUser?.socialLinks?.linkedin || ""
   );
-  const [linkedin, setlinkedin] = useState(authUser?.socialLinks?.linkedin || "");
 
   const handleImageUpload = async (e) => {
     const file = e.target.files[0];
@@ -162,7 +165,7 @@ const ProfilePage = () => {
       setIsEditingGithub(false);
       return;
     }
-    console.log(github);
+
     await updateProfile({ github: github.trim() });
     setIsEditingGithub(false);
   };
@@ -176,7 +179,6 @@ const ProfilePage = () => {
     await updateProfile({ linkedin: linkedin.trim() });
     setIsEditingLinkedin(false);
   };
-  console.log(github);
 
   const handleBioUpdate = async () => {
     if (bio.trim() === authUser?.bio) {
@@ -197,7 +199,6 @@ const ProfilePage = () => {
     await updateProfile({ skills: skills.trim() });
     setIsEditingSkills(false);
   };
-  console.log(authUser);
 
   return (
     <div className="h-screen pt-20">
@@ -207,7 +208,6 @@ const ProfilePage = () => {
             <h1 className="text-2xl font-semibold">Profile</h1>
             <p className="mt-2">Your profile information</p>
           </div>
-
           {/* avatar upload section */}
           <div className="flex flex-col items-center gap-4">
             <div className="relative">
@@ -250,7 +250,7 @@ const ProfilePage = () => {
             <div className="space-y-1.5">
               <div className="text-sm text-zinc-400 flex items-center gap-2">
                 <User className="w-4 h-4" />
-                Full Name
+                Username
               </div>
               {isEditingName ? (
                 <div className="flex gap-2">
@@ -262,18 +262,18 @@ const ProfilePage = () => {
                   />
                   <button
                     onClick={handleNameUpdate}
-                    className="px-4 py-2 bg-green-600 hover:bg-green-700 rounded-lg text-white"
+                    className="px-4 py-2  text-white"
                     disabled={isUpdatingProfile}
                   >
-                    Save
+                    <Check/>
                   </button>
                   <button
                     onClick={() => {
                       setIsEditingName(false);
                     }}
-                    className="px-4 py-2 bg-red-600 hover:bg-red-700 rounded-lg text-white"
+                    className="px-4 py-2 rounded-lg text-white"
                   >
-                    Cancel
+                    <X/>
                   </button>
                 </div>
               ) : (
@@ -296,9 +296,12 @@ const ProfilePage = () => {
                 <Mail className="w-4 h-4" />
                 Email Address
               </div>
-              <p className="px-4 py-2.5 bg-base-200 rounded-lg border opacity-60">
+             <div className=" flex items-center justify-between">
+             <p className="px-4 py-2.5 bg-base-200 rounded-lg border flex-grow opacity-60">
                 {authUser?.email}
               </p>
+              <Eye className="ml-4 opacity-60"/>
+             </div>
             </div>
 
             <div className="space-y-1.5">
@@ -317,19 +320,19 @@ const ProfilePage = () => {
                   />
                   <button
                     onClick={handleGithubUpdate}
-                    className="px-4 py-2 bg-green-600 hover:bg-green-700 rounded-lg text-white"
+                    className="px-4 py-2 rounded-lg text-white"
                     disabled={isUpdatingProfile}
                   >
-                    Save
+                    <Check/>
                   </button>
                   <button
                     onClick={() => {
                       setIsEditingGithub(false);
                       setgithub(github || "");
                     }}
-                    className="px-4 py-2 bg-red-600 hover:bg-red-700 rounded-lg text-white"
+                    className="px-4 py-2 rounded-lg text-white"
                   >
-                    Cancel
+                    <X/>
                   </button>
                 </div>
               ) : (
@@ -363,19 +366,19 @@ const ProfilePage = () => {
                   />
                   <button
                     onClick={handleLinkedinUpdate}
-                    className="px-4 py-2 bg-green-600 hover:bg-green-700 rounded-lg text-white"
+                    className="px-4 py-2 rounded-lg text-white"
                     disabled={isUpdatingProfile}
                   >
-                    Save
+                    <Check/>
                   </button>
                   <button
                     onClick={() => {
                       setIsEditingLinkedin(false);
                       setlinkedin(authUser?.socialLinks?.linkedin || "");
                     }}
-                    className="px-4 py-2 bg-red-600 hover:bg-red-700 rounded-lg text-white"
+                    className="px-4 py-2 rounded-lg text-white"
                   >
-                    Cancel
+                    <X/>
                   </button>
                 </div>
               ) : (
@@ -409,19 +412,19 @@ const ProfilePage = () => {
                   <div className="flex flex-col gap-2">
                     <button
                       onClick={handleBioUpdate}
-                      className="px-4 py-2 bg-green-600 hover:bg-green-700 rounded-lg text-white"
+                      className="px-4 py-2 rounded-lg text-white"
                       disabled={isUpdatingProfile}
                     >
-                      Save
+                      <Check/>
                     </button>
                     <button
                       onClick={() => {
                         setIsEditingBio(false);
                         setBio(authUser?.bio || "");
                       }}
-                      className="px-4 py-2 bg-red-600 hover:bg-red-700 rounded-lg text-white"
+                      className="px-4 py-2 rounded-lg text-white"
                     >
-                      Cancel
+                      <X/>
                     </button>
                   </div>
                 </div>
@@ -456,18 +459,18 @@ const ProfilePage = () => {
                   <div className="flex flex-col gap-2">
                     <button
                       onClick={handleSkillsUpdate}
-                      className="px-4 py-2 bg-green-600 hover:bg-green-700 rounded-lg text-white"
+                      className="px-4 py-2 rounded-lg text-white"
                       disabled={isUpdatingProfile}
                     >
-                      Save
+                      <Check/>
                     </button>
                     <button
                       onClick={() => {
                         setIsEditingSkills(false);
                       }}
-                      className="px-4 py-2 bg-red-600 hover:bg-red-700 rounded-lg text-white"
+                      className="px-4 py-2 rounded-lg text-white"
                     >
-                      Cancel
+                      <X/>
                     </button>
                   </div>
                 </div>
