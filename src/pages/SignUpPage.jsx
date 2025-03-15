@@ -49,7 +49,6 @@ const SignUpPage = () => {
     }
   };
 
-  console.log("Mail icon available:", Mail !== undefined);
 
   return (
     <div className="min-h-screen grid lg:grid-cols-2">
