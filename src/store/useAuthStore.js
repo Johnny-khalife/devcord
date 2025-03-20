@@ -167,6 +167,7 @@ export const useAuthStore = create(
         set({ isUpdatingProfile: true });
         try {
           const response = await axiosInstance.put("/users/avatar", data);
+          console.log(data)
           set({ authUser: response.data.user });
           toast.success(response.data.message);
         } catch (error) {

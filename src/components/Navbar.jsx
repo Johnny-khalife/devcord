@@ -12,6 +12,7 @@ const Navbar = () => {
     >
       <div className="container mx-auto px-4 h-16">
         <div className="flex items-center justify-between h-full">
+          <div  className="flex items-center gap-12">
           <div className="flex items-center gap-8">
             <Link to="/" className="flex items-center gap-2.5 hover:opacity-80 transition-all">
               <div className="size-9 rounded-lg bg-primary/10 flex items-center justify-center">
@@ -20,7 +21,10 @@ const Navbar = () => {
               <h1 className="text-lg font-bold">Devcord</h1>
             </Link>
           </div>
-
+          <div></div>
+          <div>
+          </div>
+          </div>
           <div className="flex items-center gap-2">
             <Link
               to={"/settings"}
