@@ -10,11 +10,14 @@ const LoginPage = () => {
     email: "",
     password: "",
   });
-  const { login, isLoggingIn } = useAuthStore();
+  const { login, isLoggingIn, getUsers } = useAuthStore();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    login(formData);
+    // First handle login, then fetch users
+    await login(formData);
+    // After successful login, fetch users
+    getUsers();
   };
 
   return (
@@ -46,12 +49,13 @@ const LoginPage = () => {
                 </div>
                 <input
                   type="email"
-                  className={`input input-bordered w-full pl-10 mt-2`}
+                  className={`input input-bordered w-full pl-10 mt-2 `}
                   placeholder="you@example.com"
                   value={formData.email}
                   onChange={(e) =>
                     setFormData({ ...formData, email: e.target.value })
                   }
+                  autoComplete="email webauthn"
                 />
               </div>
             </div>

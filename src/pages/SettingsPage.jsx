@@ -1,14 +1,28 @@
 import { THEMES } from "../constants";
 import { useThemeStore } from "../store/useThemeStore";
 import { useAuthStore } from "../store/useAuthStore";
-import { Send, Eye, EyeOff, Lock, ChevronDown, ChevronUp, Trash2, AlertTriangle } from "lucide-react";
-import { useState } from "react";
+import { Send, Eye, EyeOff, Lock, ChevronDown, ChevronUp, Trash2, AlertTriangle, Check, X } from "lucide-react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 
 const PREVIEW_MESSAGES = [
   { id: 1, content: "Hey! How's it going?", isSent: false },
   { id: 2, content: "I'm doing great! Just working on some new features.", isSent: true },
 ];
+
+// Password requirement indicator component
+const PasswordRequirement = ({ met, label }) => (
+  <div className="flex items-center gap-2 text-sm">
+    {met ? (
+      <Check className="w-4 h-4 text-success" />
+    ) : (
+      <X className="w-4 h-4 text-error" />
+    )}
+    <span className={met ? "text-success" : "text-base-content/60"}>
+      {label}
+    </span>
+  </div>
+);
 
 const SettingsPage = () => {
   const navigate = useNavigate();
@@ -29,6 +43,30 @@ const SettingsPage = () => {
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [passwordFormError, setPasswordFormError] = useState("");
+
+  const {authUser } = useAuthStore();
+
+  // Password strength checks
+  const [passwordChecks, setPasswordChecks] = useState({
+    hasMinLength: false,
+    hasUppercase: false,
+    hasLowercase: false,
+    hasSymbol: false,
+    passwordsMatch: false
+  });
+
+  // Check password strength on password change
+  useEffect(() => {
+    const password = newPassword;
+    
+    setPasswordChecks({
+      hasMinLength: password.length >= 8,
+      hasUppercase: /[A-Z]/.test(password),
+      hasLowercase: /[a-z]/.test(password),
+      hasSymbol: /[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]/.test(password),
+      passwordsMatch: password === confirmPassword && password !== ""
+    });
+  }, [newPassword, confirmPassword]);
 
   // Account deletion state
   const [isDeletingAccountOpen, setIsDeletingAccountOpen] = useState(false);
@@ -52,13 +90,10 @@ const SettingsPage = () => {
       return;
     }
     
-    if (newPassword !== confirmPassword) {
-      setPasswordFormError("New passwords don't match");
-      return;
-    }
-    
-    if (newPassword.length < 6) {
-      setPasswordFormError("Password must be at least 6 characters");
+    // Check if all password requirements are met
+    const allRequirementsMet = Object.values(passwordChecks).every(check => check);
+    if (!allRequirementsMet) {
+      setPasswordFormError("Please meet all password requirements");
       return;
     }
     
@@ -73,7 +108,7 @@ const SettingsPage = () => {
         setIsChangingPassword(false);
       }
     } catch(error){
-      setPasswordFormError(error.message("Failed to update password. Please try again."));
+      setPasswordFormError(error.message || "Failed to update password. Please try again.");
     }
   };
 
@@ -101,14 +136,14 @@ const SettingsPage = () => {
     }
 
     try {
-      console.log(deleteAccountPassword)
+      console.log(deleteAccountPassword);
       const success = await deleteAccount(deleteAccountPassword);
       if (success) {
         // Navigate to login page after successful deletion
         navigate("/login");
       }
     } catch (error) {
-      setDeleteFormError(error.message("Failed to delete account. Please try again."));
+      setDeleteFormError(error.message || "Failed to delete account. Please try again.");
     }
   };
 
@@ -156,6 +191,8 @@ const SettingsPage = () => {
         </div>
 
         {/* Password Section */}
+        {authUser &&(
+          <>
         <div className="space-y-4">
           <div className="flex flex-col gap-1">
             <h2 className="text-lg font-semibold">Account Security</h2>
@@ -216,7 +253,15 @@ const SettingsPage = () => {
                         type={showNewPassword ? "text" : "password"}
                         value={newPassword}
                         onChange={(e) => setNewPassword(e.target.value)}
-                        className="input input-bordered w-full pr-10"
+                        className={`input input-bordered w-full pr-10 ${
+                          newPassword.length > 0
+                            ? Object.values(passwordChecks).filter(
+                                (check, idx) => idx !== 4
+                              ).every(Boolean)
+                                ? "border-success"
+                                : "border-error"
+                            : ""
+                        }`}
                         placeholder="Enter your new password"
                         disabled={isProcessingPasswordChange}
                       />
@@ -228,7 +273,28 @@ const SettingsPage = () => {
                         {showNewPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                       </button>
                     </div>
-                    <p className="text-xs text-base-content/70">Must be at least 6 characters</p>
+                    
+                    {/* Password requirements checklist */}
+                    {newPassword.length > 0 && (
+                      <div className="mt-2 p-3 bg-base-200 rounded-md grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <PasswordRequirement 
+                          met={passwordChecks.hasMinLength} 
+                          label="At least 8 characters" 
+                        />
+                        <PasswordRequirement 
+                          met={passwordChecks.hasUppercase} 
+                          label="One uppercase letter" 
+                        />
+                        <PasswordRequirement 
+                          met={passwordChecks.hasLowercase} 
+                          label="One lowercase letter" 
+                        />
+                        <PasswordRequirement 
+                          met={passwordChecks.hasSymbol} 
+                          label="One symbol (!@#$%...)" 
+                        />
+                      </div>
+                    )}
                   </div>
                   
                   <div className="space-y-2">
@@ -238,7 +304,13 @@ const SettingsPage = () => {
                         type={showConfirmPassword ? "text" : "password"}
                         value={confirmPassword}
                         onChange={(e) => setConfirmPassword(e.target.value)}
-                        className="input input-bordered w-full pr-10"
+                        className={`input input-bordered w-full pr-10 ${
+                          confirmPassword.length > 0
+                            ? passwordChecks.passwordsMatch
+                              ? "border-success"
+                              : "border-error"
+                            : ""
+                        }`}
                         placeholder="Confirm your new password"
                         disabled={isProcessingPasswordChange}
                       />
@@ -250,6 +322,16 @@ const SettingsPage = () => {
                         {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                       </button>
                     </div>
+                    
+                    {/* Password match indicator */}
+                    {confirmPassword.length > 0 && (
+                      <div className="mt-2">
+                        <PasswordRequirement 
+                          met={passwordChecks.passwordsMatch} 
+                          label="Passwords match" 
+                        />
+                      </div>
+                    )}
                   </div>
                   
                   <div className="flex items-center justify-end gap-3 mt-6">
@@ -264,7 +346,7 @@ const SettingsPage = () => {
                     <button
                       type="submit"
                       className={`btn btn-primary ${isProcessingPasswordChange ? "loading" : ""}`}
-                      disabled={isProcessingPasswordChange}
+                      disabled={isProcessingPasswordChange || !Object.values(passwordChecks).every(Boolean)}
                     >
                       Reset Password
                     </button>
@@ -379,6 +461,8 @@ const SettingsPage = () => {
             )}
           </div>
         </div>
+        </>
+)}
 
         {/* Preview Section */}
         <div className="space-y-3">

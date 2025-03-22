@@ -7,6 +7,10 @@ export const useAuthStore = create(
   persist(
     (set) => ({
       authUser: null,
+      user: null,
+      users: [], // Store the fetched users
+      isAuthenticated: false,
+      isLoading: false,
       isSigningUp: false,
       isLoggingIn: false,
       isUpdatingProfile: false,
@@ -14,17 +18,38 @@ export const useAuthStore = create(
       onlineUsers: [],
       socket: null,
 
-      // checkAuth: async () => {
-      //   try {
-      //     const res = await axiosInstance.get("/auth/check");
-      //     set({ authUser: res.data });
-      //   } catch (error) {
-      //     console.log("Error in checkAuth:", error);
-      //     set({ authUser: null });
-      //   } finally {
-      //     set({ isCheckingAuth: false });
-      //   }
-      // },
+      getUsers: async (params = {}) => {
+        set({ isLoading: true });
+        try {
+          // Build query parameters for pagination, filtering, etc.
+          const queryParams = new URLSearchParams();
+          if (params.page) queryParams.append('page', params.page);
+          if (params.limit) queryParams.append('limit', params.limit);
+          if (params.username) queryParams.append('username', params.username);
+          if (params.skills) queryParams.append('skills', params.skills);
+          
+          const queryString = queryParams.toString() ? `?${queryParams.toString()}` : '';
+          const response = await axiosInstance.get(`/users${queryString}`);
+          
+          // Ensure we're using the correct property name from the response
+          if (response.data.success) {
+            set({ 
+              users: response.data.users, // Updated to match backend response structure
+              isLoading: false 
+            });
+            return response.data;
+          } else {
+            throw new Error(response.data.message || "Failed to fetch users");
+          }
+        } catch (error) {
+          set({ isLoading: false });
+          const errorMsg = error.response?.data?.message || "Failed to fetch users";
+          toast.error(errorMsg);
+          console.error("Error fetching users:", error);
+          return null;
+        }
+      },
+   
 
       signup: async (data) => {
         set({ isSigningUp: true });
@@ -167,7 +192,7 @@ export const useAuthStore = create(
         set({ isUpdatingProfile: true });
         try {
           const response = await axiosInstance.put("/users/avatar", data);
-          console.log(data)
+          console.log(data);
           set({ authUser: response.data.user });
           toast.success(response.data.message);
         } catch (error) {

@@ -85,13 +85,13 @@ export const useWorkspaceStore = create(
       // Add function to get user workspaces from API
       fetchUserWorkspaces: async () => {
         try {
-          const response = await axiosInstance.get('/workspaces');
+          const response = await axiosInstance.get('/workspaces/');
           if (response.data.success) {
             set({ workspaces: response.data.workspaces });
             return response.data.workspaces;
           }
         } catch (error) {
-          toast.error(error.response.message.data);
+          toast.error(error.response.data.message);
           console.error(error);
           return [];
         }
@@ -151,7 +151,8 @@ export const useWorkspaceStore = create(
       // Other existing methods...
     }),
     {
-      name: "auth-storage"
+      name: "auth-storage",
+      getStorage: () => localStorage,
     }
   )
 );

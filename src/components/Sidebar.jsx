@@ -1,17 +1,13 @@
 import { useState, useEffect } from "react";
 import {
-  Plus,
   Briefcase,
-  Users,
-  Hash,
-  ChevronDown,
   MessageSquare,
   Settings,
   Users2,
   Phone,
 } from "lucide-react";
-import { Link } from "react-router-dom";
 import WorkSpace from "./WorkSpace";
+import UsersChat from "./UsersChat";
 import WorkspaceSettingsForm from "./WorkspaceSettingsForm";
 import { useWorkspaceStore } from "../store/useWorkspaceStore";
 
@@ -21,13 +17,14 @@ const Sidebar = () => {
   const [workspaces, setWorkspaces] = useState([]);
   const [activeWorkspace, setActiveWorkspace] = useState(null);
   const [activeChannel, setActiveChannel] = useState("general");
-  const [activeNavItem, setActiveNavItem] = useState("workSpace");
+  const [activeNavItem, setActiveNavItem] = useState("users");
   const [showWorkspacesNav, setShowWorkspacesNav] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  
+
   // Settings modal state
   const [showSettingsForm, setShowSettingsForm] = useState(false);
-  const [selectedWorkspaceForSettings, setSelectedWorkspaceForSettings] = useState(null);
+  const [selectedWorkspaceForSettings, setSelectedWorkspaceForSettings] =
+    useState(null);
 
   // Get methods from store
   const { fetchUserWorkspaces, createWorkspace } = useWorkspaceStore();
@@ -38,19 +35,19 @@ const Sidebar = () => {
       setIsLoading(true);
       try {
         const userWorkspaces = await fetchUserWorkspaces();
-        
+
         if (userWorkspaces && userWorkspaces.length > 0) {
           // Map workspaces to the expected format for this component
-          const formattedWorkspaces = userWorkspaces.map(ws => ({
+          const formattedWorkspaces = userWorkspaces.map((ws) => ({
             id: ws._id,
             name: ws.workspaceName,
             description: ws.description,
             channels: ws.channels || ["general"], // Default channel if none exist
-            icon: "briefcase"
+            icon: "briefcase",
           }));
-          
+
           setWorkspaces(formattedWorkspaces);
-          
+
           // Set active workspace if none is selected
           if (!activeWorkspace && formattedWorkspaces.length > 0) {
             setActiveWorkspace(formattedWorkspaces[0].id);
@@ -62,7 +59,7 @@ const Sidebar = () => {
         setIsLoading(false);
       }
     };
-    
+
     loadWorkspaces();
   }, [fetchUserWorkspaces]);
 
@@ -73,18 +70,21 @@ const Sidebar = () => {
   const workSpacepage = () => {
     setActiveNavItem("workSpace");
   };
+  const userChatPage = () => {
+    setActiveNavItem("users");
+  };
 
   const handleCreateWorkspace = async () => {
     const name = prompt("Enter workspace name:");
-    console.log(name)
+    console.log(name);
     if (name) {
       try {
         setIsLoading(true);
         const newWorkspace = await createWorkspace({
           workspaceName: name,
-          description: ""
+          description: "",
         });
-        
+
         if (newWorkspace) {
           // Format the new workspace for state
           const formattedWorkspace = {
@@ -92,9 +92,9 @@ const Sidebar = () => {
             name: newWorkspace.workspaceName,
             description: newWorkspace.description,
             channels: ["general"],
-            icon: "briefcase"
+            icon: "briefcase",
           };
-          
+
           setWorkspaces([...workspaces, formattedWorkspace]);
           setActiveWorkspace(formattedWorkspace.id);
         }
@@ -125,20 +125,22 @@ const Sidebar = () => {
 
   // Open settings form for a workspace
   const handleOpenSettingsForm = (workspaceId) => {
-    const workspace = workspaces.find(ws => ws.id === workspaceId);
+    const workspace = workspaces.find((ws) => ws.id === workspaceId);
     setSelectedWorkspaceForSettings(workspace);
     setShowSettingsForm(true);
   };
 
   // Handle workspace updates from settings form
   const handleWorkspaceUpdated = (workspaceId, updatedWorkspace, action) => {
-    if (action === 'delete' || action === 'leave') {
+    if (action === "delete" || action === "leave") {
       // Remove workspace from the list
-      setWorkspaces(workspaces.filter(ws => ws.id !== workspaceId));
-      
+      setWorkspaces(workspaces.filter((ws) => ws.id !== workspaceId));
+
       // If the deleted workspace was active, switch to another one
       if (activeWorkspace === workspaceId) {
-        const remainingWorkspace = workspaces.find(ws => ws.id !== workspaceId);
+        const remainingWorkspace = workspaces.find(
+          (ws) => ws.id !== workspaceId
+        );
         if (remainingWorkspace) {
           setActiveWorkspace(remainingWorkspace.id);
           setActiveChannel(remainingWorkspace.channels[0] || "general");
@@ -148,18 +150,22 @@ const Sidebar = () => {
       }
     } else if (updatedWorkspace) {
       // Update the workspace with new data
-      setWorkspaces(workspaces.map(ws => 
-        ws.id === workspaceId ? { 
-          ...ws, 
-          name: updatedWorkspace.name || ws.name,
-          description: updatedWorkspace.description || ws.description
-        } : ws
-      ));
+      setWorkspaces(
+        workspaces.map((ws) =>
+          ws.id === workspaceId
+            ? {
+                ...ws,
+                name: updatedWorkspace.name || ws.name,
+                description: updatedWorkspace.description || ws.description,
+              }
+            : ws
+        )
+      );
     }
   };
 
   return (
-    <div className="flex h-screen mt-16 bg-base-100">
+    <div className="flex h-screen pt-16 bg-base-100">
       {/* Narrow navigation sidebar */}
       <div className="w-16 bg-base-300 h-full flex flex-col items-center py-4">
         {/* App logo */}
@@ -169,11 +175,12 @@ const Sidebar = () => {
 
         {/* Navigation icons */}
         <div className="flex flex-col items-center gap-6 mt-2">
+       
           <button
             className={`w-10 h-10 rounded-lg flex items-center justify-center ${
               activeNavItem === "users" ? "bg-primary/20" : "hover:bg-base-200"
             }`}
-            onClick={() => setActiveNavItem("users")}
+            onClick={userChatPage}
           >
             <Users2
               className={`w-5 h-5 ${
@@ -236,7 +243,7 @@ const Sidebar = () => {
 
       {/* Channels/workSpace sidebar */}
       {!isLoading && activeNavItem === "workSpace" && (
-        <WorkSpace 
+        <WorkSpace
           activeNavItem={activeNavItem}
           activeWorkspace={activeWorkspace}
           setActiveWorkspace={setActiveWorkspace}
@@ -250,6 +257,10 @@ const Sidebar = () => {
           handleOpenSettingsForm={handleOpenSettingsForm}
         />
       )}
+     
+
+      {!isLoading && activeNavItem === "users" && (<UsersChat/>)}
+
 
       {/* Settings form modal */}
       {showSettingsForm && selectedWorkspaceForSettings && (
@@ -267,7 +278,9 @@ const Sidebar = () => {
           <h1 className="text-2xl font-bold">
             {activeNavItem.charAt(0).toUpperCase() + activeNavItem.slice(1)}
           </h1>
-          <p className="mt-4">Select a section from the sidebar to view content.</p>
+          <p className="mt-4">
+            Select a section from the sidebar to view content.
+          </p>
         </div>
       )}
     </div>

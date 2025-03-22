@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuthStore } from "../store/useAuthStore";
+import AuthImagePattern from "../components/AuthImagePattern";
 import {
   Eye,
   EyeOff,
@@ -8,13 +9,14 @@ import {
   Mail,
   MessageSquare,
   User,
+  Check,
+  X,
 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
-
-import AuthImagePattern from "../components/AuthImagePattern";
 import toast from "react-hot-toast";
 
 const SignUpPage = () => {
+  // Your existing state
   const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({
     username: "",
@@ -22,25 +24,47 @@ const SignUpPage = () => {
     password: "",
     confirmPassword: "",
   });
+  
+  // New state for tracking password strength
+  const [passwordChecks, setPasswordChecks] = useState({
+    hasMinLength: false,
+    hasUppercase: false,
+    hasLowercase: false,
+    hasSymbol: false,
+    passwordsMatch: false
+  });
 
   const { signup, isSigningUp } = useAuthStore();
   const navigate = useNavigate();
 
+  // Check password strength on password change
+  useEffect(() => {
+    const password = formData.password;
+    
+    setPasswordChecks({
+      hasMinLength: password.length >= 8,
+      hasUppercase: /[A-Z]/.test(password),
+      hasLowercase: /[a-z]/.test(password),
+      hasSymbol: /[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]/.test(password),
+      passwordsMatch: password === formData.confirmPassword && password !== ""
+    });
+  }, [formData.password, formData.confirmPassword]);
+
+  // Your existing form validation and submission functions
   const validateForm = () => {
     if (!formData.username.trim()) return toast.error("Full name is required");
     if (!formData.email.trim()) return toast.error("Email is required");
-    if (!formData.password) return toast.error("Password is required");
-    if (formData.password.length < 6)
-      return toast.error("Password must be at least 6 characters");
+    
+    // Check if all password requirements are met
+    const allRequirementsMet = Object.values(passwordChecks).every(check => check);
+    if (!allRequirementsMet) return toast.error("Please meet all password requirements");
 
     return true;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-
     const success = validateForm();
-
     if (success === true) {
       const signupSuccess = await signup(formData);
       if (signupSuccess) {
@@ -48,6 +72,20 @@ const SignUpPage = () => {
       }
     }
   };
+
+  // Password requirement indicator component
+  const PasswordRequirement = ({ met, label }) => (
+    <div className="flex items-center gap-2 text-sm">
+      {met ? (
+        <Check className="size-4 text-success" />
+      ) : (
+        <X className="size-4 text-error" />
+      )}
+      <span className={met ? "text-success" : "text-base-content/60"}>
+        {label}
+      </span>
+    </div>
+  );
 
 
   return (
@@ -120,7 +158,13 @@ const SignUpPage = () => {
                 </div>
                 <input
                   type={showPassword ? "text" : "password"}
-                  className={`input input-bordered w-full pl-10 mt-2`}
+                  className={`input input-bordered w-full pl-10 mt-2 ${
+                    formData.password.length > 0
+                      ? Object.values(passwordChecks).every(Boolean)
+                        ? "border-success"
+                        : "border-error"
+                      : ""
+                  }`}
                   placeholder="••••••••"
                   value={formData.password}
                   onChange={(e) =>
@@ -139,8 +183,31 @@ const SignUpPage = () => {
                   )}
                 </button>
               </div>
+              
+              {/* Password requirements checklist */}
+              {formData.password.length > 0 && (
+                <div className="mt-2 p-3 bg-base-200 rounded-md grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <PasswordRequirement 
+                    met={passwordChecks.hasMinLength} 
+                    label="At least 8 characters" 
+                  />
+                  <PasswordRequirement 
+                    met={passwordChecks.hasUppercase} 
+                    label="One uppercase letter" 
+                  />
+                  <PasswordRequirement 
+                    met={passwordChecks.hasLowercase} 
+                    label="One lowercase letter" 
+                  />
+                  <PasswordRequirement 
+                    met={passwordChecks.hasSymbol} 
+                    label="One symbol (!@#$%...)" 
+                  />
+                </div>
+              )}
             </div>
-
+            
+            {/* Confirm password field */}
             <div className="form-control">
               <label className="label">
                 <span className="label-text font-medium">Confirm Password</span>
@@ -151,7 +218,13 @@ const SignUpPage = () => {
                 </div>
                 <input
                   type={showPassword ? "text" : "password"}
-                  className={`input input-bordered w-full pl-10 mt-2`}
+                  className={`input input-bordered w-full pl-10 mt-2 ${
+                    formData.confirmPassword.length > 0
+                      ? passwordChecks.passwordsMatch
+                        ? "border-success"
+                        : "border-error"
+                      : ""
+                  }`}
                   placeholder="••••••••"
                   value={formData.confirmPassword}
                   onChange={(e) =>
@@ -173,12 +246,22 @@ const SignUpPage = () => {
                   )}
                 </button>
               </div>
+              
+              {/* Password match indicator */}
+              {formData.confirmPassword.length > 0 && (
+                <div className="mt-2">
+                  <PasswordRequirement 
+                    met={passwordChecks.passwordsMatch} 
+                    label="Passwords match" 
+                  />
+                </div>
+              )}
             </div>
 
             <button
               type="submit"
               className="btn btn-primary w-full"
-              disabled={isSigningUp}
+              disabled={isSigningUp || !Object.values(passwordChecks).every(Boolean)}
             >
               {isSigningUp ? (
                 <>
@@ -202,8 +285,7 @@ const SignUpPage = () => {
         </div>
       </div>
 
-      {/* right side */}
-
+      {/* right side - keep your existing AuthImagePattern */}
       <AuthImagePattern
         title="Join our Devcord"
         subtitle="Connect with developers worlwide"
@@ -211,4 +293,5 @@ const SignUpPage = () => {
     </div>
   );
 };
+
 export default SignUpPage;
