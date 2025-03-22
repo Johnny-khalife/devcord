@@ -27,7 +27,8 @@ const Sidebar = () => {
     useState(null);
 
   // Get methods from store
-  const { fetchUserWorkspaces, createWorkspace } = useWorkspaceStore();
+  
+  const { fetchUserWorkspaces, createWorkspace ,} = useWorkspaceStore();
 
   // Fetch workspaces on component mount
   useEffect(() => {

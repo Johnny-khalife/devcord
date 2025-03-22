@@ -136,7 +136,7 @@ export const useWorkspaceStore = create(
       // Function to get workspace members
       getWorkspaceMembers: async (workspaceId) => {
         try {
-          const response = await axiosInstance.get(`/api/workspaces/${workspaceId}/members`);
+          const response = await axiosInstance.get(`/workspaces/${workspaceId}/members`);
           
           if (response.data.success) {
             return response.data.members;
@@ -144,6 +144,20 @@ export const useWorkspaceStore = create(
           return [];
         } catch (error) {
           console.error("Failed to fetch workspace members:", error);
+          return [];
+        }
+      },
+
+      sendWorkspaceInvite: async (workspaceId,users) => {
+        try {
+          const response = await axiosInstance.post(`/workspaces/${workspaceId}/invite`,{users});
+          
+          if (response.data.success) {
+            return response.data.members;
+          }
+          return [];
+        } catch (error) {
+          console.error("Failed to send invite", error);
           return [];
         }
       },

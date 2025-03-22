@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Plus, Briefcase, Hash, ChevronDown, Settings, UserPlus, Check } from "lucide-react";
+import { useFriendStore } from "../store/useFriendsStore"; // Import the friend store
 
 const WorkSpace = ({
   activeNavItem,
@@ -20,15 +21,17 @@ const WorkSpace = ({
   const [selectedFriends, setSelectedFriends] = useState([]);
   const inviteMenuRef = useRef(null);
   const inviteButtonRef = useRef(null);
+  const [isInviteLoading, setIsInviteLoading] = useState(false);
   
-  // Mock friends data - in production would come from props or context
-  const [friends, setFriends] = useState([
-    { id: "friend1", username: "AlexSmith", status: "online" },
-    { id: "friend2", username: "JaneDoe", status: "offline" },
-    { id: "friend3", username: "MikeJohnson", status: "online" },
-    { id: "friend4", username: "SarahWilliams", status: "online" },
-    { id: "friend5", username: "DavidBrown", status: "offline" }
-  ]);
+  // Get friends data and methods from the friend store
+  const { friends, getFriendsList, isLoading: isFriendsLoading } = useFriendStore();
+
+  // Fetch friends list when component mounts or when activeWorkspace changes
+  useEffect(() => {
+    if (activeWorkspace) {
+      getFriendsList();
+    }
+  }, [activeWorkspace, getFriendsList]);
 
   // Handle clicks outside the invite menu
   useEffect(() => {
@@ -59,19 +62,29 @@ const WorkSpace = ({
   };
 
   // Send invites to backend
-  const sendInvites = () => {
+  const sendInvites = async () => {
     if (selectedFriends.length === 0) {
       alert("Please select at least one friend to invite");
       return;
     }
     
-    // In a real app, this would be an API call
-    console.log(`Inviting friends to workspace ${activeWorkspace}:`, selectedFriends);
-    alert(`Invites sent to ${selectedFriends.length} friend(s)`);
+    setIsInviteLoading(true);
     
-    // Reset state after sending invites
-    setSelectedFriends([]);
-    setShowInviteMenu(false);
+    try {
+      // In a real app, this would be an API call to invite friends to the workspace
+      // For example: await axiosInstance.post(`/workspaces/${activeWorkspace}/invite`, { friendIds: selectedFriends });
+      console.log(`Inviting friends to workspace ${activeWorkspace}:`, selectedFriends);
+      alert(`Invites sent to ${selectedFriends.length} friend(s)`);
+      
+      // Reset state after sending invites
+      setSelectedFriends([]);
+      setShowInviteMenu(false);
+    } catch (error) {
+      console.error("Failed to invite friends:", error);
+      alert("Failed to send invites. Please try again.");
+    } finally {
+      setIsInviteLoading(false);
+    }
   };
 
   const getActiveWorkspace = () => {
@@ -139,7 +152,7 @@ const WorkSpace = ({
               </button>
             )}
             
-            {/* Invite Friends Menu */}
+            {/* Invite Friends Menu - Now using real friends data */}
             {showInviteMenu && (
               <div 
                 ref={inviteMenuRef}
@@ -157,34 +170,42 @@ const WorkSpace = ({
                     />
                   </div>
                   
-                  {/* Friends list for selection */}
+                  {/* Friends list for selection - Now using real data */}
                   <div className="max-h-60 overflow-y-auto">
-                    {friends.length === 0 ? (
+                    {isFriendsLoading ? (
+                      <div className="text-center py-4">
+                        <div className="loading loading-spinner loading-sm text-primary"></div>
+                        <p className="text-sm mt-2">Loading friends...</p>
+                      </div>
+                    ) : friends.length === 0 ? (
                       <p className="text-sm text-base-content/70 text-center py-2">No friends found</p>
                     ) : (
                       <div className="space-y-2">
                         {friends.map((friend) => (
                           <div
-                            key={friend.id}
+                            key={friend.friendId}
                             className={`flex items-center justify-between p-2 rounded-md hover:bg-base-200 cursor-pointer ${
-                              selectedFriends.includes(friend.id) ? "bg-primary/10" : ""
+                              selectedFriends.includes(friend.friendId) ? "bg-primary/10" : ""
                             }`}
-                            onClick={() => toggleFriendSelection(friend.id)}
+                            onClick={() => toggleFriendSelection(friend.friendId)}
                           >
                             <div className="flex items-center gap-2">
                               <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
-                                {friend.username.charAt(0).toUpperCase()}
+                                {friend.username ? friend.username.charAt(0).toUpperCase() : 
+                                 friend.displayName ? friend.displayName.charAt(0).toUpperCase() : "?"}
                               </div>
                               <div>
-                                <div className="text-sm font-medium">{friend.username}</div>
+                                <div className="text-sm font-medium">
+                                  {friend.username || friend.displayName || `Friend #${friend.friendId}`}
+                                </div>
                                 <div className="text-xs text-base-content/70">
-                                  {friend.status === "online" ? "Online" : "Offline"}
+                                  {friend.status || "Status unknown"}
                                 </div>
                               </div>
                             </div>
                             
                             {/* Checkmark for selected friends */}
-                            {selectedFriends.includes(friend.id) && (
+                            {selectedFriends.includes(friend.friendId) && (
                               <Check className="w-5 h-5 text-primary" />
                             )}
                           </div>
@@ -198,15 +219,23 @@ const WorkSpace = ({
                     <button 
                       className="btn btn-sm btn-ghost"
                       onClick={() => setShowInviteMenu(false)}
+                      disabled={isInviteLoading}
                     >
                       Cancel
                     </button>
                     <button 
                       className="btn btn-sm btn-primary"
                       onClick={sendInvites}
-                      disabled={selectedFriends.length === 0}
+                      disabled={selectedFriends.length === 0 || isInviteLoading}
                     >
-                      Invite ({selectedFriends.length})
+                      {isInviteLoading ? (
+                        <>
+                          <span className="loading loading-spinner loading-xs"></span>
+                          Inviting...
+                        </>
+                      ) : (
+                        `Invite (${selectedFriends.length})`
+                      )}
                     </button>
                   </div>
                 </div>
