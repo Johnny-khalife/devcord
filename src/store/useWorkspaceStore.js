@@ -87,12 +87,36 @@ export const useWorkspaceStore = create(
         try {
           const response = await axiosInstance.get('/workspaces/');
           if (response.data.success) {
-            set({ workspaces: response.data.workspaces });
+            // Only return owned workspaces
             return response.data.workspaces;
           }
+          return [];
         } catch (error) {
-          toast.error(error.response.data.message);
-          console.error(error);
+          console.error("Error fetching owned workspaces:", error);
+          toast.error("Failed to load your workspaces");
+          return [];
+        }
+      },
+
+      // Add function to get user workspaces from API
+      getUserWorkspaces: async () => {
+        try {
+          const response = await axiosInstance.get('/workspaces/user');
+          console.log("API response from getUserWorkspaces:", response.data);
+          
+          if (response.data.success) {
+            // Extract and format the workspace data
+            return response.data.workspaces.map(membership => ({
+              ...membership.workspaceId,  // Spread the actual workspace data
+              _id: membership.workspaceId._id,  // Keep workspace ID
+              id: membership.workspaceId._id,   // Add both id and _id for compatibility
+              membershipId: membership._id      // Keep membership ID if needed
+            }));
+          }
+          return [];
+        } catch (error) {
+          console.error("Error fetching joined workspaces:", error);
+          toast.error(error.response?.data?.message || "Failed to load joined workspaces");
           return [];
         }
       },
@@ -120,7 +144,7 @@ export const useWorkspaceStore = create(
       // Function to join a workspace via invite code
       joinWorkspace: async (inviteCode) => {
         try {
-          const response = await axiosInstance.post(`/api/workspaces/${inviteCode}/join`);
+          const response = await axiosInstance.post(`/workspaces/${inviteCode}/join`);
           
           if (response.data.success) {
             toast.success(response.data.message || "Joined workspace successfully");
@@ -136,37 +160,49 @@ export const useWorkspaceStore = create(
       // Function to get workspace members
       getWorkspaceMembers: async (workspaceId) => {
         try {
+          if (!workspaceId) {
+            console.error("No workspace ID provided to getWorkspaceMembers");
+            return [];
+          }
+
           const response = await axiosInstance.get(`/workspaces/${workspaceId}/members`);
           
           if (response.data.success) {
-            return response.data.members;
+            console.log("Workspace members fetched successfully:", response.data.members);
+            return response.data.members || [];
+          } else {
+            console.error("API returned unsuccessful response:", response.data);
+            return [];
           }
-          return [];
         } catch (error) {
-          console.error("Failed to fetch workspace members:", error);
+          const errorMessage = error.response?.data?.message || "Unknown error";
+          const status = error.response?.status;
+          
+          console.error(`Failed to fetch workspace members (${status}):`, errorMessage);
+          toast.error(`Failed to load workspace members: ${errorMessage}`);
           return [];
         }
       },
 
-      sendWorkspaceInvite: async (workspaceId,users) => {
+      sendWorkspaceInvite: async (workspaceId,users,setIsInviteLoading) => {
         try {
           const response = await axiosInstance.post(`/workspaces/${workspaceId}/invite`,{users});
           
           if (response.data.success) {
+            setIsInviteLoading(false);
+            toast.success(response.data.message);
             return response.data.members;
           }
           return [];
         } catch (error) {
           console.error("Failed to send invite", error);
+          toast.error(error.response?.data?.message)
           return [];
         }
       },
 
       // Other existing methods...
     }),
-    {
-      name: "auth-storage",
-      getStorage: () => localStorage,
-    }
+ 
   )
 );

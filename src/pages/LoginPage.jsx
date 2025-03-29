@@ -17,7 +17,7 @@ const LoginPage = () => {
     // First handle login, then fetch users
     await login(formData);
     // After successful login, fetch users
-    getUsers();
+    isLoggingIn? getUsers():"";
   };
 
   return (
@@ -55,7 +55,7 @@ const LoginPage = () => {
                   onChange={(e) =>
                     setFormData({ ...formData, email: e.target.value })
                   }
-                  autoComplete="email webauthn"
+                  autoComplete="email"
                 />
               </div>
             </div>

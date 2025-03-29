@@ -1,7 +1,19 @@
 import { useState, useRef, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { Plus, Briefcase, Hash, ChevronDown, Settings, UserPlus, Check } from "lucide-react";
+import {
+  Plus,
+  Briefcase,
+  Hash,
+  ChevronDown,
+  Settings,
+  UserPlus,
+  Check,
+  Lock,
+} from "lucide-react";
 import { useFriendStore } from "../store/useFriendsStore"; // Import the friend store
+import { useWorkspaceStore } from "../store/useWorkspaceStore";
+import { useChannelStore } from "../store/useChannelStore";
+import toast from "react-hot-toast";
 
 const WorkSpace = ({
   activeNavItem,
@@ -13,7 +25,6 @@ const WorkSpace = ({
   setActiveChannel,
   activeChannel,
   handleCreateWorkspace,
-  handleCreateChannel,
   handleOpenSettingsForm,
 }) => {
   // State for invite functionality
@@ -22,9 +33,38 @@ const WorkSpace = ({
   const inviteMenuRef = useRef(null);
   const inviteButtonRef = useRef(null);
   const [isInviteLoading, setIsInviteLoading] = useState(false);
-  
+
+  // State for channels
+  const [channelName, setChannelName] = useState("");
+  const [channels, setChannels] = useState([]);
+  const [isChannelsLoading, setIsChannelsLoading] = useState(false);
+  const [isPrivateChannel, setIsPrivateChannel] = useState(false);
+  const [selectedChannelUsers, setSelectedChannelUsers] = useState([]);
+  const [showChannelUserSelector, setShowChannelUserSelector] = useState(false);
+
+  // Get workspace members
+  const { getWorkspaceMembers } = useWorkspaceStore();
+  const [workspaceMembers, setWorkspaceMembers] = useState([]);
+  const [isWorkspaceMembersLoading, setIsWorkspaceMembersLoading] =
+    useState(false);
+
   // Get friends data and methods from the friend store
-  const { friends, getFriendsList, isLoading: isFriendsLoading } = useFriendStore();
+  const {
+    friends,
+    getFriendsList,
+    isLoading: isFriendsLoading,
+  } = useFriendStore();
+  const { fetchUserWorkspaces, sendWorkspaceInvite } = useWorkspaceStore();
+  const { fetchWorkspaceChannels, createChannel, deleteChannel } =
+    useChannelStore();
+  console.log("tony", friends);
+
+  // Add this at the beginning of your component
+  console.log("Workspace component props:", {
+    activeWorkspace,
+    workspaces,
+    activeChannel,
+  });
 
   // Fetch friends list when component mounts or when activeWorkspace changes
   useEffect(() => {
@@ -37,9 +77,9 @@ const WorkSpace = ({
   useEffect(() => {
     function handleClickOutside(event) {
       if (
-        inviteMenuRef.current && 
+        inviteMenuRef.current &&
         !inviteMenuRef.current.contains(event.target) &&
-        inviteButtonRef.current && 
+        inviteButtonRef.current &&
         !inviteButtonRef.current.contains(event.target)
       ) {
         setShowInviteMenu(false);
@@ -52,10 +92,324 @@ const WorkSpace = ({
     };
   }, []);
 
+  // Fetch channels for the active workspace
+  useEffect(() => {
+    const loadWorkspaceChannels = async () => {
+      if (!activeWorkspace) return;
+
+      setIsChannelsLoading(true);
+      try {
+        const workspaceChannels = await fetchWorkspaceChannels(activeWorkspace);
+        setChannels(workspaceChannels);
+
+        // Set first channel as active if no active channel or current active channel is not in the list
+        if (workspaceChannels.length > 0) {
+          const defaultChannel = workspaceChannels[0];
+          setActiveChannel(defaultChannel._id);
+        }
+      } catch (error) {
+        console.error("Failed to fetch workspace channels:", error);
+      } finally {
+        setIsChannelsLoading(false);
+      }
+    };
+
+    loadWorkspaceChannels();
+  }, [activeWorkspace, fetchWorkspaceChannels]);
+
+  // And inside useEffect that depends on activeWorkspace
+  useEffect(() => {
+    console.log("Active workspace changed:", activeWorkspace);
+    console.log("Current workspaces:", workspaces);
+
+    const fetchWorkspaceMembers = async () => {
+      if (!activeWorkspace) {
+        console.log("No active workspace, skipping member fetch");
+        return;
+      }
+
+      setIsWorkspaceMembersLoading(true);
+      try {
+        console.log("Fetching members for workspace:", activeWorkspace);
+        const members = await getWorkspaceMembers(activeWorkspace);
+
+        if (Array.isArray(members)) {
+          // Map members to include both id and _id to handle API inconsistencies
+          const formattedMembers = members.map((member) => ({
+            ...member,
+            id: member.id || member._id,
+          }));
+
+          setWorkspaceMembers(formattedMembers);
+          console.log("Members loaded successfully:", formattedMembers.length);
+        } else {
+          console.error("Received invalid members data:", members);
+          setWorkspaceMembers([]);
+        }
+      } catch (error) {
+        console.error("Error in fetchWorkspaceMembers:", error);
+        toast.error(
+          error.response?.data?.message || "Could not load workspace members"
+        );
+        setWorkspaceMembers([]);
+      } finally {
+        setIsWorkspaceMembersLoading(false);
+      }
+    };
+
+    fetchWorkspaceMembers();
+  }, [activeWorkspace, getWorkspaceMembers]);
+
+  // Create a new channel
+  const handleCreateChannel = async () => {
+    if (!activeWorkspace) {
+      toast.error("Please select a workspace first");
+      return;
+    }
+
+    if (!channelName) {
+      toast.error("Channel name is required");
+      return;
+    }
+
+    try {
+      // If it's a private channel, ensure some users are selected
+      if (isPrivateChannel && selectedChannelUsers.length === 0) {
+        toast.error("Please select at least one user for a private channel");
+        return;
+      }
+
+      // Add logging to see what's being sent
+      console.log("Creating channel with data:", {
+        channelName,
+        isPrivate: isPrivateChannel,
+        allowedUsers: isPrivateChannel ? selectedChannelUsers : [],
+      });
+
+      const newChannel = await createChannel(activeWorkspace, {
+        channelName,
+        isPrivate: isPrivateChannel,
+        allowedUsers: isPrivateChannel ? selectedChannelUsers : [],
+      });
+
+      // Add the new channel to the list
+      setChannels([...channels, newChannel]);
+      setActiveChannel(newChannel._id);
+
+      // Reset channel creation states
+      resetChannelCreation();
+    } catch (error) {
+      console.error("Failed to create channel:", error);
+      toast.error("Failed to create channel");
+    }
+  };
+  const toggleUserSelection = (userId) => {
+    setSelectedChannelUsers((prev) =>
+      prev.includes(userId)
+        ? prev.filter((id) => id !== userId)
+        : [...prev, userId]
+    );
+  };
+
+  const resetChannelCreation = () => {
+    setShowChannelUserSelector(false);
+    setChannelName("");
+    setIsPrivateChannel(false);
+    setSelectedChannelUsers([]);
+  };
+
+  // Delete a channel
+  const handleDeleteChannel = async (channelId) => {
+    if (!window.confirm("Are you sure you want to delete this channel?"))
+      return;
+
+    try {
+      await deleteChannel(channelId);
+
+      // Remove the channel from the list
+      const updatedChannels = channels.filter(
+        (channel) => channel._id !== channelId
+      );
+      setChannels(updatedChannels);
+
+      // Set a new active channel if possible
+      if (updatedChannels.length > 0) {
+        setActiveChannel(updatedChannels[0]._id);
+      } else {
+        setActiveChannel(null);
+      }
+    } catch (error) {
+      console.error("Failed to delete channel:", error);
+    }
+  };
+
+  // Render channels list with private channel indicator
+  const renderChannelsList = () => {
+    if (isChannelsLoading) {
+      return (
+        <div className="flex justify-center items-center py-4">
+          <span className="loading loading-spinner loading-sm"></span>
+        </div>
+      );
+    }
+
+    return (
+      <div className="space-y-1 mt-4">
+        <div className="px-2 py-1 text-xs font-semibold text-base-content/70">
+          CHANNELS
+        </div>
+        {channels.map((channel) => (
+          <div key={channel._id} className="flex items-center justify-between">
+            <Link
+              to={`/workspace/${activeWorkspace}/channel/${channel._id}`}
+              className={`flex-grow flex items-center gap-2 px-2 py-2 rounded-md hover:bg-base-300 ${
+                activeChannel === channel._id
+                  ? "bg-primary/10 text-primary font-medium"
+                  : ""
+              }`}
+              onClick={() => setActiveChannel(channel._id)}
+            >
+              {channel.isPrivate ? (
+                <Lock className="w-4 h-4 text-warning" />
+              ) : (
+                <Hash className="w-4 h-4" />
+              )}
+              <span>{channel.channelName}</span>
+            </Link>
+            {/* Optional: Add delete button for channels */}
+            <button
+              onClick={() => handleDeleteChannel(channel._id)}
+              className="btn btn-ghost btn-xs mr-2"
+            >
+              🗑️
+            </button>
+          </div>
+        ))}
+        <div className="flex items-center gap-2 px-2 py-2">
+          <button
+            className="flex items-center gap-2 px-2 py-2 rounded-md hover:bg-base-300 text-base-content/70 w-full text-left"
+            onClick={() => setShowChannelUserSelector(true)}
+          >
+            <Plus className="w-4 h-4" />
+            <span>Add Channel</span>
+          </button>
+        </div>
+
+        {/* Channel Creation Modal */}
+        {showChannelUserSelector && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-base-100 rounded-lg p-6 w-96">
+              <h3 className="text-lg font-semibold mb-4">Create New Channel</h3>
+
+              {/* Channel Name Input */}
+              <div className="mb-4">
+                <label className="block text-sm font-medium mb-2">
+                  Channel Name
+                </label>
+                <input
+                  type="text"
+                  placeholder="Enter channel name"
+                  className="input input-bordered w-full"
+                  value={channelName}
+                  onChange={(e) => setChannelName(e.target.value)}
+                />
+              </div>
+
+              {/* Private Channel Toggle */}
+              <div className="form-control mb-4">
+                <label className="cursor-pointer label">
+                  <span className="label-text flex items-center gap-2">
+                    <Lock className="w-4 h-4" /> Private Channel
+                  </span>
+                  <input
+                    type="checkbox"
+                    className="toggle toggle-primary"
+                    checked={isPrivateChannel}
+                    onChange={() => setIsPrivateChannel(!isPrivateChannel)}
+                  />
+                </label>
+              </div>
+
+              {/* User Selection for Private Channels */}
+              {isPrivateChannel && (
+                <div>
+                  <label className="block text-sm font-medium mb-2">
+                    Select Users for this Channel
+                  </label>
+                  {isWorkspaceMembersLoading ? (
+                    <div className="text-center">
+                      <span className="loading loading-spinner loading-sm"></span>
+                    </div>
+                  ) : workspaceMembers.length === 0 ? (
+                    <div className="text-center p-4 border rounded-md bg-base-200">
+                      <p className="text-sm">
+                        No members found in this workspace.
+                      </p>
+                      <p className="text-xs text-base-content/70 mt-1">
+                        Invite members using the invite button at the top.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="max-h-60 overflow-y-auto border rounded-md">
+                      {workspaceMembers.map((member) => (
+                        <div
+                          key={member.id}
+                          className={`flex items-center justify-between p-2 hover:bg-base-200 cursor-pointer ${
+                            selectedChannelUsers.includes(member.id)
+                              ? "bg-primary/10"
+                              : ""
+                          }`}
+                          onClick={() => toggleUserSelection(member.id)}
+                        >
+                          <div className="flex items-center gap-2">
+                            <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
+                              {member.username
+                                ? member.username.charAt(0).toUpperCase()
+                                : "?"}
+                            </div>
+                            <span>{member.username}</span>
+                          </div>
+                          {selectedChannelUsers.includes(member.id) && (
+                            <Check className="w-5 h-5 text-primary" />
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Action Buttons */}
+              <div className="flex justify-end mt-4 gap-2">
+                <button
+                  className="btn btn-ghost"
+                  onClick={resetChannelCreation}
+                >
+                  Cancel
+                </button>
+                <button
+                  className="btn btn-primary"
+                  onClick={handleCreateChannel}
+                  disabled={
+                    !channelName ||
+                    (isPrivateChannel && selectedChannelUsers.length === 0)
+                  }
+                >
+                  Create Channel
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
   // Toggle friend selection
   const toggleFriendSelection = (friendId) => {
+    console.log("tony", friends);
     if (selectedFriends.includes(friendId)) {
-      setSelectedFriends(selectedFriends.filter(id => id !== friendId));
+      setSelectedFriends(selectedFriends.filter((id) => id !== friendId));
     } else {
       setSelectedFriends([...selectedFriends, friendId]);
     }
@@ -67,30 +421,49 @@ const WorkSpace = ({
       alert("Please select at least one friend to invite");
       return;
     }
-    
+
     setIsInviteLoading(true);
-    
-    try {
-      // In a real app, this would be an API call to invite friends to the workspace
-      // For example: await axiosInstance.post(`/workspaces/${activeWorkspace}/invite`, { friendIds: selectedFriends });
-      console.log(`Inviting friends to workspace ${activeWorkspace}:`, selectedFriends);
-      alert(`Invites sent to ${selectedFriends.length} friend(s)`);
-      
-      // Reset state after sending invites
-      setSelectedFriends([]);
-      setShowInviteMenu(false);
-    } catch (error) {
-      console.error("Failed to invite friends:", error);
-      alert("Failed to send invites. Please try again.");
-    } finally {
-      setIsInviteLoading(false);
-    }
+
+    sendWorkspaceInvite(activeWorkspace, selectedFriends, setIsInviteLoading);
   };
 
   const getActiveWorkspace = () => {
-    return workspaces.find((ws) => ws.id === activeWorkspace) || workspaces[0];
+    // First try to find the workspace in the array
+    const workspace = workspaces.find((ws) => ws?.id === activeWorkspace);
+
+    // If not found, return a default object with null values to prevent undefined errors
+    if (!workspace) {
+      console.warn(
+        "Active workspace not found in workspaces array:",
+        activeWorkspace
+      );
+      return { id: null, name: "No Workspace", description: "", channels: [] };
+    }
+
+    // Make sure name property exists
+    if (!workspace.name) {
+      console.warn("Workspace missing name property:", workspace);
+      return { ...workspace, name: "Unnamed Workspace" };
+    }
+
+    return workspace;
   };
-  
+
+  // Add at the beginning of your component
+  useEffect(() => {
+    console.log("Workspaces in WorkSpace component:", workspaces);
+    // Check if all workspaces have a name property
+    if (workspaces && workspaces.length > 0) {
+      const missingNames = workspaces.filter((ws) => !ws || !ws.name);
+      if (missingNames.length > 0) {
+        console.warn(
+          "Some workspaces are missing the name property:",
+          missingNames
+        );
+      }
+    }
+  }, [workspaces]);
+
   if (workspaces.length === 0) {
     return (
       <div className="w-72 bg-base-200 h-full border-r border-base-300 flex flex-col items-center justify-center p-4">
@@ -128,7 +501,7 @@ const WorkSpace = ({
             >
               <Plus className="w-5 h-5" />
             </button>
-            
+
             {/* Invite button */}
             {activeNavItem === "workSpace" && activeWorkspace && (
               <button
@@ -140,7 +513,7 @@ const WorkSpace = ({
                 <UserPlus className="w-5 h-5" />
               </button>
             )}
-            
+
             {/* Settings button */}
             {activeNavItem === "workSpace" && activeWorkspace && (
               <button
@@ -151,16 +524,18 @@ const WorkSpace = ({
                 <Settings className="w-5 h-5" />
               </button>
             )}
-            
+
             {/* Invite Friends Menu - Now using real friends data */}
             {showInviteMenu && (
-              <div 
+              <div
                 ref={inviteMenuRef}
                 className="absolute top-10 right-0 w-64 bg-base-100 rounded-md shadow-lg border border-base-300 z-50"
               >
                 <div className="p-3">
-                  <h3 className="font-medium text-sm mb-3">Invite Friends to Workspace</h3>
-                  
+                  <h3 className="font-medium text-sm mb-3">
+                    Invite Friends to Workspace
+                  </h3>
+
                   {/* Search friends */}
                   <div className="relative mb-3">
                     <input
@@ -169,7 +544,7 @@ const WorkSpace = ({
                       className="w-full px-3 py-2 rounded-md bg-base-200 text-sm"
                     />
                   </div>
-                  
+
                   {/* Friends list for selection - Now using real data */}
                   <div className="max-h-60 overflow-y-auto">
                     {isFriendsLoading ? (
@@ -178,32 +553,43 @@ const WorkSpace = ({
                         <p className="text-sm mt-2">Loading friends...</p>
                       </div>
                     ) : friends.length === 0 ? (
-                      <p className="text-sm text-base-content/70 text-center py-2">No friends found</p>
+                      <p className="text-sm text-base-content/70 text-center py-2">
+                        No friends found
+                      </p>
                     ) : (
                       <div className="space-y-2">
                         {friends.map((friend) => (
                           <div
                             key={friend.friendId}
                             className={`flex items-center justify-between p-2 rounded-md hover:bg-base-200 cursor-pointer ${
-                              selectedFriends.includes(friend.friendId) ? "bg-primary/10" : ""
+                              selectedFriends.includes(friend.friendId)
+                                ? "bg-primary/10"
+                                : ""
                             }`}
-                            onClick={() => toggleFriendSelection(friend.friendId)}
+                            onClick={() =>
+                              toggleFriendSelection(friend.friendId)
+                            }
                           >
                             <div className="flex items-center gap-2">
                               <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
-                                {friend.username ? friend.username.charAt(0).toUpperCase() : 
-                                 friend.displayName ? friend.displayName.charAt(0).toUpperCase() : "?"}
+                                {friend.username
+                                  ? friend.username.charAt(0).toUpperCase()
+                                  : friend.displayName
+                                  ? friend.displayName.charAt(0).toUpperCase()
+                                  : "?"}
                               </div>
                               <div>
                                 <div className="text-sm font-medium">
-                                  {friend.username || friend.displayName || `Friend #${friend.friendId}`}
+                                  {friend.username ||
+                                    friend.displayName ||
+                                    `Friend #${friend.friendId}`}
                                 </div>
                                 <div className="text-xs text-base-content/70">
                                   {friend.status || "Status unknown"}
                                 </div>
                               </div>
                             </div>
-                            
+
                             {/* Checkmark for selected friends */}
                             {selectedFriends.includes(friend.friendId) && (
                               <Check className="w-5 h-5 text-primary" />
@@ -213,17 +599,17 @@ const WorkSpace = ({
                       </div>
                     )}
                   </div>
-                  
+
                   {/* Action buttons */}
                   <div className="mt-3 flex justify-between">
-                    <button 
+                    <button
                       className="btn btn-sm btn-ghost"
                       onClick={() => setShowInviteMenu(false)}
                       disabled={isInviteLoading}
                     >
                       Cancel
                     </button>
-                    <button 
+                    <button
                       className="btn btn-sm btn-primary"
                       onClick={sendInvites}
                       disabled={selectedFriends.length === 0 || isInviteLoading}
@@ -293,39 +679,91 @@ const WorkSpace = ({
               {showWorkspaceMenu && (
                 <div className="absolute top-full left-0 right-0 mt-1 bg-base-100 rounded-md shadow-lg z-50 border border-base-300">
                   <div className="py-1">
+                    {/* Show owned workspaces section */}
                     <div className="px-2 py-1 text-xs font-semibold text-base-content/70">
                       YOUR WORKSPACES
                     </div>
-
-                    <div className="border-t border-base-200 pt-1">
-                      <div className="px-2 py-1 text-xs font-semibold text-base-content/70">
-                        ALL WORKSPACES
-                      </div>
-                      {workspaces.map((workspace) => (
+                    {workspaces
+                      .filter((ws) => ws && ws.isOwned)
+                      .map((workspace, index) => (
                         <button
-                          key={workspace.id}
+                          key={workspace?.id || `owned-${index}`}
                           className={`w-full px-2 py-1 mt-1 text-left flex items-center gap-2 rounded-md ${
-                            activeWorkspace === workspace.id
+                            activeWorkspace === workspace?.id
                               ? "bg-primary/10 text-primary"
                               : "hover:bg-base-200"
                           }`}
                           onClick={() => {
-                            setActiveWorkspace(workspace.id);
-                            setShowWorkspaceMenu(false);
-                            if (
-                              workspace.channels &&
-                              workspace.channels.length > 0
-                            ) {
-                              setActiveChannel(workspace.channels[0]);
+                            if (workspace?.id) {
+                              setActiveWorkspace(workspace.id);
+                              setShowWorkspaceMenu(false);
+                              if (
+                                workspace.channels &&
+                                workspace.channels.length > 0
+                              ) {
+                                setActiveChannel(workspace.channels[0]);
+                              }
                             }
                           }}
                         >
                           <div className="w-4 h-4 rounded-md bg-primary/20 flex items-center justify-center">
-                            {workspace.name.charAt(0).toUpperCase()}
+                            {workspace?.name
+                              ? workspace.name.charAt(0).toUpperCase()
+                              : "?"}
                           </div>
-                          <span className="text-sm">{workspace.name}</span>
+                          <span className="text-sm">
+                            {workspace?.name || "Unnamed Workspace"}
+                          </span>
                         </button>
                       ))}
+
+                    {/* Show joined workspaces section */}
+                    <div className="border-t border-base-200 pt-1 mt-1">
+                      <div className="px-2 py-1 text-xs font-semibold text-base-content/70">
+                        JOINED WORKSPACES
+                      </div>
+                      {workspaces.filter((ws) => ws && ws.isInvited).length ===
+                      0 ? (
+                        <div className="px-2 py-1 text-xs text-base-content/50 italic">
+                          No joined workspaces
+                        </div>
+                      ) : (
+                        workspaces
+                          .filter((ws) => ws && ws.isInvited)
+                          .map((workspace, index) => {
+                            console.log(
+                              "Rendering joined workspace:",
+                              workspace
+                            );
+                            return (
+                              <button
+                                key={workspace?.id || `invited-${index}`}
+                                className={`w-full px-2 py-1 mt-1 text-left flex items-center gap-2 rounded-md ${
+                                  activeWorkspace === workspace?.id
+                                    ? "bg-primary/10 text-primary"
+                                    : "hover:bg-base-200"
+                                }`}
+                                onClick={() => {
+                                  if (workspace?.id) {
+                                    setActiveWorkspace(workspace.id);
+                                    setShowWorkspaceMenu(false);
+                                    // Reset active channel when switching workspaces
+                                    setActiveChannel(null);
+                                  }
+                                }}
+                              >
+                                <div className="w-4 h-4 rounded-md bg-primary/20 flex items-center justify-center">
+                                  {workspace?.name
+                                    ? workspace.name.charAt(0).toUpperCase()
+                                    : "?"}
+                                </div>
+                                <span className="text-sm">
+                                  {workspace?.name || "Unnamed Workspace"}
+                                </span>
+                              </button>
+                            );
+                          })
+                      )}
                     </div>
                   </div>
                 </div>
@@ -333,36 +771,7 @@ const WorkSpace = ({
             </div>
 
             {/* Channel list */}
-            {activeWorkspace && getActiveWorkspace() && (
-              <div className="space-y-1 mt-4">
-                <div className="px-2 py-1 text-xs font-semibold text-base-content/70">
-                  CHANNELS
-                </div>
-                {getActiveWorkspace().channels &&
-                  getActiveWorkspace().channels.map((channel) => (
-                    <Link
-                      key={channel}
-                      to={`/workspace/${activeWorkspace}/channel/${channel}`}
-                      className={`flex items-center gap-2 px-2 py-2 rounded-md hover:bg-base-300 ${
-                        activeChannel === channel
-                          ? "bg-primary/10 text-primary font-medium"
-                          : ""
-                      }`}
-                      onClick={() => setActiveChannel(channel)}
-                    >
-                      <Hash className="w-4 h-4" />
-                      <span>{channel}</span>
-                    </Link>
-                  ))}
-                <button
-                  className="flex items-center gap-2 px-2 py-2 rounded-md hover:bg-base-300 text-base-content/70 w-full text-left"
-                  onClick={() => handleCreateChannel(activeWorkspace)}
-                >
-                  <Plus className="w-4 h-4" />
-                  <span>Add Channel</span>
-                </button>
-              </div>
-            )}
+            {activeWorkspace && renderChannelsList()}
           </div>
         )}
       </div>

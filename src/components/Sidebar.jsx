@@ -10,49 +10,90 @@ import WorkSpace from "./WorkSpace";
 import UsersChat from "./UsersChat";
 import WorkspaceSettingsForm from "./WorkspaceSettingsForm";
 import { useWorkspaceStore } from "../store/useWorkspaceStore";
+import ErrorBoundary from './ErrorBoundary';
 
 const Sidebar = () => {
   const [showOptions, setShowOptions] = useState(false);
   const [showWorkspaceMenu, setShowWorkspaceMenu] = useState(false);
   const [workspaces, setWorkspaces] = useState([]);
+  const [invitedWorkspaces, setInvitedWorkspaces] = useState([]);
   const [activeWorkspace, setActiveWorkspace] = useState(null);
   const [activeChannel, setActiveChannel] = useState("general");
   const [activeNavItem, setActiveNavItem] = useState("users");
   const [showWorkspacesNav, setShowWorkspacesNav] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-
+  console.log("johnny khalife1",workspaces)
   // Settings modal state
   const [showSettingsForm, setShowSettingsForm] = useState(false);
   const [selectedWorkspaceForSettings, setSelectedWorkspaceForSettings] =
     useState(null);
 
   // Get methods from store
-  
-  const { fetchUserWorkspaces, createWorkspace ,} = useWorkspaceStore();
+  const { fetchUserWorkspaces, createWorkspace, getUserWorkspaces } = useWorkspaceStore();
 
   // Fetch workspaces on component mount
   useEffect(() => {
     const loadWorkspaces = async () => {
       setIsLoading(true);
       try {
-        const userWorkspaces = await fetchUserWorkspaces();
-
-        if (userWorkspaces && userWorkspaces.length > 0) {
-          // Map workspaces to the expected format for this component
-          const formattedWorkspaces = userWorkspaces.map((ws) => ({
+        // Fetch both owned and invited workspaces
+        const ownedWorkspaces = await fetchUserWorkspaces();
+        console.log("Raw owned workspaces data:", ownedWorkspaces);
+        
+        const joinedWorkspaces = await getUserWorkspaces();
+        console.log("Raw joined workspaces data:", joinedWorkspaces);
+        
+        // For each joined workspace, inspect all available properties
+        if (joinedWorkspaces && joinedWorkspaces.length > 0) {
+          joinedWorkspaces.forEach((ws, index) => {
+            console.log(`Joined workspace #${index} properties:`, Object.keys(ws));
+            console.log(`Joined workspace #${index} full data:`, ws);
+            
+            // If there's a nested workspace property, inspect that too
+            if (ws.workspace) {
+              console.log(`Joined workspace #${index} nested workspace properties:`, Object.keys(ws.workspace));
+              console.log(`Joined workspace #${index} nested workspace data:`, ws.workspace);
+            }
+          });
+        }
+        
+        // Combine workspaces from both sources
+        let allWorkspaces = [];
+        
+        if (ownedWorkspaces && ownedWorkspaces.length > 0) {
+          const formattedOwnedWorkspaces = ownedWorkspaces.map((ws) => ({
             id: ws._id,
-            name: ws.workspaceName,
+            name: ws.workspaceName || ws.name || "Unnamed Workspace", // Try both possible name fields
             description: ws.description,
-            channels: ws.channels || ["general"], // Default channel if none exist
+            channels: ws.channels || ["general"],
             icon: "briefcase",
+            isOwned: true,
+            isInvited: false
           }));
+          allWorkspaces = [...allWorkspaces, ...formattedOwnedWorkspaces];
+        }
+        
+        if (joinedWorkspaces && joinedWorkspaces.length > 0) {
+          const formattedJoinedWorkspaces = joinedWorkspaces.map(ws => ({
+            id: ws._id || ws.id,
+            name: ws.workspaceName || ws.name || "Unnamed Workspace",
+            description: ws.description || "No description available",
+            channels: ws.channels || ["general"],
+            icon: "briefcase",
+            isOwned: false,
+            isInvited: true
+          }));
+          
+          console.log("Formatted joined workspaces:", formattedJoinedWorkspaces);
+          allWorkspaces = [...allWorkspaces, ...formattedJoinedWorkspaces];
+        }
 
-          setWorkspaces(formattedWorkspaces);
+        console.log("All workspaces after formatting:", allWorkspaces);
+        setWorkspaces(allWorkspaces);
 
-          // Set active workspace if none is selected
-          if (!activeWorkspace && formattedWorkspaces.length > 0) {
-            setActiveWorkspace(formattedWorkspaces[0].id);
-          }
+        // Set active workspace if none is selected
+        if (!activeWorkspace && allWorkspaces.length > 0) {
+          setActiveWorkspace(allWorkspaces[0].id);
         }
       } catch (error) {
         console.error("Failed to load workspaces:", error);
@@ -62,7 +103,7 @@ const Sidebar = () => {
     };
 
     loadWorkspaces();
-  }, [fetchUserWorkspaces]);
+  }, [fetchUserWorkspaces, getUserWorkspaces]);
 
   const toggleOptions = () => {
     setShowOptions(!showOptions);
@@ -71,13 +112,13 @@ const Sidebar = () => {
   const workSpacepage = () => {
     setActiveNavItem("workSpace");
   };
+  
   const userChatPage = () => {
     setActiveNavItem("users");
   };
 
   const handleCreateWorkspace = async () => {
     const name = prompt("Enter workspace name:");
-    console.log(name);
     if (name) {
       try {
         setIsLoading(true);
@@ -94,10 +135,12 @@ const Sidebar = () => {
             description: newWorkspace.description,
             channels: ["general"],
             icon: "briefcase",
+            isOwned: true
           };
 
           setWorkspaces([...workspaces, formattedWorkspace]);
           setActiveWorkspace(formattedWorkspace.id);
+          setActiveNavItem("workSpace"); // Switch to workspace view after creation
         }
       } catch (error) {
         console.error("Failed to create workspace:", error);
@@ -105,22 +148,6 @@ const Sidebar = () => {
         setIsLoading(false);
         setShowOptions(false);
       }
-    }
-  };
-
-  const handleCreateChannel = (workspaceId) => {
-    const name = prompt("Enter channel name:");
-    if (name) {
-      // In a real app, this would call an API to create the channel
-      // For now, we'll update the local state
-      setWorkspaces(
-        workspaces.map((ws) =>
-          ws.id === workspaceId
-            ? { ...ws, channels: [...ws.channels, name] }
-            : ws
-        )
-      );
-      setActiveChannel(name);
     }
   };
 
@@ -176,7 +203,6 @@ const Sidebar = () => {
 
         {/* Navigation icons */}
         <div className="flex flex-col items-center gap-6 mt-2">
-       
           <button
             className={`w-10 h-10 rounded-lg flex items-center justify-center ${
               activeNavItem === "users" ? "bg-primary/20" : "hover:bg-base-200"
@@ -244,24 +270,23 @@ const Sidebar = () => {
 
       {/* Channels/workSpace sidebar */}
       {!isLoading && activeNavItem === "workSpace" && (
-        <WorkSpace
-          activeNavItem={activeNavItem}
-          activeWorkspace={activeWorkspace}
-          setActiveWorkspace={setActiveWorkspace}
-          workspaces={workspaces}
-          setShowWorkspaceMenu={setShowWorkspaceMenu}
-          showWorkspaceMenu={showWorkspaceMenu}
-          setActiveChannel={setActiveChannel}
-          activeChannel={activeChannel}
-          handleCreateWorkspace={handleCreateWorkspace}
-          handleCreateChannel={handleCreateChannel}
-          handleOpenSettingsForm={handleOpenSettingsForm}
-        />
+        <ErrorBoundary>
+          <WorkSpace
+            activeNavItem={activeNavItem}
+            activeWorkspace={activeWorkspace}
+            setActiveWorkspace={setActiveWorkspace}
+            workspaces={workspaces}
+            setShowWorkspaceMenu={setShowWorkspaceMenu}
+            showWorkspaceMenu={showWorkspaceMenu}
+            setActiveChannel={setActiveChannel}
+            activeChannel={activeChannel}
+            handleCreateWorkspace={handleCreateWorkspace}
+            handleOpenSettingsForm={handleOpenSettingsForm}
+          />
+        </ErrorBoundary>
       )}
-     
 
       {!isLoading && activeNavItem === "users" && (<UsersChat/>)}
-
 
       {/* Settings form modal */}
       {showSettingsForm && selectedWorkspaceForSettings && (
@@ -273,8 +298,8 @@ const Sidebar = () => {
         />
       )}
 
-      {/* Main content area would go here */}
-      {!isLoading && !activeNavItem === "workSpace" && (
+      {/* Main content area for other sections */}
+      {!isLoading && activeNavItem !== "workSpace" && activeNavItem !== "users" && (
         <div className="flex-1 p-4">
           <h1 className="text-2xl font-bold">
             {activeNavItem.charAt(0).toUpperCase() + activeNavItem.slice(1)}
