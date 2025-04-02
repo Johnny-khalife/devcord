@@ -4,7 +4,7 @@ import { UserPlus, Users, MessageSquare } from "lucide-react";
 import { useAuthStore } from "../store/useAuthStore";
 import { useFriendStore } from "../store/useFriendsStore";
 
-const UsersChat = () => {
+const UserFriends = () => {
   // State management
   const [activeFriend, setActiveFriend] = useState(null);
   const [showFriendRequestForm, setShowFriendRequestForm] = useState(false);
@@ -491,4 +491,4 @@ const UsersChat = () => {
   );
 };
 
-export default UsersChat;
+export default UserFriends;

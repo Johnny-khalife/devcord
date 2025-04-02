@@ -369,8 +369,8 @@ const WorkSpace = ({
                   ) : (
                     <div className="max-h-60 overflow-y-auto border rounded-md">
                       {workspaceMembers
-                        // Filter out workspace owner from the selectable users list
-                        .filter(member => member.role !== "owner" && !member.isOwned)
+                        // Only filter out the current owner, not all users
+                        .filter(member => !(member.role === "owner" || member.isOwned))
                         .map((member) => (
                           <div
                             key={member.id}

@@ -24,6 +24,13 @@ const WorkspaceSettingsForm = ({ workspaceId, workspace, onClose, onWorkspaceUpd
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    // Only allow owners to update workspace details
+    if (!isOwner) {
+      setError('Only the workspace owner can modify workspace details.');
+      return;
+    }
+    
     try {
       setIsLoading(true);
       // Adjust parameter names to match what backend expects
@@ -48,6 +55,11 @@ const WorkspaceSettingsForm = ({ workspaceId, workspace, onClose, onWorkspaceUpd
   };
 
   const handleDelete = async () => {
+    if (!isOwner) {
+      setError('Only the workspace owner can delete this workspace.');
+      return;
+    }
+    
     if (window.confirm('Are you sure you want to delete this workspace? This action cannot be undone.')) {
       try {
         await deleteWorkspace(workspaceId, setIsLoading, onWorkspaceUpdated, onClose);
@@ -64,7 +76,7 @@ const WorkspaceSettingsForm = ({ workspaceId, workspace, onClose, onWorkspaceUpd
       
       if (response) {
         // Backend returns inviteUrl and inviteCode
-        const fullInviteUrl =response.inviteUrl;
+        const fullInviteUrl = response.inviteUrl;
         
         setInviteUrl(fullInviteUrl);
         setInviteCode(response.inviteCode);
@@ -76,6 +88,12 @@ const WorkspaceSettingsForm = ({ workspaceId, workspace, onClose, onWorkspaceUpd
   };
 
   const handleLeave = async () => {
+    // Don't allow owners to leave their workspace (they should delete it instead)
+    if (isOwner) {
+      setError('As the owner, you cannot leave this workspace. You can delete it instead.');
+      return;
+    }
+    
     if (window.confirm('Are you sure you want to leave this workspace?')) {
       try {
         await leaveWorkspace(workspaceId, setIsLoading, onWorkspaceUpdated, onClose);
@@ -109,9 +127,14 @@ const WorkspaceSettingsForm = ({ workspaceId, workspace, onClose, onWorkspaceUpd
               type="text"
               value={workspaceName}
               onChange={(e) => setWorkspaceName(e.target.value)}
-              className="w-full p-2 border border-base-300 rounded-md bg-base-200"
+              className={`w-full p-2 border border-base-300 rounded-md bg-base-200 ${!isOwner ? 'opacity-70 cursor-not-allowed' : ''}`}
               required
+              disabled={!isOwner}
+              readOnly={!isOwner}
             />
+            {!isOwner && (
+              <p className="text-xs text-base-content/60 mt-1">Only the workspace owner can modify the name.</p>
+            )}
           </div>
           
           <div className="mb-4">
@@ -119,8 +142,13 @@ const WorkspaceSettingsForm = ({ workspaceId, workspace, onClose, onWorkspaceUpd
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              className="w-full p-2 border border-base-300 rounded-md bg-base-200 min-h-24"
+              className={`w-full p-2 border border-base-300 rounded-md bg-base-200 min-h-24 ${!isOwner ? 'opacity-70 cursor-not-allowed' : ''}`}
+              disabled={!isOwner}
+              readOnly={!isOwner}
             />
+            {!isOwner && (
+              <p className="text-xs text-base-content/60 mt-1">Only the workspace owner can modify the description.</p>
+            )}
           </div>
           
           {inviteUrl && (
@@ -148,33 +176,42 @@ const WorkspaceSettingsForm = ({ workspaceId, workspace, onClose, onWorkspaceUpd
           )}
           
           <div className="flex flex-col gap-2 mt-6">
-            <button
-              type="submit"
-              className="w-full py-2 bg-primary text-white rounded-md hover:bg-primary/80 disabled:opacity-50"
-              disabled={isLoading}
-            >
-              {isLoading ? 'Saving...' : 'Save Changes'}
-            </button>
+            {/* Only show Save Changes button for owners */}
+            {isOwner && (
+              <button
+                type="submit"
+                className="w-full py-2 bg-primary text-white rounded-md hover:bg-primary/80 disabled:opacity-50"
+                disabled={isLoading}
+              >
+                {isLoading ? 'Saving...' : 'Save Changes'}
+              </button>
+            )}
             
-            <button
-              type="button"
-              className="w-full py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
-              onClick={handleGetInviteUrl}
-              disabled={isLoading}
-            >
-              Generate Invite URL
-            </button>
+            {/* Generate Invite URL - can be available to all or just to owners based on your requirements */}
+            {isOwner && (
+              <button
+                type="button"
+                className="w-full py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
+                onClick={handleGetInviteUrl}
+                disabled={isLoading}
+              >
+                Generate Invite URL
+              </button>
+            )}
             
-            <button
-              type="button"
-              className="w-full py-2 bg-yellow-500 text-white rounded-md hover:bg-yellow-600"
-              onClick={handleLeave}
-              disabled={isLoading}
-            >
-              Leave Workspace
-            </button>
+            {/* Leave button - only for non-owners */}
+            {!isOwner && (
+              <button
+                type="button"
+                className="w-full py-2 bg-yellow-500 text-white rounded-md hover:bg-yellow-600"
+                onClick={handleLeave}
+                disabled={isLoading}
+              >
+                Leave Workspace
+              </button>
+            )}
             
-            {/* Only show Delete Workspace button for owners */}
+            {/* Delete button - only for owners */}
             {isOwner && (
               <button
                 type="button"
