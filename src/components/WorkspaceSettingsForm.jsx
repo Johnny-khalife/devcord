@@ -19,6 +19,9 @@ const WorkspaceSettingsForm = ({ workspaceId, workspace, onClose, onWorkspaceUpd
     }
   }, [workspace]);
 
+  // Check if user is owner
+  const isOwner = workspace.role === "owner" || workspace.isOwned;
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
@@ -171,14 +174,17 @@ const WorkspaceSettingsForm = ({ workspaceId, workspace, onClose, onWorkspaceUpd
               Leave Workspace
             </button>
             
-            <button
-              type="button"
-              className="w-full py-2 bg-red-500 text-white rounded-md hover:bg-red-600"
-              onClick={handleDelete}
-              disabled={isLoading}
-            >
-              Delete Workspace
-            </button>
+            {/* Only show Delete Workspace button for owners */}
+            {isOwner && (
+              <button
+                type="button"
+                className="w-full py-2 bg-red-500 text-white rounded-md hover:bg-red-600"
+                onClick={handleDelete}
+                disabled={isLoading}
+              >
+                Delete Workspace
+              </button>
+            )}
           </div>
         </form>
       </div>

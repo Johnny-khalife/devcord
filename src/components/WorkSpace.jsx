@@ -134,14 +134,17 @@ const WorkSpace = ({
         const members = await getWorkspaceMembers(activeWorkspace);
 
         if (Array.isArray(members)) {
-          // Map members to include both id and _id to handle API inconsistencies
+          // Map members to include both id and _id and role 
           const formattedMembers = members.map((member) => ({
             ...member,
-            id: member.id || member._id,
+            id: member.id || member._id || member.userId,
+            // Make sure role is included
+            role: member.role || "member",
+            isOwned: member.role === "owner"
           }));
 
           setWorkspaceMembers(formattedMembers);
-          console.log("Members loaded successfully:", formattedMembers.length);
+          console.log("Members loaded successfully:", formattedMembers);
         } else {
           console.error("Received invalid members data:", members);
           setWorkspaceMembers([]);
@@ -164,6 +167,11 @@ const WorkSpace = ({
   const handleCreateChannel = async () => {
     if (!activeWorkspace) {
       toast.error("Please select a workspace first");
+      return;
+    }
+
+    if (!isWorkspaceOwner()) {
+      toast.error("You don't have permission to create channels");
       return;
     }
 
@@ -220,6 +228,11 @@ const WorkSpace = ({
 
   // Delete a channel
   const handleDeleteChannel = async (channelId) => {
+    if (!isWorkspaceOwner()) {
+      toast.error("You don't have permission to delete channels");
+      return;
+    }
+
     if (!window.confirm("Are you sure you want to delete this channel?"))
       return;
 
@@ -276,24 +289,28 @@ const WorkSpace = ({
               )}
               <span>{channel.channelName}</span>
             </Link>
-            {/* Optional: Add delete button for channels */}
-            <button
-              onClick={() => handleDeleteChannel(channel._id)}
-              className="btn btn-ghost btn-xs mr-2"
-            >
-              🗑️
-            </button>
+            {/* Only show delete button for owners */}
+            {isWorkspaceOwner() && (
+              <button
+                onClick={() => handleDeleteChannel(channel._id)}
+                className="btn btn-ghost btn-xs mr-2"
+              >
+                🗑️
+              </button>
+            )}
           </div>
         ))}
-        <div className="flex items-center gap-2 px-2 py-2">
-          <button
-            className="flex items-center gap-2 px-2 py-2 rounded-md hover:bg-base-300 text-base-content/70 w-full text-left"
-            onClick={() => setShowChannelUserSelector(true)}
-          >
-            <Plus className="w-4 h-4" />
-            <span>Add Channel</span>
-          </button>
-        </div>
+        {isWorkspaceOwner() && (
+          <div className="flex items-center gap-2 px-2 py-2">
+            <button
+              className="flex items-center gap-2 px-2 py-2 rounded-md hover:bg-base-300 text-base-content/70 w-full text-left"
+              onClick={() => setShowChannelUserSelector(true)}
+            >
+              <Plus className="w-4 h-4" />
+              <span>Add Channel</span>
+            </button>
+          </div>
+        )}
 
         {/* Channel Creation Modal */}
         {showChannelUserSelector && (
@@ -351,29 +368,32 @@ const WorkSpace = ({
                     </div>
                   ) : (
                     <div className="max-h-60 overflow-y-auto border rounded-md">
-                      {workspaceMembers.map((member) => (
-                        <div
-                          key={member.id}
-                          className={`flex items-center justify-between p-2 hover:bg-base-200 cursor-pointer ${
-                            selectedChannelUsers.includes(member.id)
-                              ? "bg-primary/10"
-                              : ""
-                          }`}
-                          onClick={() => toggleUserSelection(member.id)}
-                        >
-                          <div className="flex items-center gap-2">
-                            <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
-                              {member.username
-                                ? member.username.charAt(0).toUpperCase()
-                                : "?"}
+                      {workspaceMembers
+                        // Filter out workspace owner from the selectable users list
+                        .filter(member => member.role !== "owner" && !member.isOwned)
+                        .map((member) => (
+                          <div
+                            key={member.id}
+                            className={`flex items-center justify-between p-2 hover:bg-base-200 cursor-pointer ${
+                              selectedChannelUsers.includes(member.id)
+                                ? "bg-primary/10"
+                                : ""
+                            }`}
+                            onClick={() => toggleUserSelection(member.id)}
+                          >
+                            <div className="flex items-center gap-2">
+                              <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
+                                {member.username
+                                  ? member.username.charAt(0).toUpperCase()
+                                  : "?"}
+                              </div>
+                              <span>{member.username}</span>
                             </div>
-                            <span>{member.username}</span>
+                            {selectedChannelUsers.includes(member.id) && (
+                              <Check className="w-5 h-5 text-primary" />
+                            )}
                           </div>
-                          {selectedChannelUsers.includes(member.id) && (
-                            <Check className="w-5 h-5 text-primary" />
-                          )}
-                        </div>
-                      ))}
+                        ))}
                     </div>
                   )}
                 </div>
@@ -417,13 +437,17 @@ const WorkSpace = ({
 
   // Send invites to backend
   const sendInvites = async () => {
+    if (!isWorkspaceOwner()) {
+      toast.error("You don't have permission to invite users to this workspace");
+      return;
+    }
+
     if (selectedFriends.length === 0) {
       alert("Please select at least one friend to invite");
       return;
     }
 
     setIsInviteLoading(true);
-
     sendWorkspaceInvite(activeWorkspace, selectedFriends, setIsInviteLoading);
   };
 
@@ -464,6 +488,12 @@ const WorkSpace = ({
     }
   }, [workspaces]);
 
+  // Add a function to check if the user has owner privileges
+  const isWorkspaceOwner = () => {
+    const currentWorkspace = workspaces.find(ws => ws.id === activeWorkspace);
+    return currentWorkspace && (currentWorkspace.role === "owner" || currentWorkspace.isOwned);
+  };
+
   if (workspaces.length === 0) {
     return (
       <div className="w-72 bg-base-200 h-full border-r border-base-300 flex flex-col items-center justify-center p-4">
@@ -503,7 +533,7 @@ const WorkSpace = ({
             </button>
 
             {/* Invite button */}
-            {activeNavItem === "workSpace" && activeWorkspace && (
+            {activeNavItem === "workSpace" && activeWorkspace && isWorkspaceOwner() && (
               <button
                 ref={inviteButtonRef}
                 className="p-2 hover:bg-base-300 rounded-md"
@@ -684,7 +714,7 @@ const WorkSpace = ({
                       YOUR WORKSPACES
                     </div>
                     {workspaces
-                      .filter((ws) => ws && ws.isOwned)
+                      .filter((ws) => ws && (ws.isOwned || ws.role === "owner"))
                       .map((workspace, index) => (
                         <button
                           key={workspace?.id || `owned-${index}`}
@@ -722,19 +752,24 @@ const WorkSpace = ({
                       <div className="px-2 py-1 text-xs font-semibold text-base-content/70">
                         JOINED WORKSPACES
                       </div>
-                      {workspaces.filter((ws) => ws && ws.isInvited).length ===
-                      0 ? (
+                      {workspaces.filter((ws) => 
+                        ws && 
+                        ws.isInvited && 
+                        ws.role !== "owner" && 
+                        !ws.isOwned
+                      ).length === 0 ? (
                         <div className="px-2 py-1 text-xs text-base-content/50 italic">
                           No joined workspaces
                         </div>
                       ) : (
                         workspaces
-                          .filter((ws) => ws && ws.isInvited)
+                          .filter((ws) => 
+                            ws && 
+                            ws.isInvited && 
+                            ws.role !== "owner" && 
+                            !ws.isOwned
+                          )
                           .map((workspace, index) => {
-                            console.log(
-                              "Rendering joined workspace:",
-                              workspace
-                            );
                             return (
                               <button
                                 key={workspace?.id || `invited-${index}`}

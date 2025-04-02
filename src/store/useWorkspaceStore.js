@@ -6,6 +6,7 @@ import toast from "react-hot-toast";
 export const useWorkspaceStore = create(
   persist(
     (set) => ({
+      workspacesWithRoles: [],
       // Existing methods...
 
       updateWorkspace: async (workspaceId, workspaceData, setIsLoading, onSuccess, onClose) => {

@@ -43,52 +43,59 @@ const Sidebar = () => {
         const joinedWorkspaces = await getUserWorkspaces();
         console.log("Raw joined workspaces data:", joinedWorkspaces);
         
-        // For each joined workspace, inspect all available properties
-        if (joinedWorkspaces && joinedWorkspaces.length > 0) {
-          joinedWorkspaces.forEach((ws, index) => {
-            console.log(`Joined workspace #${index} properties:`, Object.keys(ws));
-            console.log(`Joined workspace #${index} full data:`, ws);
-            
-            // If there's a nested workspace property, inspect that too
-            if (ws.workspace) {
-              console.log(`Joined workspace #${index} nested workspace properties:`, Object.keys(ws.workspace));
-              console.log(`Joined workspace #${index} nested workspace data:`, ws.workspace);
-            }
-          });
-        }
-        
         // Combine workspaces from both sources
         let allWorkspaces = [];
         
+        // Process owned workspaces
         if (ownedWorkspaces && ownedWorkspaces.length > 0) {
           const formattedOwnedWorkspaces = ownedWorkspaces.map((ws) => ({
             id: ws._id,
-            name: ws.workspaceName || ws.name || "Unnamed Workspace", // Try both possible name fields
+            name: ws.workspaceName || ws.name || "Unnamed Workspace",
             description: ws.description,
             channels: ws.channels || ["general"],
             icon: "briefcase",
             isOwned: true,
-            isInvited: false
+            isInvited: false,
+            role: "owner"  // Explicitly set role for owned workspaces
           }));
           allWorkspaces = [...allWorkspaces, ...formattedOwnedWorkspaces];
         }
         
+        // Process joined workspaces
         if (joinedWorkspaces && joinedWorkspaces.length > 0) {
-          const formattedJoinedWorkspaces = joinedWorkspaces.map(ws => ({
-            id: ws._id || ws.id,
-            name: ws.workspaceName || ws.name || "Unnamed Workspace",
-            description: ws.description || "No description available",
-            channels: ws.channels || ["general"],
-            icon: "briefcase",
-            isOwned: false,
-            isInvited: true
-          }));
+          const formattedJoinedWorkspaces = joinedWorkspaces.map((ws, index) => {
+            console.log(`Processing joined workspace #${index}:`, ws);
+            
+            // Extract role information directly from the API response
+            // This is the crucial part - make sure role is being extracted correctly
+            const role = ws.role || "member";
+            console.log(`Role for workspace #${index}:`, role);
+            
+            return {
+              id: ws._id || ws.id,
+              name: ws.workspaceName || ws.name || "Unnamed Workspace",
+              description: ws.description || "No description available",
+              channels: ws.channels || ["general"],
+              icon: "briefcase",
+              isOwned: role === "owner",  // Set isOwned based on role
+              isInvited: role !== "owner", // Set isInvited as the opposite of isOwned
+              role: role  // Store the role
+            };
+          });
           
           console.log("Formatted joined workspaces:", formattedJoinedWorkspaces);
           allWorkspaces = [...allWorkspaces, ...formattedJoinedWorkspaces];
         }
 
-        console.log("All workspaces after formatting:", allWorkspaces);
+        // Log the final data for debugging
+        console.log("All workspaces after formatting:", allWorkspaces.map(ws => ({
+          id: ws.id,
+          name: ws.name,
+          role: ws.role,
+          isOwned: ws.isOwned,
+          isInvited: ws.isInvited
+        })));
+        
         setWorkspaces(allWorkspaces);
 
         // Set active workspace if none is selected
