@@ -1,23 +1,20 @@
 import { useState, useRef, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { Plus, Users, ChevronDown, Settings, UserPlus, MessageSquare, User } from "lucide-react";
+import { UserPlus, Users, MessageSquare } from "lucide-react";
 import { useAuthStore } from "../store/useAuthStore";
 import { useFriendStore } from "../store/useFriendsStore";
 
 const UsersChat = () => {
   // State management
-  const [showFriendGroupMenu, setShowFriendGroupMenu] = useState(false);
-  const [activeFriendGroup, setActiveFriendGroup] = useState(null);
   const [activeFriend, setActiveFriend] = useState(null);
   const [showFriendRequestForm, setShowFriendRequestForm] = useState(false);
   const [friendUsername, setFriendUsername] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
-  const [friendGroups, setFriendGroups] = useState([]);
-
+  
   // Get auth store functions and state
-  const { getUsers, users, isLoading: authLoading, user: currentUser } = useAuthStore();
+  const { getUsers, isLoading: authLoading, user: currentUser } = useAuthStore();
   
   // Get friend store functions and state
   const { 
@@ -29,7 +26,6 @@ const UsersChat = () => {
     acceptFriendRequest,
     declineFriendRequest,
     removeFriend,
-    blockUser,
     isLoading: friendLoading 
   } = useFriendStore();
 
@@ -46,36 +42,6 @@ const UsersChat = () => {
     
     loadData();
   }, [getFriendsList, getFriendRequests]);
-  
-  // Transform friends data into friend groups format
-  useEffect(() => {
-    if (friends && friends.length > 0) {
-      // Default group for all friends
-      const defaultGroup = {
-        id: "default",
-        name: "All Friends",
-        friends: friends.map(friend => ({
-          id: friend.friendId,
-          username: friend.username,
-          status: "online" // We could implement online status later
-        }))
-      };
-      
-      setFriendGroups([defaultGroup]);
-      
-      // Set active group if none is selected
-      if (!activeFriendGroup) {
-        setActiveFriendGroup("default");
-      }
-    } else {
-      setFriendGroups([]);
-    }
-  }, [friends, activeFriendGroup]);
-
-  // Get active friend group
-  const getActiveFriendGroup = () => {
-    return friendGroups.find((group) => group.id === activeFriendGroup) || friendGroups[0];
-  };
 
   // Handler for clicking outside of friend request form
   useEffect(() => {
@@ -183,24 +149,6 @@ const UsersChat = () => {
     setSearchResults(searchResults.filter(user => user._id !== userId));
   };
 
-  const handleCreateFriendGroup = () => {
-    const name = prompt("Enter group name:");
-    if (name) {
-      const newGroup = {
-        id: `group${friendGroups.length + 1}`,
-        name,
-        friends: []
-      };
-      setFriendGroups([...friendGroups, newGroup]);
-      setActiveFriendGroup(newGroup.id);
-    }
-  };
-
-  const handleOpenSettingsForm = (groupId) => {
-    alert(`Open settings for group ${groupId}`);
-    // In a real app, this would open a settings form/modal
-  };
-
   const handleAcceptFriendRequest = async (requestId) => {
     await acceptFriendRequest(requestId);
     // Friend list will be refreshed by the store action
@@ -226,8 +174,8 @@ const UsersChat = () => {
   // Loading state
   const isLoadingData = authLoading || friendLoading;
 
-  // Empty state if no friend groups and no friend requests
-  if (friendGroups.length === 0 && friendRequests.length === 0 && !isLoadingData) {
+  // Empty state if no friends and no friend requests
+  if (friends.length === 0 && friendRequests.length === 0 && !isLoadingData) {
     return (
       <div className="w-72 bg-base-200 h-full border-r border-base-300 flex flex-col items-center justify-center p-4">
         <div className="text-center mb-4">
@@ -340,17 +288,8 @@ const UsersChat = () => {
                 )}
               </button>
             </div>
-            {activeFriendGroup && (
-              <button
-                className="p-2 hover:bg-base-300 rounded-md"
-                onClick={() => handleOpenSettingsForm(activeFriendGroup)}
-                aria-label="Group Settings"
-              >
-                <Settings className="w-5 h-5" />
-              </button>
-            )}
             
-            {/* Friend Request Form (Now with fixed z-index and positioning) */}
+            {/* Friend Request Form */}
             {showFriendRequestForm && (
               <div 
                 ref={friendRequestFormRef}
@@ -484,148 +423,63 @@ const UsersChat = () => {
         </div>
       )}
 
-      {/* Rest of the component remains the same */}
       {/* Scrollable content area */}
       {!isLoadingData && (
         <div className="flex-1 overflow-y-auto">
           <div className="p-2">
-            {/* Friend Group management section */}
-            {/* Friend Group header with dropdown */}
-            {friendGroups.length > 0 && (
-              <div className="relative mb-2">
-                <button
-                  className="w-full flex items-center justify-between p-2 rounded hover:bg-base-300"
-                  onClick={() => setShowFriendGroupMenu(!showFriendGroupMenu)}
-                >
-                  <div className="flex items-center gap-2">
-                    <div className="w-6 h-6 rounded-md bg-primary/20 flex items-center justify-center">
-                      {getActiveFriendGroup()?.name?.charAt(0).toUpperCase() || "?"}
-                    </div>
-                    <span className="font-medium">
-                      {getActiveFriendGroup()?.name || "Select Group"}
-                    </span>
-                  </div>
-                  <ChevronDown className="w-4 h-4" />
-                </button>
-
-                {/* Friend Group dropdown menu */}
-                {showFriendGroupMenu && (
-                  <div className="absolute top-full left-0 right-0 mt-1 bg-base-100 rounded-md shadow-lg z-50 border border-base-300 max-h-64 overflow-y-auto">
-                    <div className="py-1">
-                      <div className="px-2 py-1 text-xs font-semibold text-base-content/70">
-                        YOUR GROUPS
-                      </div>
-
-                      <div className="border-t border-base-200 pt-1">
-                        <div className="px-2 py-1 text-xs font-semibold text-base-content/70">
-                          ALL GROUPS
-                        </div>
-                        {friendGroups.map((group) => (
-                          <button
-                            key={group.id}
-                            className={`w-full px-2 py-1 mt-1 text-left flex items-center gap-2 rounded-md ${
-                              activeFriendGroup === group.id
-                                ? "bg-primary/10 text-primary"
-                                : "hover:bg-base-200"
-                            }`}
-                            onClick={() => {
-                              setActiveFriendGroup(group.id);
-                              setShowFriendGroupMenu(false);
-                              if (
-                                group.friends &&
-                                group.friends.length > 0
-                              ) {
-                                setActiveFriend(group.friends[0].id);
-                              }
-                            }}
-                          >
-                            <div className="w-4 h-4 rounded-md bg-primary/20 flex items-center justify-center">
-                              {group.name.charAt(0).toUpperCase()}
-                            </div>
-                            <span className="text-sm">{group.name}</span>
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-
             {/* Friends list */}
-            {activeFriendGroup && getActiveFriendGroup() && (
-              <div className="space-y-1 mt-4">
-                <div className="px-2 py-1 text-xs font-semibold text-base-content/70">
-                  FRIENDS IN {getActiveFriendGroup().name.toUpperCase()}
-                </div>
-                {getActiveFriendGroup().friends &&
-                  getActiveFriendGroup().friends.map((friend) => (
-                    <div key={friend.id} className="flex items-center">
-                      <Link
-                        to={`/chat/${activeFriendGroup}/friend/${friend.id}`}
-                        className={`flex items-center gap-2 px-2 py-2 rounded-md hover:bg-base-300 flex-grow ${
-                          activeFriend === friend.id
-                            ? "bg-primary/10 text-primary font-medium"
-                            : ""
-                        }`}
-                        onClick={() => setActiveFriend(friend.id)}
-                      >
-                        <div className="w-6 h-6 rounded-full bg-base-300 flex items-center justify-center">
-                          {friend.username.charAt(0).toUpperCase()}
-                        </div>
-                        <span className="text-sm">
-                          {friend.username}
-                        </span>
-                        <div className={`ml-auto w-2 h-2 rounded-full ${friend.status === 'online' ? 'bg-success' : 'bg-base-300'}`}></div>
-                      </Link>
-                      <button 
-                        className="p-2 text-sm text-red-500 hover:bg-base-300 rounded-md"
-                        onClick={() => handleRemoveFriend(friend.id)}
-                        title="Remove Friend"
-                      >
-                        ×
-                      </button>
-                    </div>
-                  ))}
-                <button
-                  className="flex items-center gap-2 px-2 py-2 rounded-md hover:bg-base-300 text-base-content/70 w-full text-left"
-                  onClick={handleAddFriend}
-                >
-                  <Plus className="w-4 h-4" />
-                  <span>Add Friend</span>
-                </button>
-                <div className="border-t border-base-300 my-2"></div>
-                <div className="px-2 py-1 text-xs font-semibold text-base-content/70">
-                  GROUP OPTIONS
-                </div>
-                <button
-                  className="flex items-center gap-2 px-2 py-2 rounded-md hover:bg-base-300 text-base-content/70 w-full text-left"
-                  onClick={handleCreateFriendGroup}
-                >
-                  <Users className="w-4 h-4" />
-                  <span>Create New Group</span>
-                </button>
+            <div className="space-y-1 mt-4">
+              <div className="px-2 py-1 text-xs font-semibold text-base-content/70">
+                FRIENDS
               </div>
-            )}
+              {friends.map((friend) => (
+                <div key={friend.friendId} className="flex items-center">
+                  <Link
+                    to={`/chat/friend/${friend.friendId}`}
+                    className={`flex items-center gap-2 px-2 py-2 rounded-md hover:bg-base-300 flex-grow ${
+                      activeFriend === friend.friendId
+                        ? "bg-primary/10 text-primary font-medium"
+                        : ""
+                    }`}
+                    onClick={() => setActiveFriend(friend.friendId)}
+                  >
+                    <div className="w-6 h-6 rounded-full bg-base-300 flex items-center justify-center">
+                      {friend.username.charAt(0).toUpperCase()}
+                    </div>
+                    <span className="text-sm">
+                      {friend.username}
+                    </span>
+                    <div className={`ml-auto w-2 h-2 rounded-full ${friend.status === 'online' ? 'bg-success' : 'bg-base-300'}`}></div>
+                  </Link>
+                  <button 
+                    className="p-2 text-sm text-red-500 hover:bg-base-300 rounded-md"
+                    onClick={() => handleRemoveFriend(friend.friendId)}
+                    title="Remove Friend"
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
+             
+            </div>
             
             {/* Direct Messages section */}
-            {friendGroups.length > 0 && friendGroups.some(group => group.friends && group.friends.length > 0) && (
+            {friends.length > 0 && (
               <div className="space-y-1 mt-4 border-t border-base-300 pt-4 pb-4">
                 <div className="px-2 py-1 text-xs font-semibold text-base-content/70">
                   DIRECT MESSAGES
                 </div>
-                {/* Combined list of all friends across groups */}
-                {friendGroups.flatMap(group => group.friends).map((friend, index) => (
+                {friends.map((friend) => (
                   <Link
-                    key={`dm-${friend.id}-${index}`}
-                    to={`/direct-messages/${friend.id}`}
+                    key={`dm-${friend.friendId}`}
+                    to={`/direct-messages/${friend.friendId}`}
                     className="flex items-center gap-2 px-2 py-2 rounded-md hover:bg-base-300"
                   >
                     <div className="w-6 h-6 rounded-full bg-base-300 flex items-center justify-center">
                       {friend.username.charAt(0).toUpperCase()}
                     </div>
                     <span className="text-sm">{friend.username}</span>
-                    <div className={`ml-auto w-2 h-2 rounded-full ${friend.status === 'online' ? 'bg-success' : 'bg-base-300'}`}></div>
+                    <MessageSquare className="ml-auto w-4 h-4 text-base-content/50" />
                   </Link>
                 ))}
               </div>
