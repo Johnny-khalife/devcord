@@ -102,7 +102,7 @@ const WorkSpace = ({
         const workspaceChannels = await fetchWorkspaceChannels(activeWorkspace);
         setChannels(workspaceChannels);
 
-        // Set first channel as active if no active channel or current active channel is not in the list
+        // If there are channels, set one as active
         if (workspaceChannels.length > 0) {
           const defaultChannel = workspaceChannels[0];
           
@@ -118,9 +118,17 @@ const WorkSpace = ({
             setActiveChannel(defaultChannel._id);
             setSelectedWorkspace(defaultChannel);
           }
+        } else {
+          // If there are no channels, clear the active channel and selected workspace
+          setActiveChannel(null);
+          setSelectedWorkspace(null);
+          console.log("No channels found for workspace:", activeWorkspace);
         }
       } catch (error) {
         console.error("Failed to fetch workspace channels:", error);
+        // On error, reset the active channel and selected workspace
+        setActiveChannel(null);
+        setSelectedWorkspace(null);
       } finally {
         setIsChannelsLoading(false);
       }

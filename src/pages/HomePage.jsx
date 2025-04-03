@@ -112,24 +112,39 @@ const HomePage = () => {
   useEffect(() => {
     // When switching to workspace view, make sure the selectedWorkspace is in sync with activeChannel
     const syncSelectedWorkspace = async () => {
-      if (activeNavItem === "workSpace" && activeWorkspace && activeChannel) {
+      if (activeNavItem === "workSpace" && activeWorkspace) {
         try {
           // Fetch the channels for this workspace
           const workspaceChannels = await fetchWorkspaceChannels(activeWorkspace);
           
-          // Find the active channel
-          const currentChannel = workspaceChannels.find(channel => channel._id === activeChannel);
+          if (workspaceChannels.length === 0) {
+            // If the workspace has no channels, reset both active channel and selected workspace
+            setActiveChannel(null);
+            setSelectedWorkspace(null);
+            return;
+          }
           
-          if (currentChannel) {
-            // Update the selected workspace with the current channel
-            setSelectedWorkspace(currentChannel);
+          // If activeChannel is set, try to find it
+          if (activeChannel) {
+            const currentChannel = workspaceChannels.find(channel => channel._id === activeChannel);
+            
+            if (currentChannel) {
+              // Update the selected workspace with the current channel
+              setSelectedWorkspace(currentChannel);
+            } else if (workspaceChannels.length > 0) {
+              // If active channel not found, set the first channel as active
+              setActiveChannel(workspaceChannels[0]._id);
+              setSelectedWorkspace(workspaceChannels[0]);
+            }
           } else if (workspaceChannels.length > 0) {
-            // If active channel not found, set the first channel as active
+            // If no active channel set but workspace has channels, set the first one
             setActiveChannel(workspaceChannels[0]._id);
             setSelectedWorkspace(workspaceChannels[0]);
           }
         } catch (error) {
           console.error("Failed to sync selected workspace:", error);
+          // In case of error, reset selected workspace
+          setSelectedWorkspace(null);
         }
       }
     };
@@ -255,17 +270,26 @@ const HomePage = () => {
         
         {/* Main content area - ChatBox */}
         <div className="flex-1">
-        {!selectedFriend && !selectedWorkspace ?<NoChatSelected/>:
+        {
+          // Show NoChatSelected when:
+          // 1. In users view with no selected friend
+          // 2. In workspace view with no selected workspace (no channels)
+          // 3. Any other view
+          (activeNavItem === "users" && !selectedFriend) || 
+          (activeNavItem === "workSpace" && !selectedWorkspace) || 
+          (activeNavItem !== "users" && activeNavItem !== "workSpace") 
+          ? 
+          <NoChatSelected /> 
+          : 
           <ChatBox 
             activeNavItem={activeNavItem}
             activeWorkspace={activeWorkspace}
             activeChannel={activeChannel}
             selectedWorkspace={selectedWorkspace}
-      />
-    }
-
+          />
+        }
+        </div>
       </div>
-    </div>
       
       {/* Add the settings form modal */}
       {showSettingsForm && selectedWorkspaceForSettings && (
