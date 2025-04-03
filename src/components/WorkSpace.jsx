@@ -105,7 +105,19 @@ const WorkSpace = ({
         // Set first channel as active if no active channel or current active channel is not in the list
         if (workspaceChannels.length > 0) {
           const defaultChannel = workspaceChannels[0];
-          setActiveChannel(defaultChannel._id);
+          
+          // Check if activeChannel exists in the list of channels
+          const currentChannel = workspaceChannels.find(channel => channel._id === activeChannel);
+          
+          if (currentChannel) {
+            // Set the current channel as selected
+            setActiveChannel(currentChannel._id);
+            setSelectedWorkspace(currentChannel);
+          } else {
+            // Set the first channel as active
+            setActiveChannel(defaultChannel._id);
+            setSelectedWorkspace(defaultChannel);
+          }
         }
       } catch (error) {
         console.error("Failed to fetch workspace channels:", error);
@@ -115,7 +127,7 @@ const WorkSpace = ({
     };
 
     loadWorkspaceChannels();
-  }, [activeWorkspace, fetchWorkspaceChannels]);
+  }, [activeWorkspace, fetchWorkspaceChannels, activeChannel, setSelectedWorkspace]);
 
   // And inside useEffect that depends on activeWorkspace
   useEffect(() => {
@@ -169,6 +181,7 @@ const WorkSpace = ({
 const selectedWorkspaceWhenClick = ({ id, channel }) => {
   setActiveChannel(id);
   setSelectedWorkspace(channel); // This should be the channel object
+  console.log("Channel selected:", channel); // Add debug log
 };
 
   // Create a new channel

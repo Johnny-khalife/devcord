@@ -6,14 +6,20 @@ import {
   Users2,
   Phone,
 } from "lucide-react";
+import { useWorkspaceStore } from "../store/useWorkspaceStore";
 
 const Sidebar = ({ activeNavItem, setActiveNavItem }) => {
+  const { selectedWorkspace } = useWorkspaceStore();
+  
   const workSpacePage = () => {
     setActiveNavItem("workSpace");
+    // No need to reset selected workspace here since HomePage component 
+    // will handle syncing the correct workspace/channel
   };
   
   const userChatPage = () => {
     setActiveNavItem("users");
+    // Switch to users view, keep workspace state for when we return
   };
 
   return (

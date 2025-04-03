@@ -7,6 +7,7 @@ import WorkspaceSettingsForm from "../components/WorkspaceSettingsForm";
 import { useWorkspaceStore } from "../store/useWorkspaceStore";
 import { useChatStore } from "../store/useChatStore";
 import NoChatSelected from "../components/NoChatSelected";
+import { useChannelStore } from "../store/useChannelStore";
 
 
 const HomePage = () => {
@@ -24,8 +25,9 @@ const HomePage = () => {
   const [selectedWorkspaceForSettings, setSelectedWorkspaceForSettings] = useState(null);
 
   // Get methods from store
-  const { fetchUserWorkspaces, createWorkspace, getUserWorkspaces,selectedWorkspace } = useWorkspaceStore();
-  const {selectedFriend}=useChatStore();
+  const { fetchUserWorkspaces, createWorkspace, getUserWorkspaces, selectedWorkspace, setSelectedWorkspace } = useWorkspaceStore();
+  const { selectedFriend } = useChatStore();
+  const { fetchWorkspaceChannels } = useChannelStore();
 
   // Fetch workspaces on component mount
   useEffect(() => {
@@ -105,6 +107,35 @@ const HomePage = () => {
 
     loadWorkspaces();
   }, [fetchUserWorkspaces, getUserWorkspaces]);
+
+  // Add a new effect to handle nav item changes
+  useEffect(() => {
+    // When switching to workspace view, make sure the selectedWorkspace is in sync with activeChannel
+    const syncSelectedWorkspace = async () => {
+      if (activeNavItem === "workSpace" && activeWorkspace && activeChannel) {
+        try {
+          // Fetch the channels for this workspace
+          const workspaceChannels = await fetchWorkspaceChannels(activeWorkspace);
+          
+          // Find the active channel
+          const currentChannel = workspaceChannels.find(channel => channel._id === activeChannel);
+          
+          if (currentChannel) {
+            // Update the selected workspace with the current channel
+            setSelectedWorkspace(currentChannel);
+          } else if (workspaceChannels.length > 0) {
+            // If active channel not found, set the first channel as active
+            setActiveChannel(workspaceChannels[0]._id);
+            setSelectedWorkspace(workspaceChannels[0]);
+          }
+        } catch (error) {
+          console.error("Failed to sync selected workspace:", error);
+        }
+      }
+    };
+
+    syncSelectedWorkspace();
+  }, [activeNavItem, activeWorkspace, activeChannel, fetchWorkspaceChannels, setSelectedWorkspace]);
 
   const handleCreateWorkspace = async () => {
     const name = prompt("Enter workspace name:");
