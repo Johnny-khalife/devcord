@@ -12,8 +12,8 @@ export const useChannelStore = create(
       createChannel: async (workspaceId, channelData) => {
         try {
           console.log(channelData.allowedUsers)
+          console.log("it's the workspace id ",channelData)
           const response = await axiosInstance.post(`/workspace/channels/${workspaceId}`, channelData);
-          console.log(workspaceId)
           if (response.data.success) {
             toast.success(response.data.message || "Channel created successfully");
             return response.data.channel;

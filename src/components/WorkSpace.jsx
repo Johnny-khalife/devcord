@@ -165,9 +165,10 @@ const WorkSpace = ({
 
 ///////////////////////////////////////////////////////////////
 
+// In WorkSpace.jsx, update the selectedWorkspaceWhenClick function
 const selectedWorkspaceWhenClick = ({ id, channel }) => {
   setActiveChannel(id);
-  setSelectedWorkspace(channel);
+  setSelectedWorkspace(channel); // This should be the channel object
 };
 
   // Create a new channel
@@ -288,8 +289,8 @@ const selectedWorkspaceWhenClick = ({ id, channel }) => {
               }`}
             
               onClick={() => selectedWorkspaceWhenClick({
-                id: channel.id,
-                cahnnel: channel,
+                id: channel._id,
+                channel: channel,
               })}
             >
               {channel.isPrivate ? (

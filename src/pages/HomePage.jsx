@@ -229,6 +229,7 @@ const HomePage = () => {
             activeNavItem={activeNavItem}
             activeWorkspace={activeWorkspace}
             activeChannel={activeChannel}
+            selectedWorkspace={selectedWorkspace}
       />
     }
 

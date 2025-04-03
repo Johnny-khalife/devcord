@@ -3,7 +3,7 @@ import { useChatStore } from "../store/useChatStore";
 import ChatHeader from "./ChatHeader";
 import MessageInput from "./MessageInput";
 
-const ChatBox = ({ activeNavItem, activeWorkspace, activeChannel }) => {
+const ChatBox = ({ activeNavItem, activeWorkspace, activeChannel,selectedWorkspace  }) => {
 
   const { messages, getMessages, isMessagesLoading, selectedFriend } =
     useChatStore();
@@ -16,7 +16,7 @@ const ChatBox = ({ activeNavItem, activeWorkspace, activeChannel }) => {
 
   return (
     <div>
-      <ChatHeader activeNavItem={activeNavItem} activeChannel={activeChannel} />
+      <ChatHeader activeNavItem={activeNavItem} activeChannel={activeChannel} selectedWorkspace={selectedWorkspace}/>
 
       <p>messages ....</p>
 
