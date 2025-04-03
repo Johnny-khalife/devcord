@@ -48,7 +48,13 @@ const UserFriends = () => {
     };
 
     loadData();
-  }, [getFriendsList, getFriendRequests]);
+    
+    // Reset selectedFriend when the component mounts
+    // This ensures that when switching back to the Friends view, no friend is pre-selected
+    setSelectedFriend(null);
+    setActiveFriend(null);
+    
+  }, [getFriendsList, getFriendRequests, setSelectedFriend]);
 
   // Handler for clicking outside of friend request form
   useEffect(() => {

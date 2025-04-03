@@ -7,19 +7,21 @@ import {
   Phone,
 } from "lucide-react";
 import { useWorkspaceStore } from "../store/useWorkspaceStore";
+import { useChatStore } from "../store/useChatStore";
 
 const Sidebar = ({ activeNavItem, setActiveNavItem }) => {
   const { selectedWorkspace } = useWorkspaceStore();
+  const { setSelectedFriend } = useChatStore();
   
   const workSpacePage = () => {
+    // Reset the selected friend when switching to workspace view
+    setSelectedFriend(null);
     setActiveNavItem("workSpace");
-    // No need to reset selected workspace here since HomePage component 
-    // will handle syncing the correct workspace/channel
   };
   
   const userChatPage = () => {
     setActiveNavItem("users");
-    // Switch to users view, keep workspace state for when we return
+    // Don't reset selectedFriend here, let it be handled by the UserFriends component
   };
 
   return (
@@ -63,7 +65,10 @@ const Sidebar = ({ activeNavItem, setActiveNavItem }) => {
           className={`w-10 h-10 rounded-lg flex items-center justify-center ${
             activeNavItem === "calls" ? "bg-primary/20" : "hover:bg-base-200"
           }`}
-          onClick={() => setActiveNavItem("calls")}
+          onClick={() => {
+            setSelectedFriend(null);
+            setActiveNavItem("calls");
+          }}
         >
           <Phone
             className={`w-5 h-5 ${
@@ -78,7 +83,10 @@ const Sidebar = ({ activeNavItem, setActiveNavItem }) => {
               ? "bg-primary/20"
               : "hover:bg-base-200"
           }`}
-          onClick={() => setActiveNavItem("settings")}
+          onClick={() => {
+            setSelectedFriend(null);
+            setActiveNavItem("settings");
+          }}
         >
           <Settings
             className={`w-5 h-5 ${

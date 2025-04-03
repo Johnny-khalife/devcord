@@ -26,7 +26,7 @@ const HomePage = () => {
 
   // Get methods from store
   const { fetchUserWorkspaces, createWorkspace, getUserWorkspaces, selectedWorkspace, setSelectedWorkspace } = useWorkspaceStore();
-  const { selectedFriend } = useChatStore();
+  const { selectedFriend, setSelectedFriend } = useChatStore();
   const { fetchWorkspaceChannels } = useChannelStore();
 
   // Fetch workspaces on component mount
@@ -151,6 +151,14 @@ const HomePage = () => {
 
     syncSelectedWorkspace();
   }, [activeNavItem, activeWorkspace, activeChannel, fetchWorkspaceChannels, setSelectedWorkspace]);
+
+  // Add an effect to clear selectedFriend when switching between navigation items
+  useEffect(() => {
+    // When switching to a non-users tab, reset the selectedFriend
+    if (activeNavItem !== "users") {
+      setSelectedFriend(null);
+    }
+  }, [activeNavItem, setSelectedFriend]);
 
   const handleCreateWorkspace = async () => {
     const name = prompt("Enter workspace name:");
