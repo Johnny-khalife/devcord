@@ -7,6 +7,7 @@ export const useWorkspaceStore = create(
   persist(
     (set) => ({
       workspacesWithRoles: [],
+      selctedWorkspace:null,
       // Existing methods...
 
       updateWorkspace: async (workspaceId, workspaceData, setIsLoading, onSuccess, onClose) => {
@@ -201,7 +202,7 @@ export const useWorkspaceStore = create(
           return [];
         }
       },
-
+      setSelectedWorkspace: (selctedWorkspace) => set({ selctedWorkspace }),
       // Other existing methods...
     }),
  

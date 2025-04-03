@@ -3,6 +3,8 @@ import { Link } from "react-router-dom";
 import { UserPlus, Users, MessageSquare } from "lucide-react";
 import { useAuthStore } from "../store/useAuthStore";
 import { useFriendStore } from "../store/useFriendsStore";
+import { useChatStore } from "../store/useChatStore";
+import SidebarSkeleton from "./skeletons/SidebarSkeleton";
 
 const UserFriends = () => {
   // State management
@@ -12,34 +14,39 @@ const UserFriends = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
-  
+  const { setSelectedFriend, selectedFriend } = useChatStore();
   // Get auth store functions and state
-  const { getUsers, isLoading: authLoading, user: currentUser } = useAuthStore();
-  
+  const {
+    getUsers,
+    isLoading: authLoading,
+    user: currentUser,
+    onlineUsers,
+  } = useAuthStore();
+
   // Get friend store functions and state
-  const { 
-    friendRequests, 
-    friends, 
-    getFriendRequests, 
+  const {
+    friendRequests,
+    friends,
+    getFriendRequests,
     getFriendsList,
     sendFriendRequest,
     acceptFriendRequest,
     declineFriendRequest,
     removeFriend,
-    isLoading: friendLoading 
+    isLoading: friendLoading,
   } = useFriendStore();
 
   // Refs for positioning and click outside detection
   const friendRequestFormRef = useRef(null);
   const addFriendButtonRef = useRef(null);
-  
+
   // Initialize data on component mount
   useEffect(() => {
     const loadData = async () => {
       await getFriendsList();
       await getFriendRequests();
     };
-    
+
     loadData();
   }, [getFriendsList, getFriendRequests]);
 
@@ -47,9 +54,9 @@ const UserFriends = () => {
   useEffect(() => {
     function handleClickOutside(event) {
       if (
-        friendRequestFormRef.current && 
+        friendRequestFormRef.current &&
         !friendRequestFormRef.current.contains(event.target) &&
-        addFriendButtonRef.current && 
+        addFriendButtonRef.current &&
         !addFriendButtonRef.current.contains(event.target)
       ) {
         setShowFriendRequestForm(false);
@@ -73,39 +80,41 @@ const UserFriends = () => {
   // Search for users by username
   const handleSearchUsers = async (query) => {
     setFriendUsername(query);
-    
+
     if (query.trim().length >= 2) {
       setIsSearching(true);
       try {
         // Make sure getUsers is imported and available
-        if (typeof getUsers !== 'function') {
+        if (typeof getUsers !== "function") {
           console.error("getUsers function is not available");
           setIsSearching(false);
           return;
         }
-        
+
         const result = await getUsers({ username: query, limit: 10 });
         console.log("Search results:", result); // Debug log
-        
+
         if (result && result.users) {
           // Filter out current user and existing friends
-          const filteredResults = result.users.filter(user => {
+          const filteredResults = result.users.filter((user) => {
             // Filter out current user
             if (currentUser && user._id === currentUser._id) {
               return false;
             }
-            
+
             // Filter out users who are already friends
-            const isAlreadyFriend = friends.some(friend => friend.friendId === user._id);
-            
+            const isAlreadyFriend = friends.some(
+              (friend) => friend.friendId === user._id
+            );
+
             // Filter out users who already have pending requests
             const hasPendingRequest = friendRequests.some(
-              request => request.user.id === user._id
+              (request) => request.user.id === user._id
             );
-            
+
             return !isAlreadyFriend && !hasPendingRequest;
           });
-          
+
           setSearchResults(filteredResults);
         } else {
           console.warn("No users found or invalid response format", result);
@@ -130,9 +139,11 @@ const UserFriends = () => {
         alert("You cannot send a friend request to yourself");
         return;
       }
-      
+
       // Find the user ID from search results
-      const user = searchResults.find(user => user.username === friendUsername);
+      const user = searchResults.find(
+        (user) => user.username === friendUsername
+      );
       if (user) {
         await sendFriendRequest(user._id);
         setFriendUsername("");
@@ -146,7 +157,7 @@ const UserFriends = () => {
 
   const handleSendFriendRequest = async (userId) => {
     await sendFriendRequest(userId);
-    setSearchResults(searchResults.filter(user => user._id !== userId));
+    setSearchResults(searchResults.filter((user) => user._id !== userId));
   };
 
   const handleAcceptFriendRequest = async (requestId) => {
@@ -170,11 +181,19 @@ const UserFriends = () => {
     // Filter the friends list based on search query
     // This would be implemented in a real app
   };
+  console.log("see all friends", friends);
+  ///////////////////////////////////////////////////////////////
+
+  const selectedFriendWhenClick = ({ id, friend }) => {
+    setActiveFriend(id);
+    setSelectedFriend(friend);
+  };
 
   // Loading state
   const isLoadingData = authLoading || friendLoading;
 
   // Empty state if no friends and no friend requests
+
   if (friends.length === 0 && friendRequests.length === 0 && !isLoadingData) {
     return (
       <div className="w-72 bg-base-200 h-full border-r border-base-300 flex flex-col items-center justify-center p-4">
@@ -184,18 +203,18 @@ const UserFriends = () => {
           <p className="text-sm opacity-70 mb-4">
             Add friends to start chatting
           </p>
-          <button 
-            className="btn btn-primary" 
+          <button
+            className="btn btn-primary"
             onClick={handleAddFriend}
             ref={addFriendButtonRef}
           >
             <UserPlus className="w-4 h-4 mr-2" />
             Add Friend
           </button>
-          
+
           {/* Friend Request Form for Empty State */}
           {showFriendRequestForm && (
-            <div 
+            <div
               ref={friendRequestFormRef}
               className="mt-4 w-full bg-base-100 rounded-md shadow-lg border border-base-300 z-50"
             >
@@ -209,22 +228,24 @@ const UserFriends = () => {
                     value={friendUsername}
                     onChange={(e) => handleSearchUsers(e.target.value)}
                   />
-                  
+
                   {/* Search Results */}
                   {searchResults.length > 0 && (
                     <div className="mt-2 mb-3 max-h-40 overflow-y-auto border border-base-300 rounded-md">
                       {searchResults.map((user) => (
-                        <div 
-                          key={user._id} 
+                        <div
+                          key={user._id}
                           className="flex items-center justify-between p-2 hover:bg-base-200 border-b border-base-300 last:border-b-0"
                         >
                           <div className="flex items-center gap-2">
                             <div className="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center text-xs">
                               {user.username.charAt(0).toUpperCase()}
                             </div>
-                            <span className="text-xs font-medium">{user.username}</span>
+                            <span className="text-xs font-medium">
+                              {user.username}
+                            </span>
                           </div>
-                          <button 
+                          <button
                             type="button"
                             className="text-xs text-primary hover:underline"
                             onClick={() => handleSendFriendRequest(user._id)}
@@ -235,19 +256,26 @@ const UserFriends = () => {
                       ))}
                     </div>
                   )}
-                  
+
                   {isSearching && (
                     <div className="text-center py-2 text-xs">Searching...</div>
                   )}
-                  
-                  {!isSearching && searchResults.length === 0 && friendUsername.length >= 2 && (
-                    <div className="text-center py-2 text-xs">No users found</div>
-                  )}
-                  
-                  <button 
-                    type="submit" 
+
+                  {!isSearching &&
+                    searchResults.length === 0 &&
+                    friendUsername.length >= 2 && (
+                      <div className="text-center py-2 text-xs">
+                        No users found
+                      </div>
+                    )}
+
+                  <button
+                    type="submit"
                     className="btn btn-primary btn-sm w-full"
-                    disabled={!friendUsername.trim() || (currentUser && currentUser.username === friendUsername)}
+                    disabled={
+                      !friendUsername.trim() ||
+                      (currentUser && currentUser.username === friendUsername)
+                    }
                   >
                     Send Request
                   </button>
@@ -280,21 +308,25 @@ const UserFriends = () => {
                   <div className="absolute -top-0 -right-0 flex justify-center items-center">
                     <div className="w-2 h-2 bg-green-500 rounded-full"></div>
                     {friendRequests.length > 9 ? (
-                      <span className="absolute text-xs text-white font-bold">9+</span>
+                      <span className="absolute text-xs text-white font-bold">
+                        9+
+                      </span>
                     ) : friendRequests.length > 1 ? (
-                      <span className="absolute text-xs text-white font-bold">{friendRequests.length}</span>
+                      <span className="absolute text-xs text-white font-bold">
+                        {friendRequests.length}
+                      </span>
                     ) : null}
                   </div>
                 )}
               </button>
             </div>
-            
+
             {/* Friend Request Form */}
             {showFriendRequestForm && (
-              <div 
+              <div
                 ref={friendRequestFormRef}
                 className="absolute top-10 right-0 w-56 bg-base-100 rounded-md shadow-lg border border-base-300 z-50"
-                style={{ visibility: "visible", opacity: 1 }}  // Force visibility
+                style={{ visibility: "visible", opacity: 1 }} // Force visibility
               >
                 <div className="p-3">
                   <h3 className="font-medium text-sm mb-2">Add Friend</h3>
@@ -305,24 +337,26 @@ const UserFriends = () => {
                       className="w-full px-3 py-2 rounded-md bg-base-200 text-sm mb-2"
                       value={friendUsername}
                       onChange={(e) => handleSearchUsers(e.target.value)}
-                      autoFocus  // Auto focus the input when form appears
+                      autoFocus // Auto focus the input when form appears
                     />
-                    
+
                     {/* Search Results */}
                     {searchResults.length > 0 && (
                       <div className="mt-2 mb-3 max-h-40 overflow-y-auto border border-base-300 rounded-md">
                         {searchResults.map((user) => (
-                          <div 
-                            key={user._id} 
+                          <div
+                            key={user._id}
                             className="flex items-center justify-between p-2 hover:bg-base-200 border-b border-base-300 last:border-b-0"
                           >
                             <div className="flex items-center gap-2">
                               <div className="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center text-xs">
                                 {user.username.charAt(0).toUpperCase()}
                               </div>
-                              <span className="text-xs font-medium">{user.username}</span>
+                              <span className="text-xs font-medium">
+                                {user.username}
+                              </span>
                             </div>
-                            <button 
+                            <button
                               type="button"
                               className="text-xs text-primary hover:underline"
                               onClick={() => handleSendFriendRequest(user._id)}
@@ -333,51 +367,68 @@ const UserFriends = () => {
                         ))}
                       </div>
                     )}
-                    
+
                     {isSearching && (
-                      <div className="text-center py-2 text-xs">Searching...</div>
+                      <div className="text-center py-2 text-xs">
+                        Searching...
+                      </div>
                     )}
-                    
-                    {!isSearching && searchResults.length === 0 && friendUsername.length >= 2 && (
-                      <div className="text-center py-2 text-xs">No users found</div>
-                    )}
-                    
-                    <button 
-                      type="submit" 
+
+                    {!isSearching &&
+                      searchResults.length === 0 &&
+                      friendUsername.length >= 2 && (
+                        <div className="text-center py-2 text-xs">
+                          No users found
+                        </div>
+                      )}
+
+                    <button
+                      type="submit"
                       className="btn btn-primary btn-sm w-full"
-                      disabled={!friendUsername.trim() || (currentUser && currentUser.username === friendUsername)}
+                      disabled={
+                        !friendUsername.trim() ||
+                        (currentUser && currentUser.username === friendUsername)
+                      }
                     >
                       Send Request
                     </button>
                   </form>
                 </div>
-                
+
                 {/* Friend Requests Section in Dropdown */}
                 {friendRequests.length > 0 && (
                   <div className="border-t border-base-300 p-3">
-                    <h3 className="font-medium text-sm mb-2">Friend Requests ({friendRequests.length})</h3>
+                    <h3 className="font-medium text-sm mb-2">
+                      Friend Requests ({friendRequests.length})
+                    </h3>
                     <div className="space-y-2">
                       {friendRequests.map((request) => (
-                        <div 
-                          key={request.requestId} 
+                        <div
+                          key={request.requestId}
                           className="flex flex-col p-2 rounded-md bg-base-200"
                         >
                           <div className="flex items-center gap-2 mb-1">
                             <div className="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center">
                               {request.user.username.charAt(0).toUpperCase()}
                             </div>
-                            <span className="text-sm font-medium">{request.user.username}</span>
+                            <span className="text-sm font-medium">
+                              {request.user.username}
+                            </span>
                           </div>
                           <div className="flex justify-between mt-1">
-                            <button 
+                            <button
                               className="btn btn-xs btn-primary"
-                              onClick={() => handleAcceptFriendRequest(request.requestId)}
+                              onClick={() =>
+                                handleAcceptFriendRequest(request.requestId)
+                              }
                             >
                               Accept
                             </button>
-                            <button 
+                            <button
                               className="btn btn-xs btn-ghost"
-                              onClick={() => handleDeclineFriendRequest(request.requestId)}
+                              onClick={() =>
+                                handleDeclineFriendRequest(request.requestId)
+                              }
                             >
                               Decline
                             </button>
@@ -417,11 +468,7 @@ const UserFriends = () => {
       </div>
 
       {/* Loading state */}
-      {isLoadingData && (
-        <div className="flex-1 flex items-center justify-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-        </div>
-      )}
+      {isLoadingData && <SidebarSkeleton />}
 
       {/* Scrollable content area */}
       {!isLoadingData && (
@@ -434,24 +481,38 @@ const UserFriends = () => {
               </div>
               {friends.map((friend) => (
                 <div key={friend.friendId} className="flex items-center">
-                  <Link
-                    to={`/chat/friend/${friend.friendId}`}
+                  <button
                     className={`flex items-center gap-2 px-2 py-2 rounded-md hover:bg-base-300 flex-grow ${
                       activeFriend === friend.friendId
                         ? "bg-primary/10 text-primary font-medium"
                         : ""
                     }`}
-                    onClick={() => setActiveFriend(friend.friendId)}
+                    onClick={() =>
+                      selectedFriendWhenClick({
+                        id: friend.friendId,
+                        friend: friend,
+                      })
+                      
+                    }
                   >
-                    <div className="w-6 h-6 rounded-full bg-base-300 flex items-center justify-center">
-                      {friend.username.charAt(0).toUpperCase()}
+                    <div className="  flex items-center justify-center ">
+                      <img
+                        src={friend.avatar || "/avatar.png"}
+                        alt=""
+                        className="w-6 h-6 rounded-full mr-2"
+                      />
                     </div>
-                    <span className="text-sm">
-                      {friend.username}
-                    </span>
-                    <div className={`ml-auto w-2 h-2 rounded-full ${friend.status === 'online' ? 'bg-success' : 'bg-base-300'}`}></div>
-                  </Link>
-                  <button 
+                    <span className="text-sm">{friend.username}</span>
+                    <div>
+                      {onlineUsers.includes(friend.friendId) && (
+                        <span
+                          className="absolute bottom-0 right-0 size-3 bg-green-500 
+                      rounded-full ring-2 ring-zinc-900"
+                        />
+                      )}
+                    </div>
+                  </button>
+                  <button
                     className="p-2 text-sm text-red-500 hover:bg-base-300 rounded-md"
                     onClick={() => handleRemoveFriend(friend.friendId)}
                     title="Remove Friend"
@@ -460,9 +521,8 @@ const UserFriends = () => {
                   </button>
                 </div>
               ))}
-             
             </div>
-            
+
             {/* Direct Messages section */}
             {friends.length > 0 && (
               <div className="space-y-1 mt-4 border-t border-base-300 pt-4 pb-4">

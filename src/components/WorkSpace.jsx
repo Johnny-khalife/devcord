@@ -43,7 +43,7 @@ const WorkSpace = ({
   const [showChannelUserSelector, setShowChannelUserSelector] = useState(false);
 
   // Get workspace members
-  const { getWorkspaceMembers } = useWorkspaceStore();
+  const { getWorkspaceMembers,selecteWorkspace,setSelectedWorkspace } = useWorkspaceStore();
   const [workspaceMembers, setWorkspaceMembers] = useState([]);
   const [isWorkspaceMembersLoading, setIsWorkspaceMembersLoading] =
     useState(false);
@@ -163,6 +163,13 @@ const WorkSpace = ({
     fetchWorkspaceMembers();
   }, [activeWorkspace, getWorkspaceMembers]);
 
+///////////////////////////////////////////////////////////////
+
+const selectedWorkspaceWhenClick = ({ id, channel }) => {
+  setActiveChannel(id);
+  setSelectedWorkspace(channel);
+};
+
   // Create a new channel
   const handleCreateChannel = async () => {
     if (!activeWorkspace) {
@@ -273,14 +280,17 @@ const WorkSpace = ({
         </div>
         {channels.map((channel) => (
           <div key={channel._id} className="flex items-center justify-between">
-            <Link
-              to={`/workspace/${activeWorkspace}/channel/${channel._id}`}
+            <button
               className={`flex-grow flex items-center gap-2 px-2 py-2 rounded-md hover:bg-base-300 ${
                 activeChannel === channel._id
                   ? "bg-primary/10 text-primary font-medium"
                   : ""
               }`}
-              onClick={() => setActiveChannel(channel._id)}
+            
+              onClick={() => selectedWorkspaceWhenClick({
+                id: channel.id,
+                cahnnel: channel,
+              })}
             >
               {channel.isPrivate ? (
                 <Lock className="w-4 h-4 text-warning" />
@@ -288,7 +298,7 @@ const WorkSpace = ({
                 <Hash className="w-4 h-4" />
               )}
               <span>{channel.channelName}</span>
-            </Link>
+            </button>
             {/* Only show delete button for owners */}
             {isWorkspaceOwner() && (
               <button

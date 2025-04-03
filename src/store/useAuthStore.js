@@ -2,10 +2,11 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { axiosInstance } from "../lib/axios.js";
 import toast from "react-hot-toast";
+// import { io } from "socket.io-client";
 
 export const useAuthStore = create(
   persist(
-    (set) => ({
+    (set,get) => ({
       authUser: null,
       user: null,
       users: [], // Store the fetched users
@@ -30,7 +31,7 @@ export const useAuthStore = create(
           
           const queryString = queryParams.toString() ? `?${queryParams.toString()}` : '';
           const response = await axiosInstance.get(`/users${queryString}`);
-          
+         
           // Ensure we're using the correct property name from the response
           if (response.data.success) {
             set({ 
@@ -188,6 +189,7 @@ export const useAuthStore = create(
           set({ isUpdatingProfile: false });
         }
       },
+
       updateAvatar: async (data) => {
         set({ isUpdatingProfile: true });
         try {
@@ -201,7 +203,11 @@ export const useAuthStore = create(
           set({ isUpdatingProfile: false });
         }
       },
+
+     
+   
     }),
+    
     {
       name: "auth-storage", // Store in localStorage
       getStorage: () => localStorage, // Use localStorage

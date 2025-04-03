@@ -11,9 +11,8 @@ export const useChannelStore = create(
       // Method to create a new channel in a workspace
       createChannel: async (workspaceId, channelData) => {
         try {
-          // channelData.allowedUsers[0]="67dc2c6eb58cbea50a7ce698"
           console.log(channelData.allowedUsers)
-          const response = await axiosInstance.post(`/channels/workspace/${workspaceId}`, channelData);
+          const response = await axiosInstance.post(`/workspace/channels/${workspaceId}`, channelData);
           console.log(workspaceId)
           if (response.data.success) {
             toast.success(response.data.message || "Channel created successfully");
@@ -29,7 +28,7 @@ export const useChannelStore = create(
       // Method to fetch channels for a specific workspace
       fetchWorkspaceChannels: async (workspaceId) => {
         try {
-          const response = await axiosInstance.get(`/channels/workspace/${workspaceId}`);
+          const response = await axiosInstance.get(`/workspace/channels/${workspaceId}`);
           
           if (response.data.success) {
             return response.data.channels;
@@ -44,7 +43,7 @@ export const useChannelStore = create(
       // Method to delete a specific channel
       deleteChannel: async (channelId) => {
         try {
-          const response = await axiosInstance.delete(`/channels/${channelId}`);
+          const response = await axiosInstance.delete(`/workspace/channels/${channelId}`);
           
           if (response.data.success) {
             toast.success(response.data.message || "Channel deleted successfully");
@@ -60,7 +59,7 @@ export const useChannelStore = create(
       //add user to private channel
       addUserToChannel: async (channelId, userId) => {
         try {
-          const response = await axiosInstance.post(`/channels/${channelId}/users/${userId}`);
+          const response = await axiosInstance.post(`/workspace/channels/${channelId}/users/${userId}`);
           
           if (response.data.success) {
             toast.success(response.data.message || "User added to channel successfully");
@@ -76,7 +75,7 @@ export const useChannelStore = create(
       // Method to remove a user from a channel
       removeUserFromChannel: async (channelId, userId) => {
         try {
-          const response = await axiosInstance.delete(`/channels/${channelId}/users/${userId}`);
+          const response = await axiosInstance.delete(`/workspace/channels/${channelId}/users/${userId}`);
           
           if (response.data.success) {
             toast.success(response.data.message || "User removed from channel successfully");

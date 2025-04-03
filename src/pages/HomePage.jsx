@@ -5,6 +5,9 @@ import WorkSpace from "../components/WorkSpace";
 import UserFriends from "../components/UserFriends";
 import WorkspaceSettingsForm from "../components/WorkspaceSettingsForm";
 import { useWorkspaceStore } from "../store/useWorkspaceStore";
+import { useChatStore } from "../store/useChatStore";
+import NoChatSelected from "../components/NoChatSelected";
+
 
 const HomePage = () => {
   const [showOptions, setShowOptions] = useState(false);
@@ -21,7 +24,8 @@ const HomePage = () => {
   const [selectedWorkspaceForSettings, setSelectedWorkspaceForSettings] = useState(null);
 
   // Get methods from store
-  const { fetchUserWorkspaces, createWorkspace, getUserWorkspaces } = useWorkspaceStore();
+  const { fetchUserWorkspaces, createWorkspace, getUserWorkspaces,selectedWorkspace } = useWorkspaceStore();
+  const {selectedFriend}=useChatStore();
 
   // Fetch workspaces on component mount
   useEffect(() => {
@@ -220,11 +224,14 @@ const HomePage = () => {
         
         {/* Main content area - ChatBox */}
         <div className="flex-1">
+        {!selectedFriend && !selectedWorkspace ?<NoChatSelected/>:
           <ChatBox 
             activeNavItem={activeNavItem}
             activeWorkspace={activeWorkspace}
             activeChannel={activeChannel}
       />
+    }
+
       </div>
     </div>
       
