@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { UserPlus, Users, MessageSquare } from "lucide-react";
+import { UserPlus, Users, MessageSquare, X, Menu } from "lucide-react";
 import { useAuthStore } from "../store/useAuthStore";
 import { useFriendStore } from "../store/useFriendsStore";
 import { useChatStore } from "../store/useChatStore";
@@ -15,6 +15,44 @@ const UserFriends = () => {
   const [searchResults, setSearchResults] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
   const { setSelectedFriend, selectedFriend } = useChatStore();
+  
+  // Responsive state
+  const [isMobile, setIsMobile] = useState(false);
+  const [isUserFriendsSidebarOpen, setIsUserFriendsSidebarOpen] = useState(true);
+  
+  // Check screen size
+  useEffect(() => {
+    const checkIfMobile = () => {
+      const mobile = window.innerWidth < 768;
+      setIsMobile(mobile);
+      setIsUserFriendsSidebarOpen(!mobile); // Close sidebar by default on mobile
+    };
+    
+    // Initial check
+    checkIfMobile();
+    
+    // Add listener
+    window.addEventListener('resize', checkIfMobile);
+    
+    // Listen for custom toggle event from ChatHeader
+    const handleToggleSidebar = () => {
+      setIsUserFriendsSidebarOpen(prev => !prev);
+    };
+    
+    window.addEventListener('toggle-user-friends-sidebar', handleToggleSidebar);
+    
+    // Cleanup
+    return () => {
+      window.removeEventListener('resize', checkIfMobile);
+      window.removeEventListener('toggle-user-friends-sidebar', handleToggleSidebar);
+    };
+  }, []);
+  
+  // Toggle sidebar
+  const toggleUserFriendsSidebar = () => {
+    setIsUserFriendsSidebarOpen(!isUserFriendsSidebarOpen);
+  };
+  
   // Get auth store functions and state
   const {
     getUsers,
@@ -193,146 +231,59 @@ const UserFriends = () => {
   const selectedFriendWhenClick = ({ id, friend }) => {
     setActiveFriend(id);
     setSelectedFriend(friend);
+    if (isMobile) {
+      setIsUserFriendsSidebarOpen(false);
+    }
   };
 
   // Loading state
   const isLoadingData = authLoading || friendLoading;
 
-  // Empty state if no friends and no friend requests
+  // Mobile toggle button for user friends sidebar
+  const MobileUserFriendsToggle = () => {
+    if (!isMobile) return null;
+    
+    return (
+      <button 
+        onClick={toggleUserFriendsSidebar}
+        className="fixed top-20 left-4 z-40 p-2 bg-primary text-primary-content rounded-md shadow-md"
+      >
+        {isUserFriendsSidebarOpen ? <X /> : <Users />}
+      </button>
+    );
+  };
 
+  // Empty state if no friends and no friend requests
   if (friends.length === 0 && friendRequests.length === 0 && !isLoadingData) {
     return (
-      <div className="w-72 bg-base-200 h-full border-r border-base-300 flex flex-col items-center justify-center p-4">
-        <div className="text-center mb-4">
-          <Users className="w-12 h-12 mx-auto mb-2 opacity-50" />
-          <h3 className="font-medium text-lg">No Friends Yet</h3>
-          <p className="text-sm opacity-70 mb-4">
-            Add friends to start chatting
-          </p>
-          <button
-            className="btn btn-primary"
-            onClick={handleAddFriend}
-            ref={addFriendButtonRef}
-          >
-            <UserPlus className="w-4 h-4 mr-2" />
-            Add Friend
-          </button>
-
-          {/* Friend Request Form for Empty State */}
-          {showFriendRequestForm && (
-            <div
-              ref={friendRequestFormRef}
-              className="mt-4 w-full bg-base-100 rounded-md shadow-lg border border-base-300 z-50"
+      <>
+        <MobileUserFriendsToggle />
+        <div className={`
+          ${isMobile ? 'fixed left-0 top-16 bottom-0 z-30' : 'w-72'} 
+          ${isMobile && !isUserFriendsSidebarOpen ? 'translate-x-[-100%]' : 'translate-x-0'}
+          bg-base-200 h-full border-r border-base-300 flex flex-col items-center justify-center p-4
+          transition-transform duration-300 ease-in-out
+        `}>
+          <div className="text-center mb-4">
+            <Users className="w-12 h-12 mx-auto mb-2 opacity-50" />
+            <h3 className="font-medium text-lg">No Friends Yet</h3>
+            <p className="text-sm opacity-70 mb-4">
+              Add friends to start chatting
+            </p>
+            <button
+              className="btn btn-primary"
+              onClick={handleAddFriend}
+              ref={addFriendButtonRef}
             >
-              <div className="p-3">
-                <h3 className="font-medium text-sm mb-2">Add Friend</h3>
-                <form onSubmit={handleSubmitFriendRequest}>
-                  <input
-                    type="text"
-                    placeholder="Enter username"
-                    className="w-full px-3 py-2 rounded-md bg-base-200 text-sm mb-2"
-                    value={friendUsername}
-                    onChange={(e) => handleSearchUsers(e.target.value)}
-                  />
+              <UserPlus className="w-4 h-4 mr-2" />
+              Add Friend
+            </button>
 
-                  {/* Search Results */}
-                  {searchResults.length > 0 && (
-                    <div className="mt-2 mb-3 max-h-40 overflow-y-auto border border-base-300 rounded-md">
-                      {searchResults.map((user) => (
-                        <div
-                          key={user._id}
-                          className="flex items-center justify-between p-2 hover:bg-base-200 border-b border-base-300 last:border-b-0"
-                        >
-                          <div className="flex items-center gap-2">
-                            <div className="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center text-xs">
-                              {user.username.charAt(0).toUpperCase()}
-                            </div>
-                            <span className="text-xs font-medium">
-                              {user.username}
-                            </span>
-                          </div>
-                          <button
-                            type="button"
-                            className="text-xs text-primary hover:underline"
-                            onClick={() => handleSendFriendRequest(user._id)}
-                          >
-                            Add
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-
-                  {isSearching && (
-                    <div className="text-center py-2 text-xs">Searching...</div>
-                  )}
-
-                  {!isSearching &&
-                    searchResults.length === 0 &&
-                    friendUsername.length >= 2 && (
-                      <div className="text-center py-2 text-xs">
-                        No users found
-                      </div>
-                    )}
-
-                  <button
-                    type="submit"
-                    className="btn btn-primary btn-sm w-full"
-                    disabled={
-                      !friendUsername.trim() ||
-                      (currentUser && currentUser.username === friendUsername)
-                    }
-                  >
-                    Send Request
-                  </button>
-                </form>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="w-72 bg-base-200 h-full border-r border-base-300 flex flex-col">
-      {/* Header with title and search - fixed at top */}
-      <div className="p-4 border-b border-base-300">
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="font-bold text-lg">Friends</h2>
-          <div className="flex items-center relative">
-            <div className="relative">
-              <button
-                ref={addFriendButtonRef}
-                className="p-2 hover:bg-base-300 rounded-md"
-                onClick={handleAddFriend}
-                aria-label="Add Friend"
-              >
-                <UserPlus className="w-5 h-5" />
-                {/* Friend request notification indicator */}
-                {friendRequests.length > 0 && (
-                  <div className="absolute -top-0 -right-0 flex justify-center items-center">
-                    <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                    {friendRequests.length > 9 ? (
-                      <span className="absolute text-xs text-white font-bold">
-                        9+
-                      </span>
-                    ) : friendRequests.length > 1 ? (
-                      <span className="absolute text-xs text-white font-bold">
-                        {friendRequests.length}
-                      </span>
-                    ) : null}
-                  </div>
-                )}
-              </button>
-            </div>
-
-            {/* Friend Request Form */}
+            {/* Friend Request Form for Empty State */}
             {showFriendRequestForm && (
               <div
                 ref={friendRequestFormRef}
-                className="absolute top-10 right-0 w-56 bg-base-100 rounded-md shadow-lg border border-base-300 z-50"
-                style={{ visibility: "visible", opacity: 1 }} // Force visibility
+                className="mt-4 w-full bg-base-100 rounded-md shadow-lg border border-base-300 z-50"
               >
                 <div className="p-3">
                   <h3 className="font-medium text-sm mb-2">Add Friend</h3>
@@ -343,7 +294,6 @@ const UserFriends = () => {
                       className="w-full px-3 py-2 rounded-md bg-base-200 text-sm mb-2"
                       value={friendUsername}
                       onChange={(e) => handleSearchUsers(e.target.value)}
-                      autoFocus // Auto focus the input when form appears
                     />
 
                     {/* Search Results */}
@@ -375,9 +325,7 @@ const UserFriends = () => {
                     )}
 
                     {isSearching && (
-                      <div className="text-center py-2 text-xs">
-                        Searching...
-                      </div>
+                      <div className="text-center py-2 text-xs">Searching...</div>
                     )}
 
                     {!isSearching &&
@@ -400,160 +348,282 @@ const UserFriends = () => {
                     </button>
                   </form>
                 </div>
-
-                {/* Friend Requests Section in Dropdown */}
-                {friendRequests.length > 0 && (
-                  <div className="border-t border-base-300 p-3">
-                    <h3 className="font-medium text-sm mb-2">
-                      Friend Requests ({friendRequests.length})
-                    </h3>
-                    <div className="space-y-2">
-                      {friendRequests.map((request) => (
-                        <div
-                          key={request.requestId}
-                          className="flex flex-col p-2 rounded-md bg-base-200"
-                        >
-                          <div className="flex items-center gap-2 mb-1">
-                            <div className="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center">
-                              {request.user.username.charAt(0).toUpperCase()}
-                            </div>
-                            <span className="text-sm font-medium">
-                              {request.user.username}
-                            </span>
-                          </div>
-                          <div className="flex justify-between mt-1">
-                            <button
-                              className="btn btn-xs btn-primary"
-                              onClick={() =>
-                                handleAcceptFriendRequest(request.requestId)
-                              }
-                            >
-                              Accept
-                            </button>
-                            <button
-                              className="btn btn-xs btn-ghost"
-                              onClick={() =>
-                                handleDeclineFriendRequest(request.requestId)
-                              }
-                            >
-                              Decline
-                            </button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
               </div>
             )}
           </div>
         </div>
-        <div className="relative">
-          <input
-            type="text"
-            placeholder="Search friends..."
-            className="w-full pl-8 pr-4 py-2 rounded-md bg-base-100 text-sm"
-            value={searchQuery}
-            onChange={handleSearchFriends}
-          />
-          <svg
-            className="w-4 h-4 absolute left-2 top-2.5 text-base-content/50"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-            xmlns="http://www.w3.org/2000/svg"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth="2"
-              d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-            ></path>
-          </svg>
-        </div>
-      </div>
+      </>
+    );
+  }
 
-      {/* Loading state */}
-      {isLoadingData && <SidebarSkeleton />}
-
-      {/* Scrollable content area */}
-      {!isLoadingData && (
-        <div className="flex-1 overflow-y-auto">
-          <div className="p-2">
-            {/* Friends list */}
-            <div className="space-y-1 mt-4">
-              <div className="px-2 py-1 text-xs font-semibold text-base-content/70">
-                FRIENDS
+  return (
+    <>
+      <MobileUserFriendsToggle />
+      <div className={`
+        ${isMobile ? 'fixed left-0 top-16 bottom-0 z-30' : 'w-72'} 
+        ${isMobile && !isUserFriendsSidebarOpen ? 'translate-x-[-100%]' : 'translate-x-0'}
+        bg-base-200 h-full border-r border-base-300 flex flex-col
+        transition-transform duration-300 ease-in-out
+      `}>
+        {/* Header with title and search - fixed at top */}
+        <div className="p-4 border-b border-base-300">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="font-bold text-lg">Friends</h2>
+            <div className="flex items-center relative">
+              <div className="relative">
+                <button
+                  ref={addFriendButtonRef}
+                  className="p-2 hover:bg-base-300 rounded-md"
+                  onClick={handleAddFriend}
+                  aria-label="Add Friend"
+                >
+                  <UserPlus className="w-5 h-5" />
+                  {/* Friend request notification indicator */}
+                  {friendRequests.length > 0 && (
+                    <div className="absolute -top-0 -right-0 flex justify-center items-center">
+                      <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                      {friendRequests.length > 9 ? (
+                        <span className="absolute text-xs text-white font-bold">
+                          9+
+                        </span>
+                      ) : friendRequests.length > 1 ? (
+                        <span className="absolute text-xs text-white font-bold">
+                          {friendRequests.length}
+                        </span>
+                      ) : null}
+                    </div>
+                  )}
+                </button>
               </div>
-              {friends.map((friend) => (
-                <div key={friend.friendId} className="flex items-center">
-                  <button
-                    className={`flex items-center gap-2 px-2 py-2 rounded-md hover:bg-base-300 flex-grow ${
-                      activeFriend === friend.friendId
-                        ? "bg-primary/10 text-primary font-medium"
-                        : ""
-                    }`}
-                    onClick={() =>
-                      selectedFriendWhenClick({
-                        id: friend.friendId,
-                        friend: friend,
-                      })
-                      
-                    }
-                  >
-                    <div className="  flex items-center justify-center ">
-                      <img
-                        src={friend.avatar || "/avatar.png"}
-                        alt=""
-                        className="w-6 h-6 rounded-full mr-2"
-                      />
-                    </div>
-                    <span className="text-sm">{friend.username}</span>
-                    <div>
-                      {onlineUsers.includes(friend.friendId) && (
-                        <span
-                          className="absolute bottom-0 right-0 size-3 bg-green-500 
-                      rounded-full ring-2 ring-zinc-900"
-                        />
-                      )}
-                    </div>
-                  </button>
-                  <button
-                    className="p-2 text-sm text-red-500 hover:bg-base-300 rounded-md"
-                    onClick={() => handleRemoveFriend(friend.friendId)}
-                    title="Remove Friend"
-                  >
-                    ×
-                  </button>
-                </div>
-              ))}
-            </div>
 
-            {/* Direct Messages section */}
-            {friends.length > 0 && (
-              <div className="space-y-1 mt-4 border-t border-base-300 pt-4 pb-4">
+              {/* Friend Request Form */}
+              {showFriendRequestForm && (
+                <div
+                  ref={friendRequestFormRef}
+                  className="absolute top-10 right-0 w-56 bg-base-100 rounded-md shadow-lg border border-base-300 z-50"
+                  style={{ visibility: "visible", opacity: 1 }} // Force visibility
+                >
+                  <div className="p-3">
+                    <h3 className="font-medium text-sm mb-2">Add Friend</h3>
+                    <form onSubmit={handleSubmitFriendRequest}>
+                      <input
+                        type="text"
+                        placeholder="Enter username"
+                        className="w-full px-3 py-2 rounded-md bg-base-200 text-sm mb-2"
+                        value={friendUsername}
+                        onChange={(e) => handleSearchUsers(e.target.value)}
+                        autoFocus // Auto focus the input when form appears
+                      />
+
+                      {/* Search Results */}
+                      {searchResults.length > 0 && (
+                        <div className="mt-2 mb-3 max-h-40 overflow-y-auto border border-base-300 rounded-md">
+                          {searchResults.map((user) => (
+                            <div
+                              key={user._id}
+                              className="flex items-center justify-between p-2 hover:bg-base-200 border-b border-base-300 last:border-b-0"
+                            >
+                              <div className="flex items-center gap-2">
+                                <div className="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center text-xs">
+                                  {user.username.charAt(0).toUpperCase()}
+                                </div>
+                                <span className="text-xs font-medium">
+                                  {user.username}
+                                </span>
+                              </div>
+                              <button
+                                type="button"
+                                className="text-xs text-primary hover:underline"
+                                onClick={() => handleSendFriendRequest(user._id)}
+                              >
+                                Add
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {isSearching && (
+                        <div className="text-center py-2 text-xs">
+                          Searching...
+                        </div>
+                      )}
+
+                      {!isSearching &&
+                        searchResults.length === 0 &&
+                        friendUsername.length >= 2 && (
+                          <div className="text-center py-2 text-xs">
+                            No users found
+                          </div>
+                        )}
+
+                      <button
+                        type="submit"
+                        className="btn btn-primary btn-sm w-full"
+                        disabled={
+                          !friendUsername.trim() ||
+                          (currentUser && currentUser.username === friendUsername)
+                        }
+                      >
+                        Send Request
+                      </button>
+                    </form>
+                  </div>
+
+                  {/* Friend Requests Section in Dropdown */}
+                  {friendRequests.length > 0 && (
+                    <div className="border-t border-base-300 p-3">
+                      <h3 className="font-medium text-sm mb-2">
+                        Friend Requests ({friendRequests.length})
+                      </h3>
+                      <div className="space-y-2">
+                        {friendRequests.map((request) => (
+                          <div
+                            key={request.requestId}
+                            className="flex flex-col p-2 rounded-md bg-base-200"
+                          >
+                            <div className="flex items-center gap-2 mb-1">
+                              <div className="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center">
+                                {request.user.username.charAt(0).toUpperCase()}
+                              </div>
+                              <span className="text-sm font-medium">
+                                {request.user.username}
+                              </span>
+                            </div>
+                            <div className="flex justify-between mt-1">
+                              <button
+                                className="btn btn-xs btn-primary"
+                                onClick={() =>
+                                  handleAcceptFriendRequest(request.requestId)
+                                }
+                              >
+                                Accept
+                              </button>
+                              <button
+                                className="btn btn-xs btn-ghost"
+                                onClick={() =>
+                                  handleDeclineFriendRequest(request.requestId)
+                                }
+                              >
+                                Decline
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+          <div className="relative">
+            <input
+              type="text"
+              placeholder="Search friends..."
+              className="w-full pl-8 pr-4 py-2 rounded-md bg-base-100 text-sm"
+              value={searchQuery}
+              onChange={handleSearchFriends}
+            />
+            <svg
+              className="w-4 h-4 absolute left-2 top-2.5 text-base-content/50"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2"
+                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+              ></path>
+            </svg>
+          </div>
+        </div>
+
+        {/* Loading state */}
+        {isLoadingData && <SidebarSkeleton />}
+
+        {/* Scrollable content area */}
+        {!isLoadingData && (
+          <div className="flex-1 overflow-y-auto">
+            <div className="p-2">
+              {/* Friends list */}
+              <div className="space-y-1 mt-4">
                 <div className="px-2 py-1 text-xs font-semibold text-base-content/70">
-                  DIRECT MESSAGES
+                  FRIENDS
                 </div>
                 {friends.map((friend) => (
-                  <Link
-                    key={`dm-${friend.friendId}`}
-                    to={`/direct-messages/${friend.friendId}`}
-                    className="flex items-center gap-2 px-2 py-2 rounded-md hover:bg-base-300"
-                  >
-                    <div className="w-6 h-6 rounded-full bg-base-300 flex items-center justify-center">
-                      {friend.username.charAt(0).toUpperCase()}
-                    </div>
-                    <span className="text-sm">{friend.username}</span>
-                    <MessageSquare className="ml-auto w-4 h-4 text-base-content/50" />
-                  </Link>
+                  <div key={friend.friendId} className="flex items-center">
+                    <button
+                      className={`flex items-center gap-2 px-2 py-2 rounded-md hover:bg-base-300 flex-grow ${
+                        activeFriend === friend.friendId
+                          ? "bg-primary/10 text-primary font-medium"
+                          : ""
+                      }`}
+                      onClick={() =>
+                        selectedFriendWhenClick({
+                          id: friend.friendId,
+                          friend: friend,
+                        })
+                      }
+                    >
+                      <div className="flex items-center justify-center">
+                        <img
+                          src={friend.avatar || "/avatar.png"}
+                          alt=""
+                          className="w-6 h-6 rounded-full mr-2"
+                        />
+                      </div>
+                      <span className="text-sm">{friend.username}</span>
+                      
+                      <div>
+                        {onlineUsers.includes(friend.friendId) && (
+                          <span
+                            className="absolute bottom-0 right-0 size-3 bg-green-500 
+                        rounded-full ring-2 ring-zinc-900"
+                          />
+                        )}
+                      </div>
+                    </button>
+                    <button
+                      className="w-5 h-5 flex items-center justify-center bg-blue-500 text-white hover:bg-blue-600 rounded-full"
+                      onClick={() => handleRemoveFriend(friend.friendId)}
+                      title="Remove Friend"
+                    >
+                      <X size={12} />
+                    </button>
+                  </div>
                 ))}
               </div>
-            )}
+
+              {/* Direct Messages section */}
+              {friends.length > 0 && (
+                <div className="space-y-1 mt-4 border-t border-base-300 pt-4 pb-4">
+                  <div className="px-2 py-1 text-xs font-semibold text-base-content/70">
+                    DIRECT MESSAGES
+                  </div>
+                  {friends.map((friend) => (
+                    <Link
+                      key={`dm-${friend.friendId}`}
+                      to={`/direct-messages/${friend.friendId}`}
+                      className="flex items-center gap-2 px-2 py-2 rounded-md hover:bg-base-300"
+                    >
+                      <div className="w-6 h-6 rounded-full bg-base-300 flex items-center justify-center">
+                        {friend.username.charAt(0).toUpperCase()}
+                      </div>
+                      <span className="text-sm">{friend.username}</span>
+                      <MessageSquare className="ml-auto w-4 h-4 text-base-content/50" />
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
-        </div>
-      )}
-    </div>
+        )}
+      </div>
+    </>
   );
 };
 

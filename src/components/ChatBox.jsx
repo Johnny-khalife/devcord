@@ -2,8 +2,26 @@
 import { useChatStore } from "../store/useChatStore";
 import ChatHeader from "./ChatHeader";
 import MessageInput from "./MessageInput";
+import { useState, useEffect } from "react";
 
-const ChatBox = ({ activeNavItem, activeWorkspace, activeChannel,selectedWorkspace  }) => {
+const ChatBox = ({ activeNavItem, activeWorkspace, activeChannel, selectedWorkspace }) => {
+  const [isMobile, setIsMobile] = useState(false);
+  
+  // Check if we're on a mobile device
+  useEffect(() => {
+    const checkIfMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    
+    // Initial check
+    checkIfMobile();
+    
+    // Add event listener for window resize
+    window.addEventListener('resize', checkIfMobile);
+    
+    // Cleanup
+    return () => window.removeEventListener('resize', checkIfMobile);
+  }, []);
 
   const { messages, getMessages, isMessagesLoading, selectedFriend } =
     useChatStore();
@@ -12,15 +30,21 @@ const ChatBox = ({ activeNavItem, activeWorkspace, activeChannel,selectedWorkspa
   //   getMessages(selectedFriend.friendId)
   // },[selectedFriend.friendId,getMessages])
 
-  if (isMessagesLoading) return <div>...Loading</div>;
+  if (isMessagesLoading) return <div className="flex items-center justify-center h-full">
+    <div className="loading loading-spinner loading-lg text-primary"></div>
+  </div>;
 
   return (
-    <div>
+    <div className="flex flex-col h-full">
       <ChatHeader activeNavItem={activeNavItem} activeChannel={activeChannel} selectedWorkspace={selectedWorkspace}/>
 
-      <p>messages ....</p>
+      <div className="flex-1 p-4 overflow-y-auto">
+        <p className={`${isMobile ? 'text-sm' : 'text-base'} text-center text-gray-500`}>messages ....</p>
+      </div>
 
-      <MessageInput />
+      <div className={`p-4 ${isMobile ? 'pb-20' : ''} border-t border-base-300`}>
+        <MessageInput />
+      </div>
     </div>
   );
 

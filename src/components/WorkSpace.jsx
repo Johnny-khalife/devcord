@@ -9,6 +9,7 @@ import {
   UserPlus,
   Check,
   Lock,
+  X,
 } from "lucide-react";
 import { useFriendStore } from "../store/useFriendsStore"; // Import the friend store
 import { useWorkspaceStore } from "../store/useWorkspaceStore";
@@ -47,6 +48,43 @@ const WorkSpace = ({
   const [workspaceMembers, setWorkspaceMembers] = useState([]);
   const [isWorkspaceMembersLoading, setIsWorkspaceMembersLoading] =
     useState(false);
+
+  // State for responsive design
+  const [isMobile, setIsMobile] = useState(false);
+  const [isWorkspaceSidebarOpen, setIsWorkspaceSidebarOpen] = useState(true);
+
+  // Check if we're on a mobile device
+  useEffect(() => {
+    const checkIfMobile = () => {
+      const mobile = window.innerWidth < 768;
+      setIsMobile(mobile);
+      setIsWorkspaceSidebarOpen(!mobile); // Close sidebar by default on mobile
+    };
+    
+    // Initial check
+    checkIfMobile();
+    
+    // Add event listener for window resize
+    window.addEventListener('resize', checkIfMobile);
+    
+    // Listen for custom toggle event from ChatHeader
+    const handleToggleSidebar = () => {
+      setIsWorkspaceSidebarOpen(prev => !prev);
+    };
+    
+    window.addEventListener('toggle-workspace-sidebar', handleToggleSidebar);
+    
+    // Cleanup
+    return () => {
+      window.removeEventListener('resize', checkIfMobile);
+      window.removeEventListener('toggle-workspace-sidebar', handleToggleSidebar);
+    };
+  }, []);
+
+  // Toggle workspace sidebar for mobile view
+  const toggleWorkspaceSidebar = () => {
+    setIsWorkspaceSidebarOpen(!isWorkspaceSidebarOpen);
+  };
 
   // Get friends data and methods from the friend store
   const {
@@ -325,9 +363,10 @@ const selectedWorkspaceWhenClick = ({ id, channel }) => {
             {isWorkspaceOwner() && (
               <button
                 onClick={() => handleDeleteChannel(channel._id)}
-                className="btn btn-ghost btn-xs mr-2"
+                className="w-5 h-5 flex items-center justify-center bg-blue-500 text-white hover:bg-blue-600 rounded-full"
+                title="Delete Channel"
               >
-                🗑️
+                <X size={12} />
               </button>
             )}
           </div>
@@ -528,7 +567,7 @@ const selectedWorkspaceWhenClick = ({ id, channel }) => {
 
   if (workspaces.length === 0) {
     return (
-      <div className="w-72 bg-base-200 h-full border-r border-base-300 flex flex-col items-center justify-center p-4">
+      <div className={`${isMobile ? 'w-full' : 'w-72'} bg-base-200 h-full border-r border-base-300 flex flex-col items-center justify-center p-4`}>
         <div className="text-center mb-4">
           <Briefcase className="w-12 h-12 mx-auto mb-2 opacity-50" />
           <h3 className="font-medium text-lg">No Workspaces</h3>
@@ -543,306 +582,328 @@ const selectedWorkspaceWhenClick = ({ id, channel }) => {
       </div>
     );
   }
+
+  // Mobile view toggle for workspace sidebar
+  const MobileWorkspaceToggle = () => {
+    if (!isMobile) return null;
+    
+    return (
+      <button 
+        onClick={toggleWorkspaceSidebar}
+        className="fixed top-20 left-4 z-40 p-2 bg-primary text-primary-content rounded-md shadow-md"
+      >
+        {isWorkspaceSidebarOpen ? <ChevronDown /> : <Hash />}
+      </button>
+    );
+  };
+
   return (
-    <div className="w-72 bg-base-200 h-full border-r border-base-300 flex flex-col">
-      {/* Header with title and search */}
-      <div className="p-4 border-b border-base-300 flex-shrink-0">
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="font-bold text-lg">
-            {activeNavItem === "workspaces"
-              ? "Workspaces"
-              : activeNavItem === "workSpace"
-              ? "workSpace"
-              : activeNavItem.charAt(0).toUpperCase() + activeNavItem.slice(1)}
-          </h2>
-          <div className="flex items-center relative">
-            <button
-              className="p-2 hover:bg-base-300 rounded-md"
-              onClick={handleCreateWorkspace}
-              aria-label="Create Workspace"
-            >
-              <Plus className="w-5 h-5" />
-            </button>
-
-            {/* Invite button */}
-            {activeNavItem === "workSpace" && activeWorkspace && isWorkspaceOwner() && (
-              <button
-                ref={inviteButtonRef}
-                className="p-2 hover:bg-base-300 rounded-md"
-                onClick={() => setShowInviteMenu(!showInviteMenu)}
-                aria-label="Invite Friends"
-              >
-                <UserPlus className="w-5 h-5" />
-              </button>
-            )}
-
-            {/* Settings button */}
-            {activeNavItem === "workSpace" && activeWorkspace && (
+    <>
+      <MobileWorkspaceToggle />
+      <div className={`
+        ${isMobile ? 'fixed left-0 top-16 bottom-0 z-30' : 'w-72'} 
+        ${isMobile && !isWorkspaceSidebarOpen ? 'translate-x-[-100%]' : 'translate-x-0'} 
+        bg-base-200 h-full border-r border-base-300 flex flex-col transition-transform duration-300 ease-in-out
+      `}>
+        {/* Header with title and search */}
+        <div className="p-4 border-b border-base-300 flex-shrink-0">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="font-bold text-lg">
+              {activeNavItem === "workspaces"
+                ? "Workspaces"
+                : activeNavItem === "workSpace"
+                ? "workSpace"
+                : activeNavItem.charAt(0).toUpperCase() + activeNavItem.slice(1)}
+            </h2>
+            <div className="flex items-center relative">
               <button
                 className="p-2 hover:bg-base-300 rounded-md"
-                onClick={() => handleOpenSettingsForm(activeWorkspace)}
-                aria-label="Workspace Settings"
+                onClick={handleCreateWorkspace}
+                aria-label="Create Workspace"
               >
-                <Settings className="w-5 h-5" />
-              </button>
-            )}
-
-            {/* Invite Friends Menu - Now using real friends data */}
-            {showInviteMenu && (
-              <div
-                ref={inviteMenuRef}
-                className="absolute top-10 right-0 w-64 bg-base-100 rounded-md shadow-lg border border-base-300 z-50"
-              >
-                <div className="p-3">
-                  <h3 className="font-medium text-sm mb-3">
-                    Invite Friends to Workspace
-                  </h3>
-
-                  {/* Search friends */}
-                  <div className="relative mb-3">
-                    <input
-                      type="text"
-                      placeholder="Search friends..."
-                      className="w-full px-3 py-2 rounded-md bg-base-200 text-sm"
-                    />
-                  </div>
-
-                  {/* Friends list for selection - Now using real data */}
-                  <div className="max-h-60 overflow-y-auto">
-                    {isFriendsLoading ? (
-                      <div className="text-center py-4">
-                        <div className="loading loading-spinner loading-sm text-primary"></div>
-                        <p className="text-sm mt-2">Loading friends...</p>
-                      </div>
-                    ) : friends.length === 0 ? (
-                      <p className="text-sm text-base-content/70 text-center py-2">
-                        No friends found
-                      </p>
-                    ) : (
-                      <div className="space-y-2">
-                        {friends.map((friend) => (
-                          <div
-                            key={friend.friendId}
-                            className={`flex items-center justify-between p-2 rounded-md hover:bg-base-200 cursor-pointer ${
-                              selectedFriends.includes(friend.friendId)
-                                ? "bg-primary/10"
-                                : ""
-                            }`}
-                            onClick={() =>
-                              toggleFriendSelection(friend.friendId)
-                            }
-                          >
-                            <div className="flex items-center gap-2">
-                              <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
-                                {friend.username
-                                  ? friend.username.charAt(0).toUpperCase()
-                                  : friend.displayName
-                                  ? friend.displayName.charAt(0).toUpperCase()
-                                  : "?"}
-                              </div>
-                              <div>
-                                <div className="text-sm font-medium">
-                                  {friend.username ||
-                                    friend.displayName ||
-                                    `Friend #${friend.friendId}`}
-                                </div>
-                                <div className="text-xs text-base-content/70">
-                                  {friend.status || "Status unknown"}
-                                </div>
-                              </div>
-                            </div>
-
-                            {/* Checkmark for selected friends */}
-                            {selectedFriends.includes(friend.friendId) && (
-                              <Check className="w-5 h-5 text-primary" />
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Action buttons */}
-                  <div className="mt-3 flex justify-between">
-                    <button
-                      className="btn btn-sm btn-ghost"
-                      onClick={() => setShowInviteMenu(false)}
-                      disabled={isInviteLoading}
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      className="btn btn-sm btn-primary"
-                      onClick={sendInvites}
-                      disabled={selectedFriends.length === 0 || isInviteLoading}
-                    >
-                      {isInviteLoading ? (
-                        <>
-                          <span className="loading loading-spinner loading-xs"></span>
-                          Inviting...
-                        </>
-                      ) : (
-                        `Invite (${selectedFriends.length})`
-                      )}
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-        <div className="relative">
-          <input
-            type="text"
-            placeholder="Search..."
-            className="w-full pl-8 pr-4 py-2 rounded-md bg-base-100 text-sm"
-          />
-          <svg
-            className="w-4 h-4 absolute left-2 top-2.5 text-base-content/50"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-            xmlns="http://www.w3.org/2000/svg"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth="2"
-              d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-            ></path>
-          </svg>
-        </div>
-      </div>
-
-      {/* Scrollable content area */}
-      <div className="overflow-y-auto flex-grow">
-        {/* Workspace management section */}
-        {/* Workspace section for workSpace view */}
-        {activeNavItem === "workSpace" && (
-          <div className="p-2">
-            {/* Workspace header with dropdown */}
-            <div className="relative mb-2">
-              <button
-                className="w-full flex items-center justify-between p-2 rounded hover:bg-base-300"
-                onClick={() => setShowWorkspaceMenu(!showWorkspaceMenu)}
-              >
-                <div className="flex items-center gap-2">
-                  <div className="w-6 h-6 rounded-md bg-primary/20 flex items-center justify-center">
-                    {getActiveWorkspace()?.name?.charAt(0).toUpperCase() || "?"}
-                  </div>
-                  <span className="font-medium">
-                    {getActiveWorkspace()?.name || "Select Workspace"}
-                  </span>
-                </div>
-                <ChevronDown className="w-4 h-4" />
+                <Plus className="w-5 h-5" />
               </button>
 
-              {/* Modified Workspace dropdown menu */}
-              {showWorkspaceMenu && (
-                <div className="absolute top-full left-0 right-0 mt-1 bg-base-100 rounded-md shadow-lg z-50 border border-base-300">
-                  <div className="py-1">
-                    {/* Show owned workspaces section */}
-                    <div className="px-2 py-1 text-xs font-semibold text-base-content/70">
-                      YOUR WORKSPACES
-                    </div>
-                    {workspaces
-                      .filter((ws) => ws && (ws.isOwned || ws.role === "owner"))
-                      .map((workspace, index) => (
-                        <button
-                          key={workspace?.id || `owned-${index}`}
-                          className={`w-full px-2 py-1 mt-1 text-left flex items-center gap-2 rounded-md ${
-                            activeWorkspace === workspace?.id
-                              ? "bg-primary/10 text-primary"
-                              : "hover:bg-base-200"
-                          }`}
-                          onClick={() => {
-                            if (workspace?.id) {
-                              setActiveWorkspace(workspace.id);
-                              setShowWorkspaceMenu(false);
-                              if (
-                                workspace.channels &&
-                                workspace.channels.length > 0
-                              ) {
-                                setActiveChannel(workspace.channels[0]);
-                              }
-                            }
-                          }}
-                        >
-                          <div className="w-4 h-4 rounded-md bg-primary/20 flex items-center justify-center">
-                            {workspace?.name
-                              ? workspace.name.charAt(0).toUpperCase()
-                              : "?"}
-                          </div>
-                          <span className="text-sm">
-                            {workspace?.name || "Unnamed Workspace"}
-                          </span>
-                        </button>
-                      ))}
+              {/* Invite button */}
+              {activeNavItem === "workSpace" && activeWorkspace && isWorkspaceOwner() && (
+                <button
+                  ref={inviteButtonRef}
+                  className="p-2 hover:bg-base-300 rounded-md"
+                  onClick={() => setShowInviteMenu(!showInviteMenu)}
+                  aria-label="Invite Friends"
+                >
+                  <UserPlus className="w-5 h-5" />
+                </button>
+              )}
 
-                    {/* Show joined workspaces section */}
-                    <div className="border-t border-base-200 pt-1 mt-1">
-                      <div className="px-2 py-1 text-xs font-semibold text-base-content/70">
-                        JOINED WORKSPACES
-                      </div>
-                      {workspaces.filter((ws) => 
-                        ws && 
-                        ws.isInvited && 
-                        ws.role !== "owner" && 
-                        !ws.isOwned
-                      ).length === 0 ? (
-                        <div className="px-2 py-1 text-xs text-base-content/50 italic">
-                          No joined workspaces
-                        </div>
-                      ) : (
-                        workspaces
-                          .filter((ws) => 
-                            ws && 
-                            ws.isInvited && 
-                            ws.role !== "owner" && 
-                            !ws.isOwned
-                          )
-                          .map((workspace, index) => {
-                            return (
-                              <button
-                                key={workspace?.id || `invited-${index}`}
-                                className={`w-full px-2 py-1 mt-1 text-left flex items-center gap-2 rounded-md ${
-                                  activeWorkspace === workspace?.id
-                                    ? "bg-primary/10 text-primary"
-                                    : "hover:bg-base-200"
-                                }`}
-                                onClick={() => {
-                                  if (workspace?.id) {
-                                    setActiveWorkspace(workspace.id);
-                                    setShowWorkspaceMenu(false);
-                                    // Reset active channel when switching workspaces
-                                    setActiveChannel(null);
-                                  }
-                                }}
-                              >
-                                <div className="w-4 h-4 rounded-md bg-primary/20 flex items-center justify-center">
-                                  {workspace?.name
-                                    ? workspace.name.charAt(0).toUpperCase()
-                                    : "?"}
-                                </div>
-                                <span className="text-sm">
-                                  {workspace?.name || "Unnamed Workspace"}
-                                </span>
-                              </button>
-                            );
-                          })
-                      )}
-                    </div>
-                  </div>
-                </div>
+              {/* Settings button */}
+              {activeNavItem === "workSpace" && activeWorkspace && (
+                <button
+                  className="p-2 hover:bg-base-300 rounded-md"
+                  onClick={() => handleOpenSettingsForm(activeWorkspace)}
+                  aria-label="Workspace Settings"
+                >
+                  <Settings className="w-5 h-5" />
+                </button>
               )}
             </div>
-
-            {/* Channel list */}
-            {activeWorkspace && renderChannelsList()}
           </div>
-        )}
+          <div className="relative">
+            <input
+              type="text"
+              placeholder="Search..."
+              className="w-full pl-8 pr-4 py-2 rounded-md bg-base-100 text-sm"
+            />
+            <svg
+              className="w-4 h-4 absolute left-2 top-2.5 text-base-content/50"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2"
+                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+              ></path>
+            </svg>
+          </div>
+        </div>
+
+        {/* Scrollable content area */}
+        <div className="overflow-y-auto flex-grow">
+          {/* Workspace management section */}
+          {/* Workspace section for workSpace view */}
+          {activeNavItem === "workSpace" && (
+            <div className="p-2">
+              {/* Workspace header with dropdown */}
+              <div className="relative mb-2">
+                <button
+                  className="w-full flex items-center justify-between p-2 rounded hover:bg-base-300"
+                  onClick={() => setShowWorkspaceMenu(!showWorkspaceMenu)}
+                >
+                  <div className="flex items-center gap-2">
+                    <div className="w-6 h-6 rounded-md bg-primary/20 flex items-center justify-center">
+                      {getActiveWorkspace()?.name?.charAt(0).toUpperCase() || "?"}
+                    </div>
+                    <span className="font-medium">
+                      {getActiveWorkspace()?.name || "Select Workspace"}
+                    </span>
+                  </div>
+                  <ChevronDown className="w-3.5 h-3.5 text-gray-500" />
+                </button>
+
+                {/* Modified Workspace dropdown menu */}
+                {showWorkspaceMenu && (
+                  <div className="absolute top-full left-0 right-0 mt-1 bg-base-100 rounded-md shadow-lg z-50 border border-base-300">
+                    <div className="py-1">
+                      {/* Show owned workspaces section */}
+                      <div className="px-2 py-1 text-xs font-semibold text-base-content/70">
+                        YOUR WORKSPACES
+                      </div>
+                      {workspaces
+                        .filter((ws) => ws && (ws.isOwned || ws.role === "owner"))
+                        .map((workspace, index) => (
+                          <button
+                            key={workspace?.id || `owned-${index}`}
+                            className={`w-full px-2 py-1 mt-1 text-left flex items-center gap-2 rounded-md ${
+                              activeWorkspace === workspace?.id
+                                ? "bg-primary/10 text-primary"
+                                : "hover:bg-base-200"
+                            }`}
+                            onClick={() => {
+                              if (workspace?.id) {
+                                setActiveWorkspace(workspace.id);
+                                setShowWorkspaceMenu(false);
+                                if (
+                                  workspace.channels &&
+                                  workspace.channels.length > 0
+                                ) {
+                                  setActiveChannel(workspace.channels[0]);
+                                }
+                              }
+                            }}
+                          >
+                            <div className="w-4 h-4 rounded-md bg-primary/20 flex items-center justify-center">
+                              {workspace?.name
+                                ? workspace.name.charAt(0).toUpperCase()
+                                : "?"}
+                            </div>
+                            <span className="text-sm">
+                              {workspace?.name || "Unnamed Workspace"}
+                            </span>
+                          </button>
+                        ))}
+
+                      {/* Show joined workspaces section */}
+                      <div className="border-t border-base-200 pt-1 mt-1">
+                        <div className="px-2 py-1 text-xs font-semibold text-base-content/70">
+                          JOINED WORKSPACES
+                        </div>
+                        {workspaces.filter((ws) => 
+                          ws && 
+                          ws.isInvited && 
+                          ws.role !== "owner" && 
+                          !ws.isOwned
+                        ).length === 0 ? (
+                          <div className="px-2 py-1 text-xs text-base-content/50 italic">
+                            No joined workspaces
+                          </div>
+                        ) : (
+                          workspaces
+                            .filter((ws) => 
+                              ws && 
+                              ws.isInvited && 
+                              ws.role !== "owner" && 
+                              !ws.isOwned
+                            )
+                            .map((workspace, index) => {
+                              return (
+                                <button
+                                  key={workspace?.id || `invited-${index}`}
+                                  className={`w-full px-2 py-1 mt-1 text-left flex items-center gap-2 rounded-md ${
+                                    activeWorkspace === workspace?.id
+                                      ? "bg-primary/10 text-primary"
+                                      : "hover:bg-base-200"
+                                  }`}
+                                  onClick={() => {
+                                    if (workspace?.id) {
+                                      setActiveWorkspace(workspace.id);
+                                      setShowWorkspaceMenu(false);
+                                      // Reset active channel when switching workspaces
+                                      setActiveChannel(null);
+                                    }
+                                  }}
+                                >
+                                  <div className="w-4 h-4 rounded-md bg-primary/20 flex items-center justify-center">
+                                    {workspace?.name
+                                      ? workspace.name.charAt(0).toUpperCase()
+                                      : "?"}
+                                  </div>
+                                  <span className="text-sm">
+                                    {workspace?.name || "Unnamed Workspace"}
+                                  </span>
+                                </button>
+                              );
+                            })
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Channel list */}
+              {activeWorkspace && renderChannelsList()}
+            </div>
+          )}
+
+          {/* Invite Friends Menu - Now using real friends data */}
+          {showInviteMenu && (
+            <div
+              ref={inviteMenuRef}
+              className="absolute top-10 right-0 w-64 bg-base-100 rounded-md shadow-lg border border-base-300 z-50"
+            >
+              <div className="p-3">
+                <h3 className="font-medium text-sm mb-3">
+                  Invite Friends to Workspace
+                </h3>
+
+                {/* Search friends */}
+                <div className="relative mb-3">
+                  <input
+                    type="text"
+                    placeholder="Search friends..."
+                    className="w-full px-3 py-2 rounded-md bg-base-200 text-sm"
+                  />
+                </div>
+
+                {/* Friends list for selection - Now using real data */}
+                <div className="max-h-60 overflow-y-auto">
+                  {isFriendsLoading ? (
+                    <div className="text-center py-4">
+                      <div className="loading loading-spinner loading-sm text-primary"></div>
+                      <p className="text-sm mt-2">Loading friends...</p>
+                    </div>
+                  ) : friends.length === 0 ? (
+                    <p className="text-sm text-base-content/70 text-center py-2">
+                      No friends found
+                    </p>
+                  ) : (
+                    <div className="space-y-2">
+                      {friends.map((friend) => (
+                        <div
+                          key={friend.friendId}
+                          className={`flex items-center justify-between p-2 rounded-md hover:bg-base-200 cursor-pointer ${
+                            selectedFriends.includes(friend.friendId)
+                              ? "bg-primary/10"
+                              : ""
+                          }`}
+                          onClick={() =>
+                            toggleFriendSelection(friend.friendId)
+                          }
+                        >
+                          <div className="flex items-center gap-2">
+                            <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
+                              {friend.username
+                                ? friend.username.charAt(0).toUpperCase()
+                                : friend.displayName
+                                ? friend.displayName.charAt(0).toUpperCase()
+                                : "?"}
+                            </div>
+                            <div>
+                              <div className="text-sm font-medium">
+                                {friend.username ||
+                                  friend.displayName ||
+                                  `Friend #${friend.friendId}`}
+                              </div>
+                              <div className="text-xs text-base-content/70">
+                                {friend.status || "Status unknown"}
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Checkmark for selected friends */}
+                          {selectedFriends.includes(friend.friendId) && (
+                            <Check className="w-5 h-5 text-primary" />
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Action buttons */}
+                <div className="mt-3 flex justify-between">
+                  <button
+                    className="btn btn-sm btn-ghost"
+                    onClick={() => setShowInviteMenu(false)}
+                    disabled={isInviteLoading}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    className="btn btn-sm btn-primary"
+                    onClick={sendInvites}
+                    disabled={selectedFriends.length === 0 || isInviteLoading}
+                  >
+                    {isInviteLoading ? (
+                      <>
+                        <span className="loading loading-spinner loading-xs"></span>
+                        Inviting...
+                      </>
+                    ) : (
+                      `Invite (${selectedFriends.length})`
+                    )}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
-    </div>
+    </>
   );
 };
 

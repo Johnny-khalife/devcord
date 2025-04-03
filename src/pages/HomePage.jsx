@@ -9,19 +9,37 @@ import { useChatStore } from "../store/useChatStore";
 import NoChatSelected from "../components/NoChatSelected";
 import { useChannelStore } from "../store/useChannelStore";
 
-
 const HomePage = () => {
+  // State for mobile view
+  const [isMobile, setIsMobile] = useState(false);
+  
+  // Check if mobile view
+  useEffect(() => {
+    const checkIfMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    
+    // Initial check
+    checkIfMobile();
+    
+    // Add event listener
+    window.addEventListener('resize', checkIfMobile);
+    
+    // Cleanup
+    return () => window.removeEventListener('resize', checkIfMobile);
+  }, []);
+
   const [showOptions, setShowOptions] = useState(false);
-    const [showWorkspaceMenu, setShowWorkspaceMenu] = useState(false);
-    const [workspaces, setWorkspaces] = useState([]);
-    const [invitedWorkspaces, setInvitedWorkspaces] = useState([]);
-    const [activeWorkspace, setActiveWorkspace] = useState(null);
-    const [activeChannel, setActiveChannel] = useState("general");
-    const [activeNavItem, setActiveNavItem] = useState("users");
-    const [showWorkspacesNav, setShowWorkspacesNav] = useState(false);
-    const [isLoading, setIsLoading] = useState(false);
-    // Settings modal state
-    const [showSettingsForm, setShowSettingsForm] = useState(false);
+  const [showWorkspaceMenu, setShowWorkspaceMenu] = useState(false);
+  const [workspaces, setWorkspaces] = useState([]);
+  const [invitedWorkspaces, setInvitedWorkspaces] = useState([]);
+  const [activeWorkspace, setActiveWorkspace] = useState(null);
+  const [activeChannel, setActiveChannel] = useState("general");
+  const [activeNavItem, setActiveNavItem] = useState("users");
+  const [showWorkspacesNav, setShowWorkspacesNav] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  // Settings modal state
+  const [showSettingsForm, setShowSettingsForm] = useState(false);
   const [selectedWorkspaceForSettings, setSelectedWorkspaceForSettings] = useState(null);
 
   // Get methods from store
@@ -236,7 +254,7 @@ const HomePage = () => {
   };
 
   return (
-    <div className="flex h-screen pt-16">
+    <div className={`flex flex-col md:flex-row h-screen pt-16 ${isMobile ? 'overflow-hidden' : ''}`}>
       {/* Left sidebar with nav icons */}
       <Sidebar 
         activeNavItem={activeNavItem}
@@ -244,9 +262,9 @@ const HomePage = () => {
       />
       
       {/* Mid section - varies based on activeNavItem */}
-      <div className="flex flex-1">
+      <div className="flex flex-1 relative">
         {/* Secondary sidebar - either workspace or user friends */}
-        <div className="w-72 border-r border-base-300">
+        <div className={`${isMobile ? 'absolute inset-0 z-20' : 'relative border-r border-base-300'}`}>
           {isLoading ? (
             <div className="flex-1 flex items-center justify-center h-full">
               <div className="loading loading-spinner loading-lg text-primary"></div>
@@ -255,18 +273,18 @@ const HomePage = () => {
             <>
               {activeNavItem === "workSpace" && (
                 <WorkSpace
-      activeNavItem={activeNavItem}
-      activeWorkspace={activeWorkspace}
-      setActiveWorkspace={setActiveWorkspace}
-      workspaces={workspaces}
-      setWorkspaces={setWorkspaces}
-      setShowWorkspaceMenu={setShowWorkspaceMenu}
-      showWorkspaceMenu={showWorkspaceMenu}
-      setActiveChannel={setActiveChannel}
-      activeChannel={activeChannel}
-      handleCreateWorkspace={handleCreateWorkspace}
-      handleOpenSettingsForm={handleOpenSettingsForm}
-      />
+                  activeNavItem={activeNavItem}
+                  activeWorkspace={activeWorkspace}
+                  setActiveWorkspace={setActiveWorkspace}
+                  workspaces={workspaces}
+                  setWorkspaces={setWorkspaces}
+                  setShowWorkspaceMenu={setShowWorkspaceMenu}
+                  showWorkspaceMenu={showWorkspaceMenu}
+                  setActiveChannel={setActiveChannel}
+                  activeChannel={activeChannel}
+                  handleCreateWorkspace={handleCreateWorkspace}
+                  handleOpenSettingsForm={handleOpenSettingsForm}
+                />
               )}
               
               {activeNavItem === "users" && (
@@ -274,10 +292,10 @@ const HomePage = () => {
               )}
             </>
           )}
-      </div>
+        </div>
         
         {/* Main content area - ChatBox */}
-        <div className="flex-1">
+        <div className={`flex-1 ${isMobile ? 'min-h-[calc(100vh-4rem)]' : ''}`}>
         {
           // Show NoChatSelected when:
           // 1. In users view with no selected friend
