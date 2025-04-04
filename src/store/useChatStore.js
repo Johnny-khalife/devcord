@@ -3,15 +3,17 @@ import toast from "react-hot-toast";
 import { axiosInstance } from "../lib/axios";
 
 export const useChatStore = create((set, get) => ({
-    messages: [],
-    users: [],
-    selectedFriend: null,
-    isUsersLoading: false,
-    isMessagesLoading: false,
-
-    getMessages: async (channelId) => {
+  messages: [],
+  users: [],
+  selectedFriend: null,
+  isUsersLoading: false,
+  isMessagesLoading: false,
+  
+  getMessages: async (channelId) => {
         set({ isMessagesLoading: true });
+        const {  messages } = get();
         try {
+          console.log("message data is :",messages)
           const res = await axiosInstance.get(`/messages/${channelId}`);
           set({ messages: res.data });
         } catch (error) {
@@ -44,11 +46,14 @@ export const useChatStore = create((set, get) => ({
       //   }
       // },
 
-      sendMessage: async (messageData) => {
-        const { selectedFriend, messages } = get();
+      sendMessage: async (messageData,channelId) => {
+        const {  messages } = get();
+  
+        console.log(" id of crrent message is :",channelId)
         try {
-          const res = await axiosInstance.post(`/messages/send/${selectedFriend._id}`, messageData);
-          set({ messages: [...messages, res.data] });
+          const response = await axiosInstance.post(`/messages/${channelId}`, messageData);
+          set({ messages: [...messages, response.data] });
+
         } catch (error) {
           toast.error(error.response.data.message);
         }

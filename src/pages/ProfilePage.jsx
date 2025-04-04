@@ -109,7 +109,7 @@ const ProfilePage = () => {
   }, [isEditingSkills, skills]);
 
   return (
-    <div className="min-h-screen pt-20 bg-gray-900 text-gray-100">
+    <div className="min-h-screen pt-20 bg-base-300 text-gray-100">
       <div className="max-w-2xl mx-auto p-4 py-8">
         {/* Profile Header */}
         <div className="mb-8 text-center">
@@ -118,7 +118,7 @@ const ProfilePage = () => {
         </div>
 
         {/* Main Profile Card */}
-        <div className="bg-gray-800 rounded-xl p-6 space-y-8 shadow-2xl border border-gray-700">
+        <div className="bg-base-100 rounded-xl p-6 space-y-8 shadow-2xl border border-gray-700">
           {/* Avatar Section */}
           <div className="flex flex-col items-center gap-4">
             <div className="relative group">

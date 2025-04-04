@@ -33,9 +33,8 @@ const ChatBox = ({
 
   const { messages, getMessages, isMessagesLoading, selectedFriend } =
     useChatStore();
-    
-  useEffect(() => {
-    if (selectedWorkspace && selectedWorkspace._id) {
+    useEffect(() => {
+      if (selectedWorkspace && selectedWorkspace._id) {
       getMessages(selectedWorkspace._id);
     }
   }, [getMessages, selectedWorkspace]);

@@ -2,12 +2,14 @@ import { useRef, useState } from "react";
 import { useChatStore } from "../store/useChatStore";
 import { Image, Send, X } from "lucide-react";
 import toast from "react-hot-toast";
+import { useWorkspaceStore } from "../store/useWorkspaceStore";
 
 const MessageInput = () => {
   const [text, setText] = useState("");
   const [imagePreview, setImagePreview] = useState(null);
   const fileInputRef = useRef(null);
   const { sendMessage } = useChatStore();
+  const { selectedWorkspace } = useWorkspaceStore();
 
   const handleImageChange = (e) => {
     const file = e.target.files[0];
@@ -34,16 +36,17 @@ const MessageInput = () => {
 
     try {
       await sendMessage({
-        text: text.trim(),
+        message: text.trim(),
         image: imagePreview,
-      });
+      
+      }, selectedWorkspace._id);
 
       // Clear form
       setText("");
       setImagePreview(null);
       if (fileInputRef.current) fileInputRef.current.value = "";
     } catch (error) {
-      console.error("Failed to send message:", error);
+      console.error("Failed to send messagesss:", error);
     }
   };
 
