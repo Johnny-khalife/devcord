@@ -50,7 +50,27 @@ export const useAuthStore = create(
           return null;
         }
       },
+
    
+      getUserById: async (userId) => {
+        set({ isLoading: true });
+        try {
+          const response = await axiosInstance.get(`/users/${userId}`);
+          if (response.data.success) {
+            return response.data.user;
+          } else {
+            throw new Error(response.data.message || "Failed to fetch user");
+          }
+        } catch (error) {
+          const errorMsg = error.response?.data?.message || "Failed to fetch user";
+          toast.error(errorMsg);
+          console.error("Error fetching user:", error);
+          return null;
+        } finally {
+          set({ isLoading: false });
+        }
+      },
+
       login: async (data) => {
         set({ isLoggingIn: true });
         try {

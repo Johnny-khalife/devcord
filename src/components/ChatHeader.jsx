@@ -1,12 +1,29 @@
 import React, { useState, useEffect } from "react";
 import { useChatStore } from "../store/useChatStore";
-import { X, Lock, Hash, Menu } from "lucide-react";
+import { X, Lock, Hash, Menu, User } from "lucide-react";
 import { useWorkspaceStore } from "../store/useWorkspaceStore";
+import { useAuthStore } from "../store/useAuthStore";
+import { useNavigate } from "react-router-dom";
 
 const ChatHeader = ({ activeNavItem, activeChannel, selectedWorkspace }) => {
   const { selectedFriend, setSelectedFriend } = useChatStore();
   const { setSelectedWorkspace } = useWorkspaceStore();
+  const { getUserById } = useAuthStore();
+  const [friendProfile, setFriendProfile] = useState(null);
   const [isMobile, setIsMobile] = useState(false);
+  const navigate = useNavigate();
+  
+  // Fetch friend profile when selectedFriend changes
+  useEffect(() => {
+    const fetchFriendProfile = async () => {
+      if (selectedFriend?.friendId) {
+        const profile = await getUserById(selectedFriend.friendId);
+        setFriendProfile(profile);
+      }
+    };
+    
+    fetchFriendProfile();
+  }, [selectedFriend, getUserById]);
   
   // Check if we're on a mobile device
   useEffect(() => {
@@ -28,8 +45,15 @@ const ChatHeader = ({ activeNavItem, activeChannel, selectedWorkspace }) => {
     console.log("Close button clicked!");
     if (activeNavItem === "users" && selectedFriend) {
       setSelectedFriend(null);
+      setFriendProfile(null);
     }
     // You could add additional close functionality for workspaces here if needed
+  };
+
+  const handleViewProfile = () => {
+    if (friendProfile) {
+      navigate(`/profile/${friendProfile._id}`);
+    }
   };
   
   // Function to trigger sidebar toggles via custom events
@@ -57,18 +81,25 @@ const ChatHeader = ({ activeNavItem, activeChannel, selectedWorkspace }) => {
       
       {/* Left section with user/workspace info */}
       <div className="flex items-center gap-3 flex-1">
-        {activeNavItem === "users" && selectedFriend ? (
+        {activeNavItem === "users" && friendProfile ? (
           <>
             <div className="avatar">
               <div className="w-8 h-8 rounded-full ring ring-primary ring-offset-base-100 ring-offset-1 overflow-hidden">
                 <img
-                  src={selectedFriend.avatar}
-                  alt={`${selectedFriend.username}'s avatar`}
+                  src={friendProfile.avatar || "/avatar.png"}
+                  alt={`${friendProfile.username}'s avatar`}
                   className="w-full h-full object-cover"
                 />
               </div>
             </div>
-            <h2 className={`font-semibold ${isMobile ? 'text-sm' : 'text-base'} truncate`}>{selectedFriend.username}</h2>
+            <div>
+              <h2 className={`font-semibold ${isMobile ? 'text-sm' : 'text-base'} truncate`}>
+                {friendProfile.username}
+              </h2>
+              <p className="text-xs text-base-content/70">
+                {friendProfile.status || "Online"}
+              </p>
+            </div>
           </>
         ) : activeNavItem === "workSpace" && selectedWorkspace ? (
           <>
@@ -90,15 +121,22 @@ const ChatHeader = ({ activeNavItem, activeChannel, selectedWorkspace }) => {
         )}
       </div>
 
-      {/* Right section with X button */}
+      {/* Right section with buttons */}
       {activeNavItem === "users" && selectedFriend && (
-        <div className="flex-shrink-0">
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleViewProfile}
+            className="p-2 bg-base-200 hover:bg-base-300 rounded-full flex items-center justify-center"
+            title="View Profile"
+          >
+            <User size={18} />
+          </button>
           <button
             onClick={handleClose}
             className="p-2 bg-blue-500 hover:bg-blue-600 rounded-full flex items-center justify-center shadow-md"
             style={{ 
-              width: '40px', 
-              height: '40px',
+              width: '30px', 
+              height: '30px',
               touchAction: 'manipulation',
               position: 'relative',
               zIndex: 9999

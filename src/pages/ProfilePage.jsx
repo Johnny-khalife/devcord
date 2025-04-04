@@ -12,6 +12,10 @@ import {
   X,
   Check,
   Eye,
+  Calendar,
+  Shield,
+  Key,
+  Globe,
 } from "lucide-react";
 
 const ProfilePage = () => {
@@ -32,15 +36,14 @@ const ProfilePage = () => {
   const [linkedin, setlinkedin] = useState(
     authUser?.socialLinks?.linkedin || ""
   );
-  console.log(selectedImg);
+  const [skillsInput, setSkillsInput] = useState("");
+
   const handleImageUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
 
     const reader = new FileReader();
-
     reader.readAsDataURL(file);
-
     reader.onload = async () => {
       const base64Image = reader.result;
       setSelectedImg(base64Image);
@@ -53,7 +56,6 @@ const ProfilePage = () => {
       setIsEditingName(false);
       return;
     }
-
     await updateProfile({ username: username.trim() });
     setIsEditingName(false);
   };
@@ -63,7 +65,6 @@ const ProfilePage = () => {
       setIsEditingGithub(false);
       return;
     }
-
     await updateProfile({ github: github.trim() });
     setIsEditingGithub(false);
   };
@@ -73,7 +74,6 @@ const ProfilePage = () => {
       setIsEditingLinkedin(false);
       return;
     }
-
     await updateProfile({ linkedin: linkedin.trim() });
     setIsEditingLinkedin(false);
   };
@@ -83,7 +83,6 @@ const ProfilePage = () => {
       setIsEditingBio(false);
       return;
     }
-
     await updateProfile({ bio: bio.trim() });
     setIsEditingBio(false);
   };
@@ -91,8 +90,6 @@ const ProfilePage = () => {
   const handleSkillsUpdate = async (processedSkills = skills) => {
     const currentSkills = processedSkills;
     const userSkills = Array.isArray(authUser?.skills) ? authUser?.skills : [];
-
-    // Simple check for array equality
     const areEqual =
       currentSkills.length === userSkills.length &&
       currentSkills.every((skill, index) => skill === userSkills[index]);
@@ -101,14 +98,10 @@ const ProfilePage = () => {
       setIsEditingSkills(false);
       return;
     }
-
     await updateProfile({ skills: currentSkills });
     setIsEditingSkills(false);
   };
 
-  const [skillsInput, setSkillsInput] = useState("");
-
-  // When entering edit mode, create a comma-separated string
   useEffect(() => {
     if (isEditingSkills) {
       setSkillsInput(skills.join(", "));
@@ -116,34 +109,35 @@ const ProfilePage = () => {
   }, [isEditingSkills, skills]);
 
   return (
-    <div className="h-screen pt-20">
+    <div className="min-h-screen pt-20 bg-gray-900 text-gray-100">
       <div className="max-w-2xl mx-auto p-4 py-8">
-        <div className="bg-base-300 rounded-xl p-6 space-y-8">
-          <div className="text-center">
-            <h1 className="text-2xl font-semibold">Profile</h1>
-            <p className="mt-2">Your profile information</p>
-          </div>
-          {/* avatar upload section */}
+        {/* Profile Header */}
+        <div className="mb-8 text-center">
+          <h1 className="text-3xl font-bold text-white">Profile Settings</h1>
+          <p className="mt-2 text-gray-400">Manage your personal information</p>
+        </div>
+
+        {/* Main Profile Card */}
+        <div className="bg-gray-800 rounded-xl p-6 space-y-8 shadow-2xl border border-gray-700">
+          {/* Avatar Section */}
           <div className="flex flex-col items-center gap-4">
-            <div className="relative">
+            <div className="relative group">
               <img
                 src={selectedImg || authUser.avatar || "/avatar.png"}
                 alt="Profile"
-                className="size-32 rounded-full object-cover border-4"
+                className="size-32 rounded-full object-cover border-4 border-gray-700 group-hover:border-indigo-500 transition-colors"
               />
               <label
                 htmlFor="avatar-upload"
                 className={`
                   absolute bottom-0 right-0 
-                  bg-base-content hover:scale-105
+                  bg-indigo-600 hover:bg-indigo-700
                   p-2 rounded-full cursor-pointer 
-                  transition-all duration-200
-                  ${
-                    isUpdatingProfile ? "animate-pulse pointer-events-none" : ""
-                  }
+                  transition-all duration-200 shadow-lg
+                  ${isUpdatingProfile ? "animate-pulse pointer-events-none" : ""}
                 `}
               >
-                <Camera className="w-5 h-5 text-base-200" />
+                <Camera className="w-5 h-5 text-white" />
                 <input
                   type="file"
                   id="avatar-upload"
@@ -154,88 +148,90 @@ const ProfilePage = () => {
                 />
               </label>
             </div>
-            <p className="text-sm text-zinc-400">
+            <p className="text-sm text-gray-400">
               {isUpdatingProfile
                 ? "Uploading..."
                 : "Click the camera icon to update your photo"}
             </p>
           </div>
 
+          {/* Profile Fields */}
           <div className="space-y-6">
-            <div className="space-y-1.5">
-              <div className="text-sm text-zinc-400 flex items-center gap-2">
+            {/* Username Field */}
+            <div className="space-y-2">
+              <label className="text-sm text-gray-400 flex items-center gap-2">
                 <User className="w-4 h-4" />
                 Username
-              </div>
+              </label>
               {isEditingName ? (
                 <div className="flex gap-2">
                   <input
                     type="text"
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
-                    className="px-4 py-2.5 bg-base-200 rounded-lg border flex-grow"
+                    className="px-4 py-2.5 bg-gray-700 rounded-lg border border-gray-600 flex-grow text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   />
                   <button
                     onClick={handleNameUpdate}
-                    className="px-4 py-2  text-white"
+                    className="px-4 py-2 bg-green-600 hover:bg-green-700 rounded-lg text-white transition-colors"
                     disabled={isUpdatingProfile}
                   >
                     <Check />
                   </button>
                   <button
-                    onClick={() => {
-                      setIsEditingName(false);
-                    }}
-                    className="px-4 py-2 rounded-lg text-white"
+                    onClick={() => setIsEditingName(false)}
+                    className="px-4 py-2 bg-red-600 hover:bg-red-700 rounded-lg text-white transition-colors"
                   >
                     <X />
                   </button>
                 </div>
               ) : (
                 <div className="flex items-center justify-between">
-                  <p className="px-4 py-2.5 bg-base-200 rounded-lg border flex-grow">
+                  <p className="px-4 py-2.5 bg-gray-700 rounded-lg border border-gray-600 flex-grow">
                     {authUser?.username}
                   </p>
                   <button
                     onClick={() => setIsEditingName(true)}
-                    className="ml-2 p-2 bg-base-200 rounded-lg hover:bg-base-100"
+                    className="ml-2 p-2 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors"
                   >
-                    <Edit2 className="w-4 h-4" />
+                    <Edit2 className="w-4 h-4 text-gray-300" />
                   </button>
                 </div>
               )}
             </div>
 
-            <div className="space-y-1.5">
-              <div className="text-sm text-zinc-400 flex items-center gap-2">
+            {/* Email Field */}
+            <div className="space-y-2">
+              <label className="text-sm text-gray-400 flex items-center gap-2">
                 <Mail className="w-4 h-4" />
                 Email Address
-              </div>
-              <div className=" flex items-center justify-between">
-                <p className="px-4 py-2.5 bg-base-200 rounded-lg border flex-grow opacity-60">
+              </label>
+              <div className="flex items-center justify-between">
+                <p className="px-4 py-2.5 bg-gray-700 rounded-lg border border-gray-600 flex-grow opacity-80">
                   {authUser?.email}
                 </p>
                 <Eye className="ml-4 opacity-60" />
               </div>
             </div>
 
-            <div className="space-y-1.5">
-              <div className="text-sm text-zinc-400 flex items-center gap-2">
+            {/* GitHub Field */}
+            <div className="space-y-2">
+              <label className="text-sm text-gray-400 flex items-center gap-2">
                 <Github className="w-4 h-4" />
                 GitHub URL
-              </div>
+              </label>
               {isEditingGithub ? (
                 <div className="flex gap-2">
                   <input
                     type="text"
-                    value={github} // ✅ Use the useState variable
+                    value={github}
                     onChange={(e) => setgithub(e.target.value)}
-                    className="px-4 py-2.5 bg-base-200 rounded-lg border flex-grow"
+                    className="px-4 py-2.5 bg-gray-700 rounded-lg border border-gray-600 flex-grow text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
                     placeholder="https://github.com/yourusername"
                   />
                   <button
                     onClick={handleGithubUpdate}
-                    className="px-4 py-2 rounded-lg text-white"
+                    className="px-4 py-2 bg-green-600 hover:bg-green-700 rounded-lg text-white transition-colors"
                     disabled={isUpdatingProfile}
                   >
                     <Check />
@@ -245,43 +241,44 @@ const ProfilePage = () => {
                       setIsEditingGithub(false);
                       setgithub(github || "");
                     }}
-                    className="px-4 py-2 rounded-lg text-white"
+                    className="px-4 py-2 bg-red-600 hover:bg-red-700 rounded-lg text-white transition-colors"
                   >
                     <X />
                   </button>
                 </div>
               ) : (
                 <div className="flex items-center justify-between">
-                  <p className="px-4 py-2.5 bg-base-200 rounded-lg border flex-grow">
+                  <p className="px-4 py-2.5 bg-gray-700 rounded-lg border border-gray-600 flex-grow">
                     {github || "No GitHub URL added"}
                   </p>
                   <button
                     onClick={() => setIsEditingGithub(true)}
-                    className="ml-2 p-2 bg-base-200 rounded-lg hover:bg-base-100"
+                    className="ml-2 p-2 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors"
                   >
-                    <Edit2 className="w-4 h-4" />
+                    <Edit2 className="w-4 h-4 text-gray-300" />
                   </button>
                 </div>
               )}
             </div>
 
-            <div className="space-y-1.5">
-              <div className="text-sm text-zinc-400 flex items-center gap-2">
+            {/* LinkedIn Field */}
+            <div className="space-y-2">
+              <label className="text-sm text-gray-400 flex items-center gap-2">
                 <Linkedin className="w-4 h-4" />
                 LinkedIn URL
-              </div>
+              </label>
               {isEditingLinkedin ? (
                 <div className="flex gap-2">
                   <input
                     type="text"
                     value={linkedin}
                     onChange={(e) => setlinkedin(e.target.value)}
-                    className="px-4 py-2.5 bg-base-200 rounded-lg border flex-grow"
+                    className="px-4 py-2.5 bg-gray-700 rounded-lg border border-gray-600 flex-grow text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
                     placeholder="https://linkedin.com/in/yourprofile"
                   />
                   <button
                     onClick={handleLinkedinUpdate}
-                    className="px-4 py-2 rounded-lg text-white"
+                    className="px-4 py-2 bg-green-600 hover:bg-green-700 rounded-lg text-white transition-colors"
                     disabled={isUpdatingProfile}
                   >
                     <Check />
@@ -291,43 +288,44 @@ const ProfilePage = () => {
                       setIsEditingLinkedin(false);
                       setlinkedin(authUser?.socialLinks?.linkedin || "");
                     }}
-                    className="px-4 py-2 rounded-lg text-white"
+                    className="px-4 py-2 bg-red-600 hover:bg-red-700 rounded-lg text-white transition-colors"
                   >
                     <X />
                   </button>
                 </div>
               ) : (
                 <div className="flex items-center justify-between">
-                  <p className="px-4 py-2.5 bg-base-200 rounded-lg border flex-grow">
+                  <p className="px-4 py-2.5 bg-gray-700 rounded-lg border border-gray-600 flex-grow">
                     {authUser?.socialLinks?.linkedin || "No LinkedIn URL added"}
                   </p>
                   <button
                     onClick={() => setIsEditingLinkedin(true)}
-                    className="ml-2 p-2 bg-base-200 rounded-lg hover:bg-base-100"
+                    className="ml-2 p-2 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors"
                   >
-                    <Edit2 className="w-4 h-4" />
+                    <Edit2 className="w-4 h-4 text-gray-300" />
                   </button>
                 </div>
               )}
             </div>
 
-            <div className="space-y-1.5">
-              <div className="text-sm text-zinc-400 flex items-center gap-2">
+            {/* Bio Field */}
+            <div className="space-y-2">
+              <label className="text-sm text-gray-400 flex items-center gap-2">
                 <FileText className="w-4 h-4" />
                 Bio
-              </div>
+              </label>
               {isEditingBio ? (
                 <div className="flex gap-2">
                   <textarea
                     value={bio}
                     onChange={(e) => setBio(e.target.value)}
-                    className="px-4 py-2.5 bg-base-200 rounded-lg border flex-grow min-h-24"
+                    className="px-4 py-2.5 bg-gray-700 rounded-lg border border-gray-600 flex-grow min-h-24 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
                     placeholder="Tell us about yourself..."
                   />
                   <div className="flex flex-col gap-2">
                     <button
                       onClick={handleBioUpdate}
-                      className="px-4 py-2 rounded-lg text-white"
+                      className="px-4 py-2 bg-green-600 hover:bg-green-700 rounded-lg text-white transition-colors"
                       disabled={isUpdatingProfile}
                     >
                       <Check />
@@ -337,7 +335,7 @@ const ProfilePage = () => {
                         setIsEditingBio(false);
                         setBio(authUser?.bio || "");
                       }}
-                      className="px-4 py-2 rounded-lg text-white"
+                      className="px-4 py-2 bg-red-600 hover:bg-red-700 rounded-lg text-white transition-colors"
                     >
                       <X />
                     </button>
@@ -345,45 +343,44 @@ const ProfilePage = () => {
                 </div>
               ) : (
                 <div className="flex items-center justify-between">
-                  <p className="px-4 py-2.5 bg-base-200 rounded-lg border flex-grow min-h-24">
+                  <p className="px-4 py-2.5 bg-gray-700 rounded-lg border border-gray-600 flex-grow min-h-24">
                     {authUser?.bio || "No bio added"}
                   </p>
                   <button
                     onClick={() => setIsEditingBio(true)}
-                    className="ml-2 p-2 bg-base-200 rounded-lg hover:bg-base-100"
+                    className="ml-2 p-2 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors"
                   >
-                    <Edit2 className="w-4 h-4" />
+                    <Edit2 className="w-4 h-4 text-gray-300" />
                   </button>
                 </div>
               )}
             </div>
 
-            <div className="space-y-1.5">
-              <div className="text-sm text-zinc-400 flex items-center gap-2">
+            {/* Skills Field */}
+            <div className="space-y-2">
+              <label className="text-sm text-gray-400 flex items-center gap-2">
                 <Code className="w-4 h-4" />
                 Skills
-              </div>
+              </label>
               {isEditingSkills ? (
                 <div className="flex gap-2">
                   <textarea
                     value={skillsInput}
                     onChange={(e) => setSkillsInput(e.target.value)}
-                    className="px-4 py-2.5 bg-base-200 rounded-lg border flex-grow"
+                    className="px-4 py-2.5 bg-gray-700 rounded-lg border border-gray-600 flex-grow text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
                     placeholder="JavaScript, React, Node.js (separate with commas)"
                   />
                   <div className="flex flex-col gap-2">
                     <button
                       onClick={() => {
-                        // Only process the input when saving
                         const processedSkills = skillsInput
                           .split(",")
                           .map((skill) => skill.trim())
                           .filter((skill) => skill.length > 0);
-
                         setSkills(processedSkills);
                         handleSkillsUpdate(processedSkills);
                       }}
-                      className="px-4 py-2 rounded-lg text-white"
+                      className="px-4 py-2 bg-green-600 hover:bg-green-700 rounded-lg text-white transition-colors"
                       disabled={isUpdatingProfile}
                     >
                       <Check />
@@ -392,7 +389,7 @@ const ProfilePage = () => {
                       onClick={() => {
                         setIsEditingSkills(false);
                       }}
-                      className="px-4 py-2 rounded-lg text-white"
+                      className="px-4 py-2 bg-red-600 hover:bg-red-700 rounded-lg text-white transition-colors"
                     >
                       <X />
                     </button>
@@ -400,13 +397,13 @@ const ProfilePage = () => {
                 </div>
               ) : (
                 <div className="flex items-center justify-between">
-                  <div className="px-4 py-2.5 bg-base-200 rounded-lg  flex-grow">
+                  <div className="px-4 py-2.5 bg-gray-700 rounded-lg border border-gray-600 flex-grow">
                     {skills && skills.length > 0 ? (
                       <div className="flex flex-wrap gap-2">
                         {skills.map((skill, index) => (
                           <span
                             key={index}
-                            className="bg-base-100 px-3 py-1 rounded-full text-sm"
+                            className="bg-indigo-900/50 px-3 py-1 rounded-full text-sm text-indigo-200"
                           >
                             {skill}
                           </span>
@@ -418,25 +415,39 @@ const ProfilePage = () => {
                   </div>
                   <button
                     onClick={() => setIsEditingSkills(true)}
-                    className="ml-2 p-2 bg-base-200 rounded-lg hover:bg-base-100"
+                    className="ml-2 p-2 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors"
                   >
-                    <Edit2 className="w-4 h-4" />
+                    <Edit2 className="w-4 h-4 text-gray-300" />
                   </button>
                 </div>
               )}
             </div>
           </div>
 
-          <div className="mt-6 bg-base-300 rounded-xl p-6">
-            <h2 className="text-lg font-medium mb-4">Account Information</h2>
-            <div className="space-y-3 text-sm">
-              <div className="flex items-center justify-between py-2 border-b border-zinc-700">
-                <span>Member Since</span>
-                <span>{authUser.createdAt?.split("T")[0]}</span>
+          {/* Account Information */}
+          <div className="mt-8 bg-gray-700/50 rounded-xl p-6 border border-gray-700">
+            <h2 className="text-lg font-medium mb-4 text-white">Account Information</h2>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between py-2 border-b border-gray-600">
+                <div className="flex items-center gap-2 text-gray-300">
+                  <Calendar className="w-4 h-4" />
+                  <span>Member Since</span>
+                </div>
+                <span className="text-gray-100">{authUser.createdAt?.split("T")[0]}</span>
+              </div>
+              <div className="flex items-center justify-between py-2 border-b border-gray-600">
+                <div className="flex items-center gap-2 text-gray-300">
+                  <Shield className="w-4 h-4" />
+                  <span>Account Status</span>
+                </div>
+                <span className="text-green-400">Active</span>
               </div>
               <div className="flex items-center justify-between py-2">
-                <span>Account Status</span>
-                <span className="text-green-500">Active</span>
+                <div className="flex items-center gap-2 text-gray-300">
+                  <Key className="w-4 h-4" />
+                  <span>Last Updated</span>
+                </div>
+                <span className="text-gray-100">{new Date().toLocaleDateString()}</span>
               </div>
             </div>
           </div>

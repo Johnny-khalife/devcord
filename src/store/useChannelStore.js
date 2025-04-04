@@ -19,7 +19,7 @@ export const useChannelStore = create(
             return response.data.channel;
           }
         } catch (error) {
-          const errorMessage = error.response?.data?.message || "Failed to create channel";
+          const errorMessage = error.response?.data?.message || "Faileddddd to create channel";
           toast.error(errorMessage);
           throw error;
         }
@@ -34,7 +34,7 @@ export const useChannelStore = create(
             return response.data.channels;
           }
         } catch (error) {
-          const errorMessage = error.response?.data?.message || "Failed to fetch channels";
+          const errorMessage = error.response?.data?.message || "Faileddddd to fetch channels";
           toast.error(errorMessage);
           throw error;
         }

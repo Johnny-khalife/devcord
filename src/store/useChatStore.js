@@ -9,10 +9,10 @@ export const useChatStore = create((set, get) => ({
     isUsersLoading: false,
     isMessagesLoading: false,
 
-    getMessages: async (userId) => {
+    getMessages: async (channelId) => {
         set({ isMessagesLoading: true });
         try {
-          const res = await axiosInstance.get(`/messages/${userId}`);
+          const res = await axiosInstance.get(`/messages/${channelId}`);
           set({ messages: res.data });
         } catch (error) {
           toast.error(error.response.data.message);
@@ -20,6 +20,30 @@ export const useChatStore = create((set, get) => ({
           set({ isMessagesLoading: false });
         }
       },
+
+      // getMessages: async (friendId, channelId) => {
+      //   set({ isMessagesLoading: true });
+      //   try {
+      //     let endpoint;
+          
+      //     // Determine which type of messages to fetch
+      //     if (friendId) {
+      //       endpoint = `/messages/user/${friendId}`;
+      //     } else if (channelId) {
+      //       endpoint = `/messages/channel/${channelId}`;
+      //     } else {
+      //       throw new Error("Either friendId or channelId must be provided");
+      //     }
+          
+      //     const res = await axiosInstance.get(endpoint);
+      //     set({ messages: res.data });
+      //   } catch (error) {
+      //     toast.error(error?.response?.data?.message || "Failed to load messages");
+      //   } finally {
+      //     set({ isMessagesLoading: false });
+      //   }
+      // },
+
       sendMessage: async (messageData) => {
         const { selectedFriend, messages } = get();
         try {
