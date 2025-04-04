@@ -5,10 +5,10 @@ import toast from "react-hot-toast";
 
 export const useWorkspaceStore = create(
   persist(
-    (set) => ({
+    (set, get) => ({
       workspacesWithRoles: [],
-      selectedWorkspace: null, 
-      // Existing methods...
+      selectedWorkspace: null,
+      isLoading: false,
 
       updateWorkspace: async (workspaceId, workspaceData, setIsLoading, onSuccess, onClose) => {
         setIsLoading(true);
@@ -86,6 +86,7 @@ export const useWorkspaceStore = create(
 
       // Add function to get user workspaces from API
       fetchUserWorkspaces: async () => {
+        set({ isLoading: true });
         try {
           const response = await axiosInstance.get('/workspaces/');
           if (response.data.success) {
@@ -97,15 +98,16 @@ export const useWorkspaceStore = create(
           console.error("Error fetching owned workspaces:", error);
           toast.error("Failed to load your workspaces");
           return [];
+        } finally {
+          set({ isLoading: false });
         }
       },
 
       // Add function to get user workspaces from API
       getUserWorkspaces: async () => {
+        set({ isLoading: true });
         try {
           const response = await axiosInstance.get('/workspaces/user');
-          console.log("API response from getUserWorkspaces:", response.data);
-          
           if (response.data.success) {
             // Extract and format the workspace data
             return response.data.workspaces.map(membership => ({
@@ -120,6 +122,8 @@ export const useWorkspaceStore = create(
           console.error("Error fetching joined workspaces:", error);
           toast.error(error.response?.data?.message || "Failed to load joined workspaces");
           return [];
+        } finally {
+          set({ isLoading: false });
         }
       },
 
@@ -202,34 +206,6 @@ export const useWorkspaceStore = create(
           return [];
         }
       },
-
-      promoteToAdmin: async (workspaceId, userIds) => {
-        try {
-          const response = await axiosInstance.post(`/workspaces/${workspaceId}/admins`, {
-            userIds: Array.isArray(userIds) ? userIds : [userIds]
-          });
-          
-          if (response.data.success) {
-            // Show success message with number of users promoted
-            toast.success(response.data.message);
-            
-            // If there were any failed promotions, show warnings
-            if (response.data.results.failed.length > 0) {
-              response.data.results.failed.forEach(failure => {
-                toast.error(`Failed to promote user: ${failure.reason}`);
-              });
-            }
-            
-            return response.data.results;
-          }
-          return null;
-        } catch (error) {
-          const errorMessage = error.response?.data?.message || "Failed to promote admin(s)";
-          toast.error(errorMessage);
-          throw error;
-        }
-      },
-
       setSelectedWorkspace: (selectedWorkspace) => set({ selectedWorkspace }),      // Other existing methods...
     }),
     {

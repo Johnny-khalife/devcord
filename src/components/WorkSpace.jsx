@@ -10,8 +10,6 @@ import {
   Check,
   Lock,
   X,
-  Users,
-  Shield,
 } from "lucide-react";
 import { useFriendStore } from "../store/useFriendsStore"; // Import the friend store
 import { useWorkspaceStore } from "../store/useWorkspaceStore";
@@ -46,7 +44,7 @@ const WorkSpace = ({
   const [showChannelUserSelector, setShowChannelUserSelector] = useState(false);
 
   // Get workspace members
-  const { getWorkspaceMembers, selecteWorkspace, setSelectedWorkspace, promoteToAdmin } = useWorkspaceStore();
+  const { getWorkspaceMembers,selecteWorkspace,setSelectedWorkspace } = useWorkspaceStore();
   const [workspaceMembers, setWorkspaceMembers] = useState([]);
   const [isWorkspaceMembersLoading, setIsWorkspaceMembersLoading] =
     useState(false);
@@ -54,11 +52,6 @@ const WorkSpace = ({
   // State for responsive design
   const [isMobile, setIsMobile] = useState(false);
   const [isWorkspaceSidebarOpen, setIsWorkspaceSidebarOpen] = useState(true);
-
-  // State for members modal
-  const [showMembersModal, setShowMembersModal] = useState(false);
-  const [selectedMembers, setSelectedMembers] = useState([]);
-  const [isPromotingAdmin, setIsPromotingAdmin] = useState(false);
 
   // Check if we're on a mobile device
   useEffect(() => {
@@ -572,143 +565,6 @@ const selectedWorkspaceWhenClick = ({ id, channel }) => {
     return currentWorkspace && (currentWorkspace.role === "owner" || currentWorkspace.isOwned);
   };
 
-  // Add this function to handle admin promotion
-  const handlePromoteToAdmin = async () => {
-    if (selectedMembers.length === 0) return;
-    
-    setIsPromotingAdmin(true);
-    try {
-      await promoteToAdmin(activeWorkspace, selectedMembers);
-      // Refresh the members list after promotion
-      const updatedMembers = await getWorkspaceMembers(activeWorkspace);
-      setWorkspaceMembers(updatedMembers);
-      // Clear selection
-      setSelectedMembers([]);
-    } catch (error) {
-      console.error("Failed to promote admin:", error);
-    } finally {
-      setIsPromotingAdmin(false);
-    }
-  };
-
-  // Add this function to toggle member selection
-  const toggleMemberSelection = (memberId) => {
-    setSelectedMembers(prev => 
-      prev.includes(memberId)
-        ? prev.filter(id => id !== memberId)
-        : [...prev, memberId]
-    );
-  };
-
-  // Update the renderMembersModal function
-  const renderMembersModal = () => {
-    if (!showMembersModal) return null;
-
-    return (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div className="bg-base-100 rounded-lg p-6 w-96 max-h-[80vh] flex flex-col">
-          <div className="flex justify-between items-center mb-4">
-            <h3 className="text-lg font-semibold">Workspace Members</h3>
-            <button
-              onClick={() => {
-                setShowMembersModal(false);
-                setSelectedMembers([]);
-              }}
-              className="p-2 hover:bg-base-200 rounded-full"
-            >
-              <X size={20} />
-            </button>
-          </div>
-
-          {isWorkspaceMembersLoading ? (
-            <div className="flex justify-center items-center py-8">
-              <span className="loading loading-spinner loading-md"></span>
-            </div>
-          ) : (
-            <div className="flex flex-col h-full">
-              <div className="overflow-y-auto flex-1 mb-4">
-                {workspaceMembers.length === 0 ? (
-                  <div className="text-center py-8 text-base-content/70">
-                    No members found in this workspace
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    {workspaceMembers.map((member) => (
-                      <div
-                        key={member.id}
-                        className={`flex items-center justify-between p-3 bg-base-200 rounded-lg ${
-                          isWorkspaceOwner() && !member.isOwned && member.role !== "admin"
-                            ? "cursor-pointer hover:bg-base-300"
-                            : ""
-                        }`}
-                        onClick={() => {
-                          if (isWorkspaceOwner() && !member.isOwned && member.role !== "admin") {
-                            toggleMemberSelection(member.id);
-                          }
-                        }}
-                      >
-                        <div className="flex items-center gap-3">
-                          <div className="avatar">
-                            <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center">
-                              {member.username ? member.username.charAt(0).toUpperCase() : "?"}
-                            </div>
-                          </div>
-                          <div>
-                            <h4 className="font-medium">{member.username}</h4>
-                            <span className="text-sm text-base-content/70 capitalize flex items-center gap-1">
-                              {member.role === "admin" && <Shield className="w-3 h-3" />}
-                              {member.role || "Member"}
-                            </span>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          {member.role === "owner" ? (
-                            <span className="px-2 py-1 bg-primary/10 text-primary text-xs font-medium rounded-full">
-                              Owner
-                            </span>
-                          ) : member.role === "admin" ? (
-                            <span className="px-2 py-1 bg-warning/10 text-warning text-xs font-medium rounded-full">
-                              Admin
-                            </span>
-                          ) : isWorkspaceOwner() && selectedMembers.includes(member.id) && (
-                            <Check className="w-5 h-5 text-primary" />
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {/* Promote to Admin Button - Only visible for workspace owner when members are selected */}
-              {isWorkspaceOwner() && selectedMembers.length > 0 && (
-                <div className="border-t border-base-300 pt-4 mt-auto">
-                  <button
-                    className="btn btn-primary w-full"
-                    onClick={handlePromoteToAdmin}
-                    disabled={isPromotingAdmin}
-                  >
-                    {isPromotingAdmin ? (
-                      <>
-                        <span className="loading loading-spinner loading-sm"></span>
-                        Promoting...
-                      </>
-                    ) : (
-                      <>
-                        <Shield className="w-4 h-4" />
-                        Promote to Admin ({selectedMembers.length})
-                      </>
-                    )}
-                  </button>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-      </div>
-    );
-  };
-
   if (workspaces.length === 0) {
     return (
       <div className={`${isMobile ? 'w-full' : 'w-72'} bg-base-200 h-full border-r border-base-300 flex flex-col items-center justify-center p-4`}>
@@ -767,17 +623,6 @@ const selectedWorkspaceWhenClick = ({ id, channel }) => {
               >
                 <Plus className="w-5 h-5" />
               </button>
-
-              {/* Members button */}
-              {activeNavItem === "workSpace" && activeWorkspace && (
-                <button
-                  className="p-2 hover:bg-base-300 rounded-md"
-                  onClick={() => setShowMembersModal(true)}
-                  aria-label="View Members"
-                >
-                  <Users className="w-5 h-5" />
-                </button>
-              )}
 
               {/* Invite button */}
               {activeNavItem === "workSpace" && activeWorkspace && isWorkspaceOwner() && (
@@ -1057,9 +902,6 @@ const selectedWorkspaceWhenClick = ({ id, channel }) => {
             </div>
           )}
         </div>
-
-        {/* Add the members modal */}
-        {renderMembersModal()}
       </div>
     </>
   );
