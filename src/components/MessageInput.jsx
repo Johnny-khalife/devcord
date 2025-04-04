@@ -40,7 +40,6 @@ const MessageInput = () => {
         image: imagePreview,
       
       }, selectedWorkspace._id);
-
       // Clear form
       setText("");
       setImagePreview(null);

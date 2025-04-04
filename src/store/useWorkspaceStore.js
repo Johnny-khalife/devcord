@@ -202,8 +202,38 @@ export const useWorkspaceStore = create(
           return [];
         }
       },
+
+      promoteToAdmin: async (workspaceId, userIds) => {
+        try {
+          const response = await axiosInstance.post(`/workspaces/${workspaceId}/admins`, {
+            userIds: Array.isArray(userIds) ? userIds : [userIds]
+          });
+          
+          if (response.data.success) {
+            // Show success message with number of users promoted
+            toast.success(response.data.message);
+            
+            // If there were any failed promotions, show warnings
+            if (response.data.results.failed.length > 0) {
+              response.data.results.failed.forEach(failure => {
+                toast.error(`Failed to promote user: ${failure.reason}`);
+              });
+            }
+            
+            return response.data.results;
+          }
+          return null;
+        } catch (error) {
+          const errorMessage = error.response?.data?.message || "Failed to promote admin(s)";
+          toast.error(errorMessage);
+          throw error;
+        }
+      },
+
       setSelectedWorkspace: (selectedWorkspace) => set({ selectedWorkspace }),      // Other existing methods...
     }),
- 
+    {
+      name: "workspace-storage",
+    }
   )
 );
