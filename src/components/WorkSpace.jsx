@@ -1103,18 +1103,18 @@ const WorkSpace = ({
 
         {/* Workspace Members Modal */}
         {showMembersModal && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-base-100 rounded-lg p-6 w-96 max-h-[80vh] flex flex-col">
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="text-lg font-semibold">Workspace Members</h3>
+          <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
+            <div className="bg-[#1E1F22] rounded-lg p-5 w-[350px] max-h-[500px] flex flex-col shadow-xl">
+              <div className="flex justify-between items-center mb-4 pb-2 border-b border-gray-700">
+                <h3 className="text-lg font-semibold text-white">Workspace Members</h3>
                 <button
-                  className="btn btn-ghost btn-sm"
+                  className="text-gray-400 hover:text-white"
                   onClick={() => {
                     setShowMembersModal(false);
                     setSelectedMembers([]);
                   }}
                 >
-                  <X className="w-4 h-4" />
+                  <X className="w-5 h-5" />
                 </button>
               </div>
 
@@ -1123,9 +1123,9 @@ const WorkSpace = ({
                   <span className="loading loading-spinner loading-md"></span>
                 </div>
               ) : (
-                <div className="flex-1 overflow-y-auto">
+                <div className="flex-1 overflow-y-auto pr-1">
                   {workspaceMembers.length === 0 ? (
-                    <div className="text-center py-4 text-base-content/70">
+                    <div className="text-center py-4 text-gray-400">
                       No members found in this workspace
                     </div>
                   ) : (
@@ -1134,13 +1134,13 @@ const WorkSpace = ({
                         {workspaceMembers.map((member) => (
                           <div
                             key={member.id || member._id}
-                            className={`flex items-center justify-between p-3 rounded-lg bg-base-200 ${
+                            className={`flex items-center justify-between py-2 px-2 rounded-md ${
                               isWorkspaceOwner() && member.role !== "owner"
-                                ? "cursor-pointer hover:bg-base-300"
+                                ? "cursor-pointer hover:bg-[#2B2D31]"
                                 : ""
                             } ${
                               selectedMembers.includes(member.id)
-                                ? "ring-2 ring-primary"
+                                ? "bg-[#2B2D31]"
                                 : ""
                             }`}
                             onClick={() => {
@@ -1154,7 +1154,7 @@ const WorkSpace = ({
                             }}
                           >
                             <div className="flex items-center gap-3">
-                              <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center overflow-hidden">
+                              <div className="w-10 h-10 rounded-full bg-gray-700 flex items-center justify-center overflow-hidden">
                                 <img
                                   src={member.avatar || "/avatar.png"}
                                   alt={member.username}
@@ -1162,28 +1162,27 @@ const WorkSpace = ({
                                 />
                               </div>
                               <div>
-                                <div className="font-medium">
+                                <div className="font-medium text-white">
                                   {member.username}
                                 </div>
-                                <div className="text-sm text-base-content/70 flex items-center gap-1">
+                                <div className="text-sm text-gray-400 flex items-center gap-1">
                                   {member.role === "owner" ? (
-                                    <ShieldCheck className="w-4 h-4 text-success" />
+                                    <div className="flex items-center gap-1">
+                                      <ShieldCheck className="w-4 h-4 text-green-500" />
+                                      <span>owner</span>
+                                    </div>
                                   ) : member.role === "admin" ? (
-                                    <Shield className="w-4 h-4 text-primary" />
-                                  ) : null}
-                                  {member.role || "Member"}
+                                    <div className="flex items-center gap-1">
+                                      <Shield className="w-4 h-4 text-blue-500" />
+                                      <span>admin</span>
+                                    </div>
+                                  ) : (
+                                    <span>member</span>
+                                  )}
                                 </div>
                               </div>
                             </div>
                             <div className="flex items-center gap-2">
-                              <div
-                                className={`w-2 h-2 rounded-full ${
-                                  member.status === "online"
-                                    ? "bg-success"
-                                    : "bg-base-content/30"
-                                }`}
-                              />
-
                               {(() => {
                                 // Check if authUser is available
                                 if (!authUser) return null;
@@ -1198,7 +1197,7 @@ const WorkSpace = ({
                                 if (isAlreadyFriend(member.id)) {
                                   return (
                                     <button
-                                      className="btn btn-ghost btn-sm btn-square text-warning hover:bg-warning/20"
+                                      className="text-yellow-500 hover:bg-yellow-500/10 p-1 rounded"
                                       onClick={(e) => {
                                         e.stopPropagation();
                                         removeFriend(member.id);
@@ -1213,7 +1212,7 @@ const WorkSpace = ({
                                 // Show Add Friend button for non-friends
                                 return (
                                   <button
-                                    className="btn btn-ghost btn-sm btn-square text-primary hover:bg-primary/20"
+                                    className="text-blue-500 hover:bg-blue-500/10 p-1 rounded"
                                     onClick={(e) =>
                                       handleSendFriendRequest(member, e)
                                     }
@@ -1232,7 +1231,7 @@ const WorkSpace = ({
                                 )?.role === "owner" ||
                                   member.role === "member") && (
                                   <button
-                                    className="btn btn-ghost btn-sm btn-square text-error hover:bg-error/20"
+                                    className="text-red-500 hover:bg-red-500/10 p-1 rounded"
                                     onClick={(e) => {
                                       e.stopPropagation();
                                       handleRemoveMember(member);
@@ -1249,16 +1248,16 @@ const WorkSpace = ({
 
                       {/* Admin Promotion/Demotion Action */}
                       {isWorkspaceOwner() && selectedMembers.length > 0 && (
-                        <div className="mt-4 flex justify-end gap-2">
+                        <div className="mt-4 pt-3 border-t border-gray-700 flex justify-end gap-2">
                           <button
-                            className="btn btn-ghost btn-sm"
+                            className="px-3 py-1 bg-gray-700 text-gray-300 text-sm rounded hover:bg-gray-600"
                             onClick={() => setSelectedMembers([])}
                             disabled={isPromotingAdmin}
                           >
                             Cancel
                           </button>
                           <button
-                            className="btn btn-primary btn-sm"
+                            className="px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-500"
                             onClick={handleToggleAdminRole}
                             disabled={isPromotingAdmin}
                           >
@@ -1269,7 +1268,6 @@ const WorkSpace = ({
                               </>
                             ) : (
                               <>
-                                <Shield className="w-4 h-4" />
                                 {workspaceMembers.find(m => m.id === selectedMembers[0])?.role === "admin" 
                                   ? "Demote to Member" 
                                   : "Promote to Admin"}
@@ -1288,24 +1286,44 @@ const WorkSpace = ({
 
         {/* Remove Member Confirmation Modal */}
         {memberToRemove && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-base-100 rounded-lg p-6 w-96">
-              <h3 className="text-lg font-semibold mb-4">Remove Member</h3>
-              <p className="mb-4">
-                Are you sure you want to remove{" "}
-                <span className="font-medium">{memberToRemove.username}</span>{" "}
-                from this workspace?
+          <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
+            <div className="bg-[#1E1F22] rounded-lg p-5 w-[350px] shadow-xl">
+              <h3 className="text-lg font-semibold text-white mb-4 pb-2 border-b border-gray-700">Remove Member</h3>
+              <div className="flex items-center gap-3 p-3 bg-[#2B2D31] rounded-md mb-4">
+                <div className="w-10 h-10 rounded-full bg-gray-700 flex items-center justify-center overflow-hidden">
+                  <img
+                    src={memberToRemove.avatar || "/avatar.png"}
+                    alt={memberToRemove.username}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+                <div>
+                  <div className="font-medium text-white">{memberToRemove.username}</div>
+                  <div className="text-sm text-gray-400">
+                    {memberToRemove.role === "admin" ? (
+                      <div className="flex items-center gap-1">
+                        <Shield className="w-4 h-4 text-blue-500" />
+                        <span>admin</span>
+                      </div>
+                    ) : (
+                      <span>member</span>
+                    )}
+                  </div>
+                </div>
+              </div>
+              <p className="text-gray-300 mb-5">
+                Are you sure you want to remove this user from your workspace?
               </p>
-              <div className="flex justify-end gap-2">
+              <div className="flex justify-end gap-2 pt-3 border-t border-gray-700">
                 <button
-                  className="btn btn-ghost btn-sm"
+                  className="px-3 py-1 bg-gray-700 text-gray-300 text-sm rounded hover:bg-gray-600"
                   onClick={() => setMemberToRemove(null)}
                   disabled={isRemovingMember}
                 >
                   Cancel
                 </button>
                 <button
-                  className="btn btn-error btn-sm"
+                  className="px-3 py-1 bg-red-600 text-white text-sm rounded hover:bg-red-500"
                   onClick={confirmRemoveMember}
                   disabled={isRemovingMember}
                 >
