@@ -742,22 +742,6 @@ const WorkSpace = ({
     return friends.some((friend) => friend.friendId === memberId);
   };
 
-  const handleRemoveFriend = async (member, e) => {
-    e.stopPropagation();
-    if (!member.id) return;
-
-    setIsSendingFriendRequest(true);
-    try {
-      await removeFriend(member.id);
-      toast.success(`Removed ${member.username} from friends`);
-    } catch (error) {
-      console.error("Failed to remove friend:", error);
-      toast.error("Failed to remove friend");
-    } finally {
-      setIsSendingFriendRequest(false);
-    }
-  };
-
   if (workspaces.length === 0) {
     return (
       <div
@@ -1199,34 +1183,34 @@ const WorkSpace = ({
                                 if (!authUser) return null;
 
                                 // Compare the current user's ID with the member's ID
-                                const isSelf = member.id === authUser._id; // Adjust property name if needed
+                                const isSelf = member.id === authUser._id;
 
-                                // Don't show button for yourself
+                                // Don't show buttons for yourself
                                 if (isSelf) return null;
 
-                                // Show remove friend button if already friends
+                                // If already friends, show Remove Friend button
                                 if (isAlreadyFriend(member.id)) {
                                   return (
                                     <button
-                                      className="btn btn-ghost btn-sm btn-square text-error hover:bg-error/20"
-                                      onClick={(e) => handleRemoveFriend(member, e)}
+                                      className="btn btn-ghost btn-sm btn-square text-warning hover:bg-warning/20"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        removeFriend(member.id);
+                                      }}
                                       title="Remove Friend"
-                                      disabled={isSendingFriendRequest}
                                     >
-                                      <UserMinus className="w-4 h-4" />
+                                      <X className="w-4 h-4" />
                                     </button>
                                   );
                                 }
 
-                                // Don't show if current user is an owner (owners can't send requests)
-                                const isCurrentUserOwner = authUser.role === "owner" || authUser.isOwner;
-                                if (isCurrentUserOwner) return null;
-
-                                // Show the button for non-friends who aren't yourself
+                                // Show Add Friend button for non-friends
                                 return (
                                   <button
                                     className="btn btn-ghost btn-sm btn-square text-primary hover:bg-primary/20"
-                                    onClick={(e) => handleSendFriendRequest(member, e)}
+                                    onClick={(e) =>
+                                      handleSendFriendRequest(member, e)
+                                    }
                                     title="Send Friend Request"
                                     disabled={isSendingFriendRequest}
                                   >
