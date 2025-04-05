@@ -8,6 +8,8 @@ import { useWorkspaceStore } from "../store/useWorkspaceStore";
 import { useChatStore } from "../store/useChatStore";
 import NoChatSelected from "../components/NoChatSelected";
 import { useChannelStore } from "../store/useChannelStore";
+import { createPortal } from 'react-dom';
+import { Plus, X } from 'lucide-react';
 
 const HomePage = () => {
   // State for mobile view
@@ -41,6 +43,8 @@ const HomePage = () => {
   // Settings modal state
   const [showSettingsForm, setShowSettingsForm] = useState(false);
   const [selectedWorkspaceForSettings, setSelectedWorkspaceForSettings] = useState(null);
+  const [showCreateWorkspaceModal, setShowCreateWorkspaceModal] = useState(false);
+  const [newWorkspaceName, setNewWorkspaceName] = useState('');
 
   // Get methods from store
   const { fetchUserWorkspaces, createWorkspace, getUserWorkspaces, selectedWorkspace, setSelectedWorkspace } = useWorkspaceStore();
@@ -178,13 +182,18 @@ const HomePage = () => {
     }
   }, [activeNavItem, setSelectedFriend]);
 
-  const handleCreateWorkspace = async () => {
-    const name = prompt("Enter workspace name:");
-    if (name) {
+  const handleCreateWorkspace = () => {
+    setNewWorkspaceName('');
+    setShowCreateWorkspaceModal(true);
+  };
+
+  const handleSubmitWorkspace = async (e) => {
+    e.preventDefault();
+    if (newWorkspaceName) {
       try {
         setIsLoading(true);
         const newWorkspace = await createWorkspace({
-          workspaceName: name,
+          workspaceName: newWorkspaceName,
           description: "",
         });
 
@@ -203,6 +212,7 @@ const HomePage = () => {
           setWorkspaces([...workspaces, formattedWorkspace]);
           setActiveWorkspace(formattedWorkspace.id);
           setActiveNavItem("workSpace"); // Switch to workspace view after creation
+          setShowCreateWorkspaceModal(false);
         }
       } catch (error) {
         console.error("Failed to create workspace:", error);
@@ -317,6 +327,17 @@ const HomePage = () => {
         </div>
       </div>
       
+      {/* Add CreateWorkspaceModal */}
+      {showCreateWorkspaceModal && (
+        <CreateWorkspaceModal
+          onClose={() => setShowCreateWorkspaceModal(false)}
+          workspaceName={newWorkspaceName}
+          setWorkspaceName={setNewWorkspaceName}
+          onSubmit={handleSubmitWorkspace}
+          isLoading={isLoading}
+        />
+      )}
+      
       {/* Add the settings form modal */}
       {showSettingsForm && selectedWorkspaceForSettings && (
         <WorkspaceSettingsForm
@@ -327,6 +348,137 @@ const HomePage = () => {
         />
       )}
     </div>
+  );
+};
+
+// Create Workspace Modal Component
+const CreateWorkspaceModal = ({ onClose, workspaceName, setWorkspaceName, onSubmit, isLoading }) => {
+  const [preventDialog, setPreventDialog] = useState(false);
+  
+  useEffect(() => {
+    // Prevent background scrolling when modal is open
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = 'auto';
+    };
+  }, []);
+
+  const modalContent = (
+    <div className="fixed inset-0 flex items-center justify-center z-[9999] animate-fadeIn" onClick={onClose}>
+      <div 
+        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+        onClick={onClose}
+      ></div>
+      
+      <div 
+        className="bg-[#1E1F22]/90 backdrop-blur-md rounded-xl w-full max-w-md p-0 shadow-2xl border border-[#2F3136]/50 relative transition-all duration-300 animate-scaleIn"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header with icon and title */}
+        <div className="p-6 relative">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="h-8 w-8 bg-indigo-500 rounded-lg flex items-center justify-center">
+                <Plus className="w-4 h-4 text-white" />
+              </div>
+              <h2 className="text-xl font-bold text-white">Create Workspace</h2>
+            </div>
+            <button 
+              onClick={onClose} 
+              className="h-8 w-8 rounded-full flex items-center justify-center text-gray-400 hover:text-white hover:bg-white/10 transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+          
+          {/* Gradient border */}
+          <div className="absolute left-0 right-0 bottom-0 h-[1px] bg-gradient-to-r from-transparent via-gray-700 to-transparent"></div>
+        </div>
+        
+        <form onSubmit={onSubmit}>
+          <div className="p-6 pt-4">
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-300 mb-2">
+                Enter workspace name:
+              </label>
+              <input
+                type="text"
+                value={workspaceName}
+                onChange={(e) => setWorkspaceName(e.target.value)}
+                className="w-full px-4 py-3 bg-[#2B2D31] border border-[#40444B] rounded-lg text-gray-200 placeholder-gray-500 focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                placeholder="My Awesome Workspace"
+                required
+                autoFocus
+              />
+            </div>
+            
+            <div className="flex items-center mb-4">
+              <input
+                id="prevent-dialog"
+                type="checkbox"
+                checked={preventDialog}
+                onChange={() => setPreventDialog(!preventDialog)}
+                className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-500 rounded bg-[#2B2D31]"
+              />
+              <label htmlFor="prevent-dialog" className="ml-2 block text-sm text-gray-400">
+                Prevent this page from creating additional dialogs
+              </label>
+            </div>
+          </div>
+          
+          <div className="border-t border-gray-700 p-4 bg-[#2B2D31]/70 flex justify-end space-x-3 rounded-b-xl">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2 bg-gray-700 text-gray-300 rounded-lg hover:bg-gray-600 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-500 transition-colors flex items-center gap-2"
+              disabled={isLoading || !workspaceName.trim()}
+            >
+              {isLoading ? (
+                <>
+                  <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Creating...
+                </>
+              ) : 'OK'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+
+  return createPortal(
+    <>
+      <style jsx="true">{`
+        @keyframes fadeIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+        
+        @keyframes scaleIn {
+          from { transform: scale(0.95); opacity: 0; }
+          to { transform: scale(1); opacity: 1; }
+        }
+        
+        .animate-fadeIn {
+          animation: fadeIn 0.2s ease-out;
+        }
+        
+        .animate-scaleIn {
+          animation: scaleIn 0.25s ease-out;
+        }
+      `}</style>
+      {modalContent}
+    </>,
+    document.body
   );
 };
 
