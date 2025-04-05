@@ -22,24 +22,25 @@ const WorkspaceSettingsForm = ({ workspaceId, workspace, onClose, onWorkspaceUpd
   // Check if user is owner
   const isOwner = workspace.role === "owner" || workspace.isOwned;
 
+  // Check if user has admin privileges (owner or admin)
+  const hasAdminPrivileges = workspace.role === "owner" || workspace.role === "admin" || workspace.isOwned || workspace.isAdmin;
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    // Only allow owners to update workspace details
-    if (!isOwner) {
-      setError('Only the workspace owner can modify workspace details.');
+    // Allow both owners and admins to update workspace details
+    if (!hasAdminPrivileges) {
+      setError('Only workspace owners and admins can modify workspace details.');
       return;
     }
     
     try {
       setIsLoading(true);
-      // Adjust parameter names to match what backend expects
       await updateWorkspace(
         workspaceId, 
         { workspaceName, description }, 
         setIsLoading,
         (updatedData) => {
-          // Transform the response to the format expected by onWorkspaceUpdated
           onWorkspaceUpdated(workspaceId, {
             name: updatedData.workspace.workspaceName,
             description: updatedData.workspace.description
@@ -127,13 +128,13 @@ const WorkspaceSettingsForm = ({ workspaceId, workspace, onClose, onWorkspaceUpd
               type="text"
               value={workspaceName}
               onChange={(e) => setWorkspaceName(e.target.value)}
-              className={`w-full p-2 border border-base-300 rounded-md bg-base-200 ${!isOwner ? 'opacity-70 cursor-not-allowed' : ''}`}
+              className={`w-full p-2 border border-base-300 rounded-md bg-base-200 ${!hasAdminPrivileges ? 'opacity-70 cursor-not-allowed' : ''}`}
               required
-              disabled={!isOwner}
-              readOnly={!isOwner}
+              disabled={!hasAdminPrivileges}
+              readOnly={!hasAdminPrivileges}
             />
-            {!isOwner && (
-              <p className="text-xs text-base-content/60 mt-1">Only the workspace owner can modify the name.</p>
+            {!hasAdminPrivileges && (
+              <p className="text-xs text-base-content/60 mt-1">Only workspace owners and admins can modify the name.</p>
             )}
           </div>
           
@@ -142,12 +143,12 @@ const WorkspaceSettingsForm = ({ workspaceId, workspace, onClose, onWorkspaceUpd
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              className={`w-full p-2 border border-base-300 rounded-md bg-base-200 min-h-24 ${!isOwner ? 'opacity-70 cursor-not-allowed' : ''}`}
-              disabled={!isOwner}
-              readOnly={!isOwner}
+              className={`w-full p-2 border border-base-300 rounded-md bg-base-200 min-h-24 ${!hasAdminPrivileges ? 'opacity-70 cursor-not-allowed' : ''}`}
+              disabled={!hasAdminPrivileges}
+              readOnly={!hasAdminPrivileges}
             />
-            {!isOwner && (
-              <p className="text-xs text-base-content/60 mt-1">Only the workspace owner can modify the description.</p>
+            {!hasAdminPrivileges && (
+              <p className="text-xs text-base-content/60 mt-1">Only workspace owners and admins can modify the description.</p>
             )}
           </div>
           
@@ -176,8 +177,8 @@ const WorkspaceSettingsForm = ({ workspaceId, workspace, onClose, onWorkspaceUpd
           )}
           
           <div className="flex flex-col gap-2 mt-6">
-            {/* Only show Save Changes button for owners */}
-            {isOwner && (
+            {/* Show Save Changes button for owners and admins */}
+            {hasAdminPrivileges && (
               <button
                 type="submit"
                 className="w-full py-2 bg-primary text-white rounded-md hover:bg-primary/80 disabled:opacity-50"
@@ -187,8 +188,8 @@ const WorkspaceSettingsForm = ({ workspaceId, workspace, onClose, onWorkspaceUpd
               </button>
             )}
             
-            {/* Generate Invite URL - can be available to all or just to owners based on your requirements */}
-            {isOwner && (
+            {/* Generate Invite URL - available to owners and admins */}
+            {hasAdminPrivileges && (
               <button
                 type="button"
                 className="w-full py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"

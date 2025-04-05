@@ -110,12 +110,18 @@ export const useWorkspaceStore = create(
           const response = await axiosInstance.get('/workspaces/user');
           if (response.data.success) {
             // Extract and format the workspace data
-            return response.data.workspaces.map(membership => ({
+            const workspaces = response.data.workspaces.map(membership => ({
               ...membership.workspaceId,  // Spread the actual workspace data
               _id: membership.workspaceId._id,  // Keep workspace ID
               id: membership.workspaceId._id,   // Add both id and _id for compatibility
-              membershipId: membership._id      // Keep membership ID if needed
+              membershipId: membership._id,      // Keep membership ID if needed
+              role: membership.role || 'member', // Ensure role is set
+              isOwned: membership.role === 'owner',
+              isAdmin: membership.role === 'admin'
             }));
+            console.log("Formatted workspaces with roles:", workspaces);
+            set({ workspacesWithRoles: workspaces }); // Store workspaces with roles
+            return workspaces;
           }
           return [];
         } catch (error) {
@@ -174,8 +180,16 @@ export const useWorkspaceStore = create(
           const response = await axiosInstance.get(`/workspaces/${workspaceId}/members`);
           
           if (response.data.success) {
-            console.log("Workspace members fetched successfully:", response.data.members);
-            return response.data.members || [];
+            // Format members to ensure roles are properly set
+            const formattedMembers = response.data.members.map(member => ({
+              ...member,
+              id: member.id || member._id || member.userId,
+              role: member.role || 'member', // Ensure role is set
+              isAdmin: member.role === 'admin',
+              isOwner: member.role === 'owner'
+            }));
+            console.log("Formatted workspace members:", formattedMembers);
+            return formattedMembers;
           } else {
             console.error("API returned unsuccessful response:", response.data);
             return [];
@@ -206,6 +220,63 @@ export const useWorkspaceStore = create(
           return [];
         }
       },
+
+      // Function to promote users to admin
+      promoteToAdmin: async (workspaceId, userIds) => {
+        try {
+          const response = await axiosInstance.post(`/workspaces/${workspaceId}/admins`, {
+            userIds: Array.isArray(userIds) ? userIds : [userIds]
+          });
+
+          if (response.data.success) {
+            // Show success message
+            toast.success(response.data.message);
+            
+            // Return the results for UI updates
+            return response.data.results;
+          } else {
+            throw new Error(response.data.message);
+          }
+        } catch (error) {
+          const errorMessage = error.response?.data?.message || "Failed to promote user(s) to admin";
+          toast.error(errorMessage);
+          throw error;
+        }
+      },
+
+      // Function to remove a member from workspace
+      removeMember: async (workspaceId, userId) => {
+        try {
+          // Get current user's role in the workspace
+          const workspaces = get().workspacesWithRoles;
+          const currentWorkspace = workspaces.find(w => w.id === workspaceId);
+          
+          if (!currentWorkspace) {
+            throw new Error('Workspace not found');
+          }
+
+          // Allow both owners and admins to remove members
+          if (currentWorkspace.role !== 'owner' && currentWorkspace.role !== 'admin') {
+            throw new Error('You do not have permission to remove members');
+          }
+
+          const response = await axiosInstance.delete(`/workspaces/${workspaceId}/members`, {
+            data: { userId }
+          });
+
+          if (response.data.success) {
+            toast.success(response.data.message || "Member removed successfully");
+            return true;
+          } else {
+            throw new Error(response.data.message);
+          }
+        } catch (error) {
+          const errorMessage = error.response?.data?.message || error.message || "Failed to remove member";
+          toast.error(errorMessage);
+          throw error;
+        }
+      },
+
       setSelectedWorkspace: (selectedWorkspace) => set({ selectedWorkspace }),      // Other existing methods...
     }),
     {
