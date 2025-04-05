@@ -264,10 +264,9 @@ const WorkSpace = ({
   ///////////////////////////////////////////////////////////////
 
   // In WorkSpace.jsx, update the selectedWorkspaceWhenClick function
-  const selectedWorkspaceWhenClick = ({ id, channel }) => {
-    setActiveChannel(id);
-    setSelectedWorkspace(channel); // This should be the channel object
-    console.log("Channel selected:", channel); // Add debug log
+  const handleChannelClick = (channel) => {
+    setActiveChannel(channel._id);
+    setSelectedWorkspace(channel);
   };
 
   // Create a new channel
@@ -367,171 +366,256 @@ const WorkSpace = ({
   const renderChannelsList = () => {
     if (isChannelsLoading) {
       return (
-        <div className="flex justify-center items-center py-4">
-          <span className="loading loading-spinner loading-sm"></span>
+        <div className="flex items-center justify-center py-8">
+          <div className="spinner">
+            <div className="double-bounce1 bg-primary/60"></div>
+            <div className="double-bounce2 bg-primary/40"></div>
+          </div>
+          <p className="ml-3 text-base-content/70">Loading channels...</p>
+        </div>
+      );
+    }
+
+    if (channels.length === 0) {
+      return (
+        <div className="text-center py-8 px-3">
+          <Hash className="w-12 h-12 mx-auto mb-3 text-primary/50" />
+          <h3 className="font-medium mb-1">No Channels</h3>
+          <p className="text-sm text-base-content/70 mb-4">
+            {isWorkspaceOwner()
+              ? "Create a channel to get started"
+              : "No channels available for this workspace"}
+          </p>
+          {isWorkspaceOwner() && (
+            <button
+              className="px-4 py-2 bg-primary hover:bg-primary/90 text-primary-content rounded-lg transition-colors flex items-center gap-2 mx-auto"
+              onClick={() => setShowChannelUserSelector(true)}
+            >
+              <Plus className="w-4 h-4" />
+              Create Channel
+            </button>
+          )}
         </div>
       );
     }
 
     return (
-      <div className="space-y-1 mt-4">
-        <div className="px-2 py-1 text-xs font-semibold text-base-content/70">
-          CHANNELS
-        </div>
-        {channels.map((channel) => (
-          <div key={channel._id} className="flex items-center justify-between">
+      <div className="space-y-1 mt-2">
+        <div className="px-3 mb-2 flex items-center justify-between">
+          <h3 className="text-xs font-semibold text-base-content/70 uppercase tracking-wider">
+            Channels
+          </h3>
+          {isWorkspaceOwner() && (
             <button
-              className={`flex-grow flex items-center gap-2 px-2 py-2 rounded-md hover:bg-base-300 ${
+              className="p-1 hover:bg-base-300 rounded transition-colors text-base-content/70 hover:text-base-content"
+              onClick={() => setShowChannelUserSelector(true)}
+              title="Add Channel"
+            >
+              <Plus className="w-4 h-4" />
+            </button>
+          )}
+        </div>
+        
+        {channels.map((channel) => (
+          <div
+            key={channel._id}
+            className="flex items-center px-3 group"
+          >
+            <button
+              className={`flex flex-grow items-center gap-2 py-2 px-2 rounded-md ${
                 activeChannel === channel._id
-                  ? "bg-primary/10 text-primary font-medium"
-                  : ""
-              }`}
-              onClick={() =>
-                selectedWorkspaceWhenClick({
-                  id: channel._id,
-                  channel: channel,
-                })
-              }
+                  ? "bg-primary/10 text-primary"
+                  : "hover:bg-base-300 text-base-content hover:text-base-content"
+              } transition-colors`}
+              onClick={() => handleChannelClick(channel)}
             >
               {channel.isPrivate ? (
-                <Lock className="w-4 h-4 text-warning" />
+                <Lock className="w-4 h-4 text-base-content/70" />
               ) : (
-                <Hash className="w-4 h-4" />
+                <Hash className="w-4 h-4 text-base-content/70" />
               )}
-              <span>{channel.channelName}</span>
+              <span className="text-sm truncate">{channel.channelName}</span>
             </button>
+            
             {/* Only show delete button for owners */}
             {isWorkspaceOwner() && (
               <button
                 onClick={() => handleDeleteChannel(channel._id)}
-                className="w-5 h-5 flex items-center justify-center bg-blue-500 text-white hover:bg-blue-600 rounded-full"
+                className="w-6 h-6 flex items-center justify-center bg-error/20 text-error hover:bg-error/30 hover:text-error-content rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
                 title="Delete Channel"
               >
-                <X size={12} />
+                <X size={14} />
               </button>
             )}
           </div>
         ))}
-        {isWorkspaceOwner() && (
-          <div className="flex items-center gap-2 px-2 py-2">
-            <button
-              className="flex items-center gap-2 px-2 py-2 rounded-md hover:bg-base-300 text-base-content/70 w-full text-left"
-              onClick={() => setShowChannelUserSelector(true)}
-            >
-              <Plus className="w-4 h-4" />
-              <span>Add Channel</span>
-            </button>
-          </div>
-        )}
-
-        {/* Channel Creation Modal */}
+        
+        {/* Channel Creation Modal - Keep the modern style but update colors to match theme */}
         {showChannelUserSelector && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-base-100 rounded-lg p-6 w-96">
-              <h3 className="text-lg font-semibold mb-4">Create New Channel</h3>
-
-              {/* Channel Name Input */}
-              <div className="mb-4">
-                <label className="block text-sm font-medium mb-2">
-                  Channel Name
-                </label>
-                <input
-                  type="text"
-                  placeholder="Enter channel name"
-                  className="input input-bordered w-full"
-                  value={channelName}
-                  onChange={(e) => setChannelName(e.target.value)}
-                />
+          <div className="fixed inset-0 flex items-center justify-center z-[9999] animate-fadeIn" onClick={resetChannelCreation}>
+            <div 
+              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+              onClick={resetChannelCreation}
+            ></div>
+            
+            <div 
+              className="bg-base-100 backdrop-blur-md rounded-xl w-full max-w-md p-0 shadow-2xl border border-base-300 relative transition-all duration-300 animate-scaleIn"
+              style={{ maxHeight: 'calc(100vh - 40px)' }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Header with gradient border */}
+              <div className="p-6 relative">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="h-8 w-8 bg-primary rounded-lg flex items-center justify-center">
+                      <Hash className="w-4 h-4 text-primary-content" />
+                    </div>
+                    <h2 className="text-xl font-bold">Create New Channel</h2>
+                  </div>
+                  <button 
+                    onClick={resetChannelCreation} 
+                    className="h-8 w-8 rounded-full flex items-center justify-center text-base-content/70 hover:text-base-content hover:bg-base-300 transition-colors"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+                
+                {/* Gradient border effect */}
+                <div className="absolute left-0 right-0 bottom-0 h-[1px] bg-gradient-to-r from-transparent via-base-content/20 to-transparent"></div>
               </div>
-
-              {/* Private Channel Toggle */}
-              <div className="form-control mb-4">
-                <label className="cursor-pointer label">
-                  <span className="label-text flex items-center gap-2">
-                    <Lock className="w-4 h-4" /> Private Channel
-                  </span>
-                  <input
-                    type="checkbox"
-                    className="toggle toggle-primary"
-                    checked={isPrivateChannel}
-                    onChange={() => setIsPrivateChannel(!isPrivateChannel)}
-                  />
-                </label>
-              </div>
-
-              {/* User Selection for Private Channels */}
-              {isPrivateChannel && (
-                <div>
+              
+              <div className="p-6">
+                {/* Channel Name Input */}
+                <div className="mb-4">
                   <label className="block text-sm font-medium mb-2">
-                    Select Users for this Channel
+                    Channel Name
                   </label>
-                  {isWorkspaceMembersLoading ? (
-                    <div className="text-center">
-                      <span className="loading loading-spinner loading-sm"></span>
+                  <input
+                    type="text"
+                    placeholder="Enter channel name"
+                    className="w-full px-4 py-2.5 bg-base-200 border-none rounded-lg focus:ring-2 focus:ring-primary text-sm"
+                    value={channelName}
+                    onChange={(e) => setChannelName(e.target.value)}
+                  />
+                </div>
+
+                {/* Private Channel Toggle */}
+                <div className="mb-4">
+                  <label className="flex items-center justify-between cursor-pointer py-2">
+                    <span className="flex items-center gap-2">
+                      <Lock className="w-4 h-4 text-base-content/70" /> Private Channel
+                    </span>
+                    <div className="relative">
+                      <input
+                        type="checkbox"
+                        className="sr-only"
+                        checked={isPrivateChannel}
+                        onChange={() => setIsPrivateChannel(!isPrivateChannel)}
+                      />
+                      <div className={`w-10 h-5 ${isPrivateChannel ? 'bg-primary' : 'bg-base-300'} rounded-full transition-colors`}></div>
+                      <div className={`absolute top-0.5 left-0.5 bg-white w-4 h-4 rounded-full transition-transform ${isPrivateChannel ? 'translate-x-5' : ''}`}></div>
                     </div>
-                  ) : workspaceMembers.length === 0 ? (
-                    <div className="text-center p-4 border rounded-md bg-base-200">
-                      <p className="text-sm">
-                        No members found in this workspace.
-                      </p>
-                      <p className="text-xs text-base-content/70 mt-1">
-                        Invite members using the invite button at the top.
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="max-h-60 overflow-y-auto border rounded-md">
-                      {workspaceMembers
-                        // Only filter out the current owner, not all users
-                        .filter(
-                          (member) =>
-                            !(member.role === "owner" || member.isOwned)
-                        )
-                        .map((member) => (
-                          <div
-                            key={member.id}
-                            className={`flex items-center justify-between p-2 hover:bg-base-200 cursor-pointer ${
-                              selectedChannelUsers.includes(member.id)
-                                ? "bg-primary/10"
-                                : ""
-                            }`}
-                            onClick={() => toggleUserSelection(member.id)}
-                          >
-                            <div className="flex items-center gap-2">
-                              <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
-                                {member.username
-                                  ? member.username.charAt(0).toUpperCase()
-                                  : "?"}
+                  </label>
+                </div>
+
+                {/* User Selection for Private Channels */}
+                {isPrivateChannel && (
+                  <div>
+                    <label className="block text-sm font-medium mb-2">
+                      Select Users for this Channel
+                    </label>
+                    {isWorkspaceMembersLoading ? (
+                      <div className="flex items-center justify-center py-8">
+                        <div className="spinner">
+                          <div className="double-bounce1 bg-primary/60"></div>
+                          <div className="double-bounce2 bg-primary/40"></div>
+                        </div>
+                        <p className="ml-3 text-base-content/70">Loading members...</p>
+                      </div>
+                    ) : workspaceMembers.length === 0 ? (
+                      <div className="text-center p-4 rounded-md bg-base-200">
+                        <p className="text-sm">
+                          No members found in this workspace.
+                        </p>
+                        <p className="text-xs text-base-content/70 mt-1">
+                          Invite members using the invite button at the top.
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="max-h-60 overflow-y-auto rounded-md bg-base-200 custom-scrollbar">
+                        {workspaceMembers
+                          // Only filter out the current owner, not all users
+                          .filter(
+                            (member) =>
+                              !(member.role === "owner" || member.isOwned)
+                          )
+                          .map((member) => (
+                            <div
+                              key={member.id}
+                              className={`flex items-center justify-between p-3 cursor-pointer border-b border-base-300 last:border-0 ${
+                                selectedChannelUsers.includes(member.id)
+                                  ? "bg-primary/20"
+                                  : "hover:bg-base-300"
+                              } transition-colors`}
+                              onClick={() => toggleUserSelection(member.id)}
+                            >
+                              <div className="flex items-center gap-3">
+                                <div className="w-8 h-8 rounded-full bg-base-300 flex items-center justify-center ring-2 ring-base-300">
+                                  <img
+                                    src={member.avatar || "/avatar.png"}
+                                    alt={member.username}
+                                    className="w-full h-full object-cover rounded-full"
+                                    onError={(e) => {
+                                      e.target.onerror = null;
+                                      e.target.src = "/avatar.png";
+                                    }}
+                                  />
+                                </div>
+                                <span>{member.username}</span>
                               </div>
-                              <span>{member.username}</span>
+                              <div className={`w-6 h-6 rounded-md flex items-center justify-center transition-colors ${
+                                selectedChannelUsers.includes(member.id)
+                                  ? "bg-primary text-primary-content"
+                                  : "bg-base-300 text-base-content/50"
+                              }`}>
+                                <Check className="w-4 h-4" />
+                              </div>
                             </div>
-                            {selectedChannelUsers.includes(member.id) && (
-                              <Check className="w-5 h-5 text-primary" />
-                            )}
-                          </div>
-                        ))}
-                    </div>
+                          ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Footer with action buttons */}
+              <div className="p-4 border-t border-base-300 bg-base-200 flex justify-between items-center">
+                <div className="text-sm text-base-content/70">
+                  {isPrivateChannel && (
+                    <span>
+                      <span className="text-primary font-medium">{selectedChannelUsers.length}</span> user{selectedChannelUsers.length !== 1 ? 's' : ''} selected
+                    </span>
                   )}
                 </div>
-              )}
-
-              {/* Action Buttons */}
-              <div className="flex justify-end mt-4 gap-2">
-                <button
-                  className="btn btn-ghost"
-                  onClick={resetChannelCreation}
-                >
-                  Cancel
-                </button>
-                <button
-                  className="btn btn-primary"
-                  onClick={handleCreateChannel}
-                  disabled={
-                    !channelName ||
-                    (isPrivateChannel && selectedChannelUsers.length === 0)
-                  }
-                >
-                  Create Channel
-                </button>
+                <div className="flex gap-2">
+                  <button
+                    className="px-4 py-2 bg-base-300 rounded-lg hover:bg-base-300/80 transition-colors text-sm"
+                    onClick={resetChannelCreation}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    className="px-4 py-2 bg-primary text-primary-content rounded-lg hover:bg-primary/90 disabled:opacity-50 transition-colors text-sm flex items-center gap-2"
+                    onClick={handleCreateChannel}
+                    disabled={
+                      !channelName ||
+                      (isPrivateChannel && selectedChannelUsers.length === 0)
+                    }
+                  >
+                    <Plus className="w-4 h-4" />
+                    Create Channel
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -792,7 +876,7 @@ const WorkSpace = ({
         bg-base-200 h-full border-r border-base-300 flex flex-col transition-transform duration-300 ease-in-out
       `}
       >
-        {/* Header section */}
+        {/* Header section - modernized */}
         <div className="p-4 border-b border-base-300 flex-shrink-0">
           {/* Title and Create Workspace */}
           <div className="flex justify-between items-center mb-4">
@@ -806,7 +890,7 @@ const WorkSpace = ({
             </h2>
             <div className="flex items-center relative">
               <button
-                className="p-2 hover:bg-base-300 rounded-md"
+                className="p-2 hover:bg-base-300 rounded-lg transition-colors"
                 onClick={handleCreateWorkspace}
                 aria-label="Create Workspace"
               >
@@ -815,11 +899,11 @@ const WorkSpace = ({
             </div>
           </div>
 
-          {/* Action buttons row */}
+          {/* Action buttons row - modernized */}
           {activeNavItem === "workSpace" && activeWorkspace && (
-            <div className="flex items-center justify-center gap-4 py-2">
+            <div className="flex items-center justify-center gap-2 py-2">
               <button
-                className="p-2 hover:bg-base-300 rounded-md"
+                className="p-2 hover:bg-base-300 rounded-lg transition-colors"
                 onClick={handleShowMembers}
                 aria-label="Show Workspace Members"
               >
@@ -829,7 +913,7 @@ const WorkSpace = ({
               {hasAdminPrivileges() && (
                 <button
                   ref={inviteButtonRef}
-                  className="p-2 hover:bg-base-300 rounded-md"
+                  className="p-2 hover:bg-base-300 rounded-lg transition-colors"
                   onClick={() => setShowInviteMenu(!showInviteMenu)}
                   aria-label="Invite Friends"
                 >
@@ -838,7 +922,7 @@ const WorkSpace = ({
               )}
 
               <button
-                className="p-2 hover:bg-base-300 rounded-md"
+                className="p-2 hover:bg-base-300 rounded-lg transition-colors"
                 onClick={() => handleOpenSettingsForm(activeWorkspace)}
                 aria-label="Workspace Settings"
               >
@@ -848,20 +932,19 @@ const WorkSpace = ({
           )}
         </div>
 
-        {/* Scrollable content area */}
-        <div className="overflow-y-auto flex-grow">
-          {/* Workspace management section */}
+        {/* Scrollable content area - modernized */}
+        <div className="overflow-y-auto flex-grow custom-scrollbar">
           {/* Workspace section for workSpace view */}
           {activeNavItem === "workSpace" && (
-            <div className="p-2">
-              {/* Workspace header with dropdown */}
-              <div className="relative mb-2">
+            <div className="p-3">
+              {/* Workspace header with dropdown - modernized */}
+              <div className="relative mb-3">
                 <button
-                  className="w-full flex items-center justify-between p-2 rounded hover:bg-base-300"
+                  className="w-full flex items-center justify-between p-3 rounded-lg bg-base-300/60 hover:bg-base-300 transition-colors border border-base-300"
                   onClick={() => setShowWorkspaceMenu(!showWorkspaceMenu)}
                 >
-                  <div className="flex items-center gap-2">
-                    <div className="w-6 h-6 rounded-md bg-primary/20 flex items-center justify-center">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-primary/20 flex items-center justify-center">
                       {getActiveWorkspace()?.name?.charAt(0).toUpperCase() ||
                         "?"}
                     </div>
@@ -869,15 +952,15 @@ const WorkSpace = ({
                       {getActiveWorkspace()?.name || "Select Workspace"}
                     </span>
                   </div>
-                  <ChevronDown className="w-3.5 h-3.5 text-gray-500" />
+                  <ChevronDown className="w-4 h-4 text-base-content/70" />
                 </button>
 
                 {/* Modified Workspace dropdown menu */}
                 {showWorkspaceMenu && (
-                  <div className="absolute top-full left-0 right-0 mt-1 bg-base-100 rounded-md shadow-lg z-50 border border-base-300">
-                    <div className="py-1">
+                  <div className="absolute top-full left-0 right-0 mt-2 bg-base-100 rounded-lg shadow-lg z-50 border border-base-300 animate-scaleIn">
+                    <div className="py-2">
                       {/* Show owned workspaces section */}
-                      <div className="px-2 py-1 text-xs font-semibold text-base-content/70">
+                      <div className="px-3 py-1 text-xs font-semibold text-base-content/70">
                         YOUR WORKSPACES
                       </div>
                       {workspaces
@@ -892,11 +975,11 @@ const WorkSpace = ({
                         .map((workspace, index) => (
                           <button
                             key={workspace?.id || `owned-${index}`}
-                            className={`w-full px-2 py-1 mt-1 text-left flex items-center gap-2 rounded-md ${
+                            className={`w-full px-3 py-2 text-left flex items-center gap-3 rounded-md ${
                               activeWorkspace === workspace?.id
                                 ? "bg-primary/10 text-primary"
                                 : "hover:bg-base-200"
-                            }`}
+                            } transition-colors`}
                             onClick={() => {
                               if (workspace?.id) {
                                 setActiveWorkspace(workspace.id);
@@ -910,7 +993,7 @@ const WorkSpace = ({
                               }
                             }}
                           >
-                            <div className="w-4 h-4 rounded-md bg-primary/20 flex items-center justify-center">
+                            <div className="w-6 h-6 rounded-md bg-primary/20 flex items-center justify-center">
                               {workspace?.name
                                 ? workspace.name.charAt(0).toUpperCase()
                                 : "?"}
@@ -922,8 +1005,8 @@ const WorkSpace = ({
                         ))}
 
                       {/* Show joined workspaces section */}
-                      <div className="border-t border-base-200 pt-1 mt-1">
-                        <div className="px-2 py-1 text-xs font-semibold text-base-content/70">
+                      <div className="border-t border-base-200 mt-2 pt-2">
+                        <div className="px-3 py-1 text-xs font-semibold text-base-content/70">
                           JOINED WORKSPACES
                         </div>
                         {workspaces.filter(
@@ -936,7 +1019,7 @@ const WorkSpace = ({
                             workspaces.findIndex((w) => w?.id === ws?.id) ===
                               workspaces.indexOf(ws)
                         ).length === 0 ? (
-                          <div className="px-2 py-1 text-xs text-base-content/50 italic">
+                          <div className="px-3 py-2 text-xs text-base-content/50 italic">
                             No joined workspaces
                           </div>
                         ) : (
@@ -956,11 +1039,11 @@ const WorkSpace = ({
                               return (
                                 <button
                                   key={workspace?.id || `invited-${index}`}
-                                  className={`w-full px-2 py-1 mt-1 text-left flex items-center gap-2 rounded-md ${
+                                  className={`w-full px-3 py-2 text-left flex items-center gap-3 rounded-md ${
                                     activeWorkspace === workspace?.id
                                       ? "bg-primary/10 text-primary"
                                       : "hover:bg-base-200"
-                                  }`}
+                                  } transition-colors`}
                                   onClick={() => {
                                     if (workspace?.id) {
                                       setActiveWorkspace(workspace.id);
@@ -970,7 +1053,7 @@ const WorkSpace = ({
                                     }
                                   }}
                                 >
-                                  <div className="w-4 h-4 rounded-md bg-primary/20 flex items-center justify-center">
+                                  <div className="w-6 h-6 rounded-md bg-primary/20 flex items-center justify-center">
                                     {workspace?.name
                                       ? workspace.name.charAt(0).toUpperCase()
                                       : "?"}
@@ -995,6 +1078,35 @@ const WorkSpace = ({
 
           {/* Replace the Invite Friends Menu with portal implementation */}
         </div>
+        
+        {/* Add custom scrollbar style */}
+        <style jsx="true">{`
+          .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+          }
+          
+          .custom-scrollbar::-webkit-scrollbar-track {
+            background: transparent;
+          }
+          
+          .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #4c4f57;
+            border-radius: 3px;
+          }
+          
+          .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #6366f1;
+          }
+          
+          @keyframes scaleIn {
+            from { transform: scale(0.95); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+          }
+          
+          .animate-scaleIn {
+            animation: scaleIn 0.25s ease-out;
+          }
+        `}</style>
 
         {/* Use portals for modals */}
         <WorkspaceMembersPortal
@@ -1041,6 +1153,69 @@ const WorkSpace = ({
           workspaceMembers={workspaceMembers}
         />
       </div>
+
+      {/* Add global styles for animations and scrollbars */}
+      <style jsx="true">{`
+        @keyframes fadeIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+        
+        @keyframes scaleIn {
+          from { transform: scale(0.95); opacity: 0; }
+          to { transform: scale(1); opacity: 1; }
+        }
+        
+        .animate-fadeIn {
+          animation: fadeIn 0.2s ease-out;
+        }
+        
+        .animate-scaleIn {
+          animation: scaleIn 0.25s ease-out;
+        }
+        
+        .custom-scrollbar::-webkit-scrollbar {
+          width: 6px;
+        }
+        
+        .custom-scrollbar::-webkit-scrollbar-track {
+          background: transparent;
+        }
+        
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+          background: #4c4f57;
+          border-radius: 3px;
+        }
+        
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+          background: #6366f1;
+        }
+        
+        .spinner {
+          width: 30px;
+          height: 30px;
+          position: relative;
+        }
+        
+        .double-bounce1, .double-bounce2 {
+          width: 100%;
+          height: 100%;
+          border-radius: 50%;
+          position: absolute;
+          top: 0;
+          left: 0;
+          animation: bounce 2s infinite ease-in-out;
+        }
+        
+        .double-bounce2 {
+          animation-delay: -1.0s;
+        }
+        
+        @keyframes bounce {
+          0%, 100% { transform: scale(0); }
+          50% { transform: scale(1.0); }
+        }
+      `}</style>
     </>
   );
 };
