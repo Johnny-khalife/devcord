@@ -244,6 +244,29 @@ export const useWorkspaceStore = create(
         }
       },
 
+      // Function to toggle user role between admin and member
+      toggleAdminRole: async (workspaceId, userIds) => {
+        try {
+          const response = await axiosInstance.put(`/workspaces/${workspaceId}/admins`, {
+            userIds: Array.isArray(userIds) ? userIds : [userIds]
+          });
+
+          if (response.data.success) {
+            // Show success message
+            toast.success(response.data.message);
+            
+            // Return the results for UI updates
+            return response.data.results;
+          } else {
+            throw new Error(response.data.message);
+          }
+        } catch (error) {
+          const errorMessage = error.response?.data?.message || "Failed to toggle admin role";
+          toast.error(errorMessage);
+          throw error;
+        }
+      },
+
       // Function to remove a member from workspace
       removeMember: async (workspaceId, userId) => {
         try {

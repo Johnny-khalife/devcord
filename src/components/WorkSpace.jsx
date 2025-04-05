@@ -55,7 +55,7 @@ const WorkSpace = ({
   const {
     getWorkspaceMembers,
     setSelectedWorkspace,
-    promoteToAdmin,
+    toggleAdminRole,
     removeMember,
   } = useWorkspaceStore();
   const { friends, sendFriendRequest, removeFriend } = useFriendStore();
@@ -628,28 +628,34 @@ const WorkSpace = ({
     }
   };
 
-  // Function to handle admin promotion
-  const handlePromoteToAdmin = async () => {
+  // Function to handle admin promotion/demotion
+  const handleToggleAdminRole = async () => {
     if (!activeWorkspace || selectedMembers.length === 0) return;
 
     setIsPromotingAdmin(true);
     try {
-      const results = await promoteToAdmin(activeWorkspace, selectedMembers);
+      const results = await toggleAdminRole(activeWorkspace, selectedMembers);
 
       // Update the local members list with new roles
       if (results.success.length > 0) {
         setWorkspaceMembers((prevMembers) =>
-          prevMembers.map((member) => ({
-            ...member,
-            role: results.success.includes(member.id) ? "admin" : member.role,
-          }))
+          prevMembers.map((member) => {
+            const userResult = results.success.find(r => r.userId === member.id);
+            if (userResult) {
+              return {
+                ...member,
+                role: userResult.newRole
+              };
+            }
+            return member;
+          })
         );
       }
 
       // Clear selection
       setSelectedMembers([]);
     } catch (error) {
-      console.error("Failed to promote members:", error);
+      console.error("Failed to toggle admin roles:", error);
     } finally {
       setIsPromotingAdmin(false);
     }
@@ -1141,7 +1147,7 @@ const WorkSpace = ({
                               if (
                                 isWorkspaceOwner() &&
                                 member.role !== "owner" &&
-                                member.role !== "admin"
+                                (member.role === "member" || member.role === "admin")
                               ) {
                                 toggleMemberSelection(member.id);
                               }
@@ -1241,7 +1247,7 @@ const WorkSpace = ({
                         ))}
                       </div>
 
-                      {/* Admin Promotion Action */}
+                      {/* Admin Promotion/Demotion Action */}
                       {isWorkspaceOwner() && selectedMembers.length > 0 && (
                         <div className="mt-4 flex justify-end gap-2">
                           <button
@@ -1253,18 +1259,20 @@ const WorkSpace = ({
                           </button>
                           <button
                             className="btn btn-primary btn-sm"
-                            onClick={handlePromoteToAdmin}
+                            onClick={handleToggleAdminRole}
                             disabled={isPromotingAdmin}
                           >
                             {isPromotingAdmin ? (
                               <>
                                 <span className="loading loading-spinner loading-xs"></span>
-                                Promoting...
+                                Updating...
                               </>
                             ) : (
                               <>
                                 <Shield className="w-4 h-4" />
-                                Promote to Admin
+                                {workspaceMembers.find(m => m.id === selectedMembers[0])?.role === "admin" 
+                                  ? "Demote to Member" 
+                                  : "Promote to Admin"}
                               </>
                             )}
                           </button>
