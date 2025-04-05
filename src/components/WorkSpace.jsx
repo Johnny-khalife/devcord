@@ -19,6 +19,7 @@ import { useFriendStore } from "../store/useFriendsStore"; // Import the friend 
 import { useWorkspaceStore } from "../store/useWorkspaceStore";
 import { useChannelStore } from "../store/useChannelStore";
 import toast from "react-hot-toast";
+import { useAuthStore } from "../store/useAuthStore";
 
 const WorkSpace = ({
   activeNavItem,
@@ -47,10 +48,22 @@ const WorkSpace = ({
   const [selectedChannelUsers, setSelectedChannelUsers] = useState([]);
   const [showChannelUserSelector, setShowChannelUserSelector] = useState(false);
 
+// In your component:
+const { authUser } = useAuthStore();
+
   // Get workspace members
-  const { getWorkspaceMembers, setSelectedWorkspace, promoteToAdmin, removeMember } = useWorkspaceStore();
+  const {
+    getWorkspaceMembers,
+    setSelectedWorkspace,
+    promoteToAdmin,
+    removeMember,
+  } = useWorkspaceStore();
+  const { friends, sendFriendRequest } = useFriendStore();
+  const { user: currentUser } = useAuthStore();
   const [workspaceMembers, setWorkspaceMembers] = useState([]);
-  const [isWorkspaceMembersLoading, setIsWorkspaceMembersLoading] = useState(false);
+  const [isWorkspaceMembersLoading, setIsWorkspaceMembersLoading] =
+    useState(false);
+  const [isSendingFriendRequest, setIsSendingFriendRequest] = useState(false);
 
   // State for responsive design
   const [isMobile, setIsMobile] = useState(false);
@@ -74,24 +87,27 @@ const WorkSpace = ({
       setIsMobile(mobile);
       setIsWorkspaceSidebarOpen(!mobile); // Close sidebar by default on mobile
     };
-    
+
     // Initial check
     checkIfMobile();
-    
+
     // Add event listener for window resize
-    window.addEventListener('resize', checkIfMobile);
-    
+    window.addEventListener("resize", checkIfMobile);
+
     // Listen for custom toggle event from ChatHeader
     const handleToggleSidebar = () => {
-      setIsWorkspaceSidebarOpen(prev => !prev);
+      setIsWorkspaceSidebarOpen((prev) => !prev);
     };
-    
-    window.addEventListener('toggle-workspace-sidebar', handleToggleSidebar);
-    
+
+    window.addEventListener("toggle-workspace-sidebar", handleToggleSidebar);
+
     // Cleanup
     return () => {
-      window.removeEventListener('resize', checkIfMobile);
-      window.removeEventListener('toggle-workspace-sidebar', handleToggleSidebar);
+      window.removeEventListener("resize", checkIfMobile);
+      window.removeEventListener(
+        "toggle-workspace-sidebar",
+        handleToggleSidebar
+      );
     };
   }, []);
 
@@ -101,13 +117,10 @@ const WorkSpace = ({
   };
 
   // Get friends data and methods from the friend store
-  const {
-    friends,
-    getFriendsList,
-    isLoading: isFriendsLoading,
-  } = useFriendStore();
+  const { getFriendsList, isLoading: isFriendsLoading } = useFriendStore();
   const { sendWorkspaceInvite } = useWorkspaceStore();
-  const { fetchWorkspaceChannels, createChannel, deleteChannel } = useChannelStore();
+  const { fetchWorkspaceChannels, createChannel, deleteChannel } =
+    useChannelStore();
 
   // Add this at the beginning of your component
   console.log("Workspace component props:", {
@@ -155,10 +168,12 @@ const WorkSpace = ({
         // If there are channels, set one as active
         if (workspaceChannels.length > 0) {
           const defaultChannel = workspaceChannels[0];
-          
+
           // Check if activeChannel exists in the list of channels
-          const currentChannel = workspaceChannels.find(channel => channel._id === activeChannel);
-          
+          const currentChannel = workspaceChannels.find(
+            (channel) => channel._id === activeChannel
+          );
+
           if (currentChannel) {
             // Set the current channel as selected
             setActiveChannel(currentChannel._id);
@@ -185,7 +200,16 @@ const WorkSpace = ({
     };
 
     loadWorkspaceChannels();
-  }, [activeWorkspace, fetchWorkspaceChannels, activeChannel, setSelectedWorkspace]);
+  }, [
+    activeWorkspace,
+    fetchWorkspaceChannels,
+    activeChannel,
+    setSelectedWorkspace,
+  ]);
+
+  useEffect(() => {
+    console.log("Current user:", currentUser);
+  }, [currentUser]);
 
   // And inside useEffect that depends on activeWorkspace
   useEffect(() => {
@@ -204,7 +228,7 @@ const WorkSpace = ({
         const members = await getWorkspaceMembers(activeWorkspace);
 
         if (Array.isArray(members)) {
-          // Map members to include both id and _id and role 
+          // Map members to include both id and _id and role
           const formattedMembers = members.map((member) => ({
             ...member,
             id: member.id || member._id || member.userId,
@@ -234,14 +258,14 @@ const WorkSpace = ({
     fetchWorkspaceMembers();
   }, [activeWorkspace, getWorkspaceMembers]);
 
-///////////////////////////////////////////////////////////////
+  ///////////////////////////////////////////////////////////////
 
-// In WorkSpace.jsx, update the selectedWorkspaceWhenClick function
-const selectedWorkspaceWhenClick = ({ id, channel }) => {
-  setActiveChannel(id);
-  setSelectedWorkspace(channel); // This should be the channel object
-  console.log("Channel selected:", channel); // Add debug log
-};
+  // In WorkSpace.jsx, update the selectedWorkspaceWhenClick function
+  const selectedWorkspaceWhenClick = ({ id, channel }) => {
+    setActiveChannel(id);
+    setSelectedWorkspace(channel); // This should be the channel object
+    console.log("Channel selected:", channel); // Add debug log
+  };
 
   // Create a new channel
   const handleCreateChannel = async () => {
@@ -359,11 +383,12 @@ const selectedWorkspaceWhenClick = ({ id, channel }) => {
                   ? "bg-primary/10 text-primary font-medium"
                   : ""
               }`}
-            
-              onClick={() => selectedWorkspaceWhenClick({
-                id: channel._id,
-                channel: channel,
-              })}
+              onClick={() =>
+                selectedWorkspaceWhenClick({
+                  id: channel._id,
+                  channel: channel,
+                })
+              }
             >
               {channel.isPrivate ? (
                 <Lock className="w-4 h-4 text-warning" />
@@ -454,7 +479,10 @@ const selectedWorkspaceWhenClick = ({ id, channel }) => {
                     <div className="max-h-60 overflow-y-auto border rounded-md">
                       {workspaceMembers
                         // Only filter out the current owner, not all users
-                        .filter(member => !(member.role === "owner" || member.isOwned))
+                        .filter(
+                          (member) =>
+                            !(member.role === "owner" || member.isOwned)
+                        )
                         .map((member) => (
                           <div
                             key={member.id}
@@ -522,7 +550,9 @@ const selectedWorkspaceWhenClick = ({ id, channel }) => {
   // Send invites to backend
   const sendInvites = async () => {
     if (!hasAdminPrivileges()) {
-      toast.error("You don't have permission to invite users to this workspace");
+      toast.error(
+        "You don't have permission to invite users to this workspace"
+      );
       return;
     }
 
@@ -574,14 +604,17 @@ const selectedWorkspaceWhenClick = ({ id, channel }) => {
 
   // Add a function to check if the user has owner privileges
   const isWorkspaceOwner = () => {
-    const currentWorkspace = workspaces.find(ws => ws.id === activeWorkspace);
-    return currentWorkspace && (currentWorkspace.role === "owner" || currentWorkspace.isOwned);
+    const currentWorkspace = workspaces.find((ws) => ws.id === activeWorkspace);
+    return (
+      currentWorkspace &&
+      (currentWorkspace.role === "owner" || currentWorkspace.isOwned)
+    );
   };
 
   // Function to handle showing workspace members
   const handleShowMembers = async () => {
     if (!activeWorkspace) return;
-    
+
     setIsWorkspaceMembersLoading(true);
     try {
       const members = await getWorkspaceMembers(activeWorkspace);
@@ -602,21 +635,21 @@ const selectedWorkspaceWhenClick = ({ id, channel }) => {
     setIsPromotingAdmin(true);
     try {
       const results = await promoteToAdmin(activeWorkspace, selectedMembers);
-      
+
       // Update the local members list with new roles
       if (results.success.length > 0) {
-        setWorkspaceMembers(prevMembers => 
-          prevMembers.map(member => ({
+        setWorkspaceMembers((prevMembers) =>
+          prevMembers.map((member) => ({
             ...member,
-            role: results.success.includes(member.id) ? 'admin' : member.role
+            role: results.success.includes(member.id) ? "admin" : member.role,
           }))
         );
       }
-      
+
       // Clear selection
       setSelectedMembers([]);
     } catch (error) {
-      console.error('Failed to promote members:', error);
+      console.error("Failed to promote members:", error);
     } finally {
       setIsPromotingAdmin(false);
     }
@@ -624,17 +657,20 @@ const selectedWorkspaceWhenClick = ({ id, channel }) => {
 
   // Function to toggle member selection
   const toggleMemberSelection = (memberId) => {
-    setSelectedMembers(prev => 
+    setSelectedMembers((prev) =>
       prev.includes(memberId)
-        ? prev.filter(id => id !== memberId)
+        ? prev.filter((id) => id !== memberId)
         : [...prev, memberId]
     );
   };
 
   // Function to check if user has admin privileges
   const hasAdminPrivileges = () => {
-    const currentWorkspace = workspaces.find(ws => ws.id === activeWorkspace);
-    return currentWorkspace && (currentWorkspace.role === "owner" || currentWorkspace.role === "admin");
+    const currentWorkspace = workspaces.find((ws) => ws.id === activeWorkspace);
+    return (
+      currentWorkspace &&
+      (currentWorkspace.role === "owner" || currentWorkspace.role === "admin")
+    );
   };
 
   // Function to handle member removal
@@ -643,21 +679,21 @@ const selectedWorkspaceWhenClick = ({ id, channel }) => {
 
     // Only owners and admins can remove members
     if (!hasAdminPrivileges()) {
-      toast.error('Only workspace owners and admins can remove members');
+      toast.error("Only workspace owners and admins can remove members");
       return;
     }
 
-    const currentWorkspace = workspaces.find(ws => ws.id === activeWorkspace);
-    
+    const currentWorkspace = workspaces.find((ws) => ws.id === activeWorkspace);
+
     // Check permissions
-    if (member.role === 'owner') {
-      toast.error('Cannot remove the workspace owner');
+    if (member.role === "owner") {
+      toast.error("Cannot remove the workspace owner");
       return;
     }
 
     // If current user is admin, they can only remove regular members
-    if (currentWorkspace?.role === 'admin' && member.role === 'admin') {
-      toast.error('Admins can only remove regular members');
+    if (currentWorkspace?.role === "admin" && member.role === "admin") {
+      toast.error("Admins can only remove regular members");
       return;
     }
 
@@ -671,23 +707,48 @@ const selectedWorkspaceWhenClick = ({ id, channel }) => {
     setIsRemovingMember(true);
     try {
       await removeMember(activeWorkspace, memberToRemove.id);
-      
+
       // Update local state to remove the member
-      setWorkspaceMembers(prevMembers => 
-        prevMembers.filter(member => member.id !== memberToRemove.id)
+      setWorkspaceMembers((prevMembers) =>
+        prevMembers.filter((member) => member.id !== memberToRemove.id)
       );
-      
+
       setMemberToRemove(null);
     } catch (error) {
-      console.error('Failed to remove member:', error);
+      console.error("Failed to remove member:", error);
     } finally {
       setIsRemovingMember(false);
     }
   };
 
+  // Function to handle sending friend request
+  const handleSendFriendRequest = async (member, e) => {
+    e.stopPropagation();
+    if (!member.id) return;
+
+    setIsSendingFriendRequest(true);
+    try {
+      await sendFriendRequest(member.id);
+      toast.success(`Friend request sent to ${member.username}`);
+    } catch (error) {
+      console.error("Failed to send friend request:", error);
+    } finally {
+      setIsSendingFriendRequest(false);
+    }
+  };
+
+  // Function to check if user is already a friend
+  const isAlreadyFriend = (memberId) => {
+    return friends.some((friend) => friend.friendId === memberId);
+  };
+
   if (workspaces.length === 0) {
     return (
-      <div className={`${isMobile ? 'w-full' : 'w-72'} bg-base-200 h-full border-r border-base-300 flex flex-col items-center justify-center p-4`}>
+      <div
+        className={`${
+          isMobile ? "w-full" : "w-72"
+        } bg-base-200 h-full border-r border-base-300 flex flex-col items-center justify-center p-4`}
+      >
         <div className="text-center mb-4">
           <Briefcase className="w-12 h-12 mx-auto mb-2 opacity-50" />
           <h3 className="font-medium text-lg">No Workspaces</h3>
@@ -706,9 +767,9 @@ const selectedWorkspaceWhenClick = ({ id, channel }) => {
   // Mobile view toggle for workspace sidebar
   const MobileWorkspaceToggle = () => {
     if (!isMobile) return null;
-    
+
     return (
-      <button 
+      <button
         onClick={toggleWorkspaceSidebar}
         className="fixed top-20 left-4 z-40 p-2 bg-primary text-primary-content rounded-md shadow-md"
       >
@@ -720,11 +781,17 @@ const selectedWorkspaceWhenClick = ({ id, channel }) => {
   return (
     <>
       <MobileWorkspaceToggle />
-      <div className={`
-        ${isMobile ? 'fixed left-0 top-16 bottom-0 z-30' : 'w-72'} 
-        ${isMobile && !isWorkspaceSidebarOpen ? 'translate-x-[-100%]' : 'translate-x-0'} 
+      <div
+        className={`
+        ${isMobile ? "fixed left-0 top-16 bottom-0 z-30" : "w-72"} 
+        ${
+          isMobile && !isWorkspaceSidebarOpen
+            ? "translate-x-[-100%]"
+            : "translate-x-0"
+        } 
         bg-base-200 h-full border-r border-base-300 flex flex-col transition-transform duration-300 ease-in-out
-      `}>
+      `}
+      >
         {/* Header section */}
         <div className="p-4 border-b border-base-300 flex-shrink-0">
           {/* Title and Create Workspace */}
@@ -734,7 +801,8 @@ const selectedWorkspaceWhenClick = ({ id, channel }) => {
                 ? "Workspaces"
                 : activeNavItem === "workSpace"
                 ? "workSpace"
-                : activeNavItem.charAt(0).toUpperCase() + activeNavItem.slice(1)}
+                : activeNavItem.charAt(0).toUpperCase() +
+                  activeNavItem.slice(1)}
             </h2>
             <div className="flex items-center relative">
               <button
@@ -794,7 +862,8 @@ const selectedWorkspaceWhenClick = ({ id, channel }) => {
                 >
                   <div className="flex items-center gap-2">
                     <div className="w-6 h-6 rounded-md bg-primary/20 flex items-center justify-center">
-                      {getActiveWorkspace()?.name?.charAt(0).toUpperCase() || "?"}
+                      {getActiveWorkspace()?.name?.charAt(0).toUpperCase() ||
+                        "?"}
                     </div>
                     <span className="font-medium">
                       {getActiveWorkspace()?.name || "Select Workspace"}
@@ -813,11 +882,12 @@ const selectedWorkspaceWhenClick = ({ id, channel }) => {
                       </div>
                       {workspaces
                         // Filter to show each owned workspace only once
-                        .filter((ws, index, self) => 
-                          ws && 
-                          (ws.isOwned || ws.role === "owner") && 
-                          // Only keep the first occurrence of a workspace with the same ID
-                          index === self.findIndex(w => w?.id === ws?.id)
+                        .filter(
+                          (ws, index, self) =>
+                            ws &&
+                            (ws.isOwned || ws.role === "owner") &&
+                            // Only keep the first occurrence of a workspace with the same ID
+                            index === self.findIndex((w) => w?.id === ws?.id)
                         )
                         .map((workspace, index) => (
                           <button
@@ -856,27 +926,31 @@ const selectedWorkspaceWhenClick = ({ id, channel }) => {
                         <div className="px-2 py-1 text-xs font-semibold text-base-content/70">
                           JOINED WORKSPACES
                         </div>
-                        {workspaces
-                          .filter((ws) => 
-                            ws && 
-                            ws.isInvited && 
-                            ws.role !== "owner" && 
+                        {workspaces.filter(
+                          (ws) =>
+                            ws &&
+                            ws.isInvited &&
+                            ws.role !== "owner" &&
                             !ws.isOwned &&
                             // Only keep the first occurrence of a workspace with the same ID
-                            workspaces.findIndex(w => w?.id === ws?.id) === workspaces.indexOf(ws)
-                          ).length === 0 ? (
+                            workspaces.findIndex((w) => w?.id === ws?.id) ===
+                              workspaces.indexOf(ws)
+                        ).length === 0 ? (
                           <div className="px-2 py-1 text-xs text-base-content/50 italic">
                             No joined workspaces
                           </div>
                         ) : (
                           workspaces
-                            .filter((ws) => 
-                              ws && 
-                              ws.isInvited && 
-                              ws.role !== "owner" && 
-                              !ws.isOwned &&
-                              // Only keep the first occurrence of a workspace with the same ID
-                              workspaces.findIndex(w => w?.id === ws?.id) === workspaces.indexOf(ws)
+                            .filter(
+                              (ws) =>
+                                ws &&
+                                ws.isInvited &&
+                                ws.role !== "owner" &&
+                                !ws.isOwned &&
+                                // Only keep the first occurrence of a workspace with the same ID
+                                workspaces.findIndex(
+                                  (w) => w?.id === ws?.id
+                                ) === workspaces.indexOf(ws)
                             )
                             .map((workspace, index) => {
                               return (
@@ -960,9 +1034,7 @@ const selectedWorkspaceWhenClick = ({ id, channel }) => {
                               ? "bg-primary/10"
                               : ""
                           }`}
-                          onClick={() =>
-                            toggleFriendSelection(friend.friendId)
-                          }
+                          onClick={() => toggleFriendSelection(friend.friendId)}
                         >
                           <div className="flex items-center gap-2">
                             <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
@@ -1057,53 +1129,103 @@ const selectedWorkspaceWhenClick = ({ id, channel }) => {
                           <div
                             key={member.id || member._id}
                             className={`flex items-center justify-between p-3 rounded-lg bg-base-200 ${
-                              isWorkspaceOwner() && member.role !== 'owner' ? 'cursor-pointer hover:bg-base-300' : ''
-                            } ${selectedMembers.includes(member.id) ? 'ring-2 ring-primary' : ''}`}
+                              isWorkspaceOwner() && member.role !== "owner"
+                                ? "cursor-pointer hover:bg-base-300"
+                                : ""
+                            } ${
+                              selectedMembers.includes(member.id)
+                                ? "ring-2 ring-primary"
+                                : ""
+                            }`}
                             onClick={() => {
-                              if (isWorkspaceOwner() && member.role !== 'owner' && member.role !== 'admin') {
+                              if (
+                                isWorkspaceOwner() &&
+                                member.role !== "owner" &&
+                                member.role !== "admin"
+                              ) {
                                 toggleMemberSelection(member.id);
                               }
                             }}
                           >
                             <div className="flex items-center gap-3">
                               <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center overflow-hidden">
-                                <img 
-                                  src={member.avatar || "/avatar.png"} 
+                                <img
+                                  src={member.avatar || "/avatar.png"}
                                   alt={member.username}
                                   className="w-full h-full object-cover"
                                 />
                               </div>
                               <div>
-                                <div className="font-medium">{member.username}</div>
+                                <div className="font-medium">
+                                  {member.username}
+                                </div>
                                 <div className="text-sm text-base-content/70 flex items-center gap-1">
-                                  {member.role === 'owner' ? (
+                                  {member.role === "owner" ? (
                                     <ShieldCheck className="w-4 h-4 text-success" />
-                                  ) : member.role === 'admin' ? (
+                                  ) : member.role === "admin" ? (
                                     <Shield className="w-4 h-4 text-primary" />
                                   ) : null}
-                                  {member.role || 'Member'}
+                                  {member.role || "Member"}
                                 </div>
                               </div>
                             </div>
                             <div className="flex items-center gap-2">
-                              <div className={`w-2 h-2 rounded-full ${
-                                member.status === 'online' ? 'bg-success' : 'bg-base-content/30'
-                              }`} />
-                              
+                              <div
+                                className={`w-2 h-2 rounded-full ${
+                                  member.status === "online"
+                                    ? "bg-success"
+                                    : "bg-base-content/30"
+                                }`}
+                              />
+
+{(() => {
+  // Check if authUser is available
+  if (!authUser) return null;
+  
+  // Compare the current user's ID with the member's ID
+  const isSelf = member.id === authUser._id; // Adjust property name if needed
+  
+  // Don't show button for yourself
+  if (isSelf) return null;
+  
+  // Don't show if already friends
+  if (isAlreadyFriend(member.id)) return null;
+  
+  // Don't show if current user is an owner (owners can't send requests)
+  const isCurrentUserOwner = authUser.role === "owner" || authUser.isOwner;
+  if (isCurrentUserOwner) return null;
+  
+  // Show the button for non-friends who aren't yourself
+  // Note: We removed the check that prevented showing the button for owners
+  return (
+    <button
+      className="btn btn-ghost btn-sm btn-square text-primary hover:bg-primary/20"
+      onClick={(e) => handleSendFriendRequest(member, e)}
+      title="Send Friend Request"
+      disabled={isSendingFriendRequest}
+    >
+      <UserPlus className="w-4 h-4" />
+    </button>
+  );
+})()}
                               {/* Remove Member Button */}
-                              {hasAdminPrivileges() && member.role !== 'owner' && 
-                                (workspaces.find(ws => ws.id === activeWorkspace)?.role === 'owner' || member.role === 'member') && (
-                                <button
-                                  className="btn btn-ghost btn-sm btn-square text-error hover:bg-error/20"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleRemoveMember(member);
-                                  }}
-                                  title="Remove member"
-                                >
-                                  <UserMinus className="w-4 h-4" />
-                                </button>
-                              )}
+                              {hasAdminPrivileges() &&
+                                member.role !== "owner" &&
+                                (workspaces.find(
+                                  (ws) => ws.id === activeWorkspace
+                                )?.role === "owner" ||
+                                  member.role === "member") && (
+                                  <button
+                                    className="btn btn-ghost btn-sm btn-square text-error hover:bg-error/20"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleRemoveMember(member);
+                                    }}
+                                    title="Remove member"
+                                  >
+                                    <UserMinus className="w-4 h-4" />
+                                  </button>
+                                )}
                             </div>
                           </div>
                         ))}
@@ -1152,7 +1274,9 @@ const selectedWorkspaceWhenClick = ({ id, channel }) => {
             <div className="bg-base-100 rounded-lg p-6 w-96">
               <h3 className="text-lg font-semibold mb-4">Remove Member</h3>
               <p className="mb-4">
-                Are you sure you want to remove <span className="font-medium">{memberToRemove.username}</span> from this workspace?
+                Are you sure you want to remove{" "}
+                <span className="font-medium">{memberToRemove.username}</span>{" "}
+                from this workspace?
               </p>
               <div className="flex justify-end gap-2">
                 <button
@@ -1173,7 +1297,7 @@ const selectedWorkspaceWhenClick = ({ id, channel }) => {
                       Removing...
                     </>
                   ) : (
-                    'Remove Member'
+                    "Remove Member"
                   )}
                 </button>
               </div>
