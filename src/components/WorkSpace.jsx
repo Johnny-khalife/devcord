@@ -48,8 +48,8 @@ const WorkSpace = ({
   const [selectedChannelUsers, setSelectedChannelUsers] = useState([]);
   const [showChannelUserSelector, setShowChannelUserSelector] = useState(false);
 
-// In your component:
-const { authUser } = useAuthStore();
+  // In your component:
+  const { authUser } = useAuthStore();
 
   // Get workspace members
   const {
@@ -58,7 +58,7 @@ const { authUser } = useAuthStore();
     promoteToAdmin,
     removeMember,
   } = useWorkspaceStore();
-  const { friends, sendFriendRequest } = useFriendStore();
+  const { friends, sendFriendRequest, removeFriend } = useFriendStore();
   const { user: currentUser } = useAuthStore();
   const [workspaceMembers, setWorkspaceMembers] = useState([]);
   const [isWorkspaceMembersLoading, setIsWorkspaceMembersLoading] =
@@ -742,6 +742,22 @@ const { authUser } = useAuthStore();
     return friends.some((friend) => friend.friendId === memberId);
   };
 
+  const handleRemoveFriend = async (member, e) => {
+    e.stopPropagation();
+    if (!member.id) return;
+
+    setIsSendingFriendRequest(true);
+    try {
+      await removeFriend(member.id);
+      toast.success(`Removed ${member.username} from friends`);
+    } catch (error) {
+      console.error("Failed to remove friend:", error);
+      toast.error("Failed to remove friend");
+    } finally {
+      setIsSendingFriendRequest(false);
+    }
+  };
+
   if (workspaces.length === 0) {
     return (
       <div
@@ -1178,36 +1194,46 @@ const { authUser } = useAuthStore();
                                 }`}
                               />
 
-{(() => {
-  // Check if authUser is available
-  if (!authUser) return null;
-  
-  // Compare the current user's ID with the member's ID
-  const isSelf = member.id === authUser._id; // Adjust property name if needed
-  
-  // Don't show button for yourself
-  if (isSelf) return null;
-  
-  // Don't show if already friends
-  if (isAlreadyFriend(member.id)) return null;
-  
-  // Don't show if current user is an owner (owners can't send requests)
-  const isCurrentUserOwner = authUser.role === "owner" || authUser.isOwner;
-  if (isCurrentUserOwner) return null;
-  
-  // Show the button for non-friends who aren't yourself
-  // Note: We removed the check that prevented showing the button for owners
-  return (
-    <button
-      className="btn btn-ghost btn-sm btn-square text-primary hover:bg-primary/20"
-      onClick={(e) => handleSendFriendRequest(member, e)}
-      title="Send Friend Request"
-      disabled={isSendingFriendRequest}
-    >
-      <UserPlus className="w-4 h-4" />
-    </button>
-  );
-})()}
+                              {(() => {
+                                // Check if authUser is available
+                                if (!authUser) return null;
+
+                                // Compare the current user's ID with the member's ID
+                                const isSelf = member.id === authUser._id; // Adjust property name if needed
+
+                                // Don't show button for yourself
+                                if (isSelf) return null;
+
+                                // Show remove friend button if already friends
+                                if (isAlreadyFriend(member.id)) {
+                                  return (
+                                    <button
+                                      className="btn btn-ghost btn-sm btn-square text-error hover:bg-error/20"
+                                      onClick={(e) => handleRemoveFriend(member, e)}
+                                      title="Remove Friend"
+                                      disabled={isSendingFriendRequest}
+                                    >
+                                      <UserMinus className="w-4 h-4" />
+                                    </button>
+                                  );
+                                }
+
+                                // Don't show if current user is an owner (owners can't send requests)
+                                const isCurrentUserOwner = authUser.role === "owner" || authUser.isOwner;
+                                if (isCurrentUserOwner) return null;
+
+                                // Show the button for non-friends who aren't yourself
+                                return (
+                                  <button
+                                    className="btn btn-ghost btn-sm btn-square text-primary hover:bg-primary/20"
+                                    onClick={(e) => handleSendFriendRequest(member, e)}
+                                    title="Send Friend Request"
+                                    disabled={isSendingFriendRequest}
+                                  >
+                                    <UserPlus className="w-4 h-4" />
+                                  </button>
+                                );
+                              })()}
                               {/* Remove Member Button */}
                               {hasAdminPrivileges() &&
                                 member.role !== "owner" &&
