@@ -120,7 +120,7 @@ const WorkSpace = ({
   };
 
   // Get friends data and methods from the friend store
-  const { getFriendsList, isLoading: isFriendsLoading } = useFriendStore();
+  const { getFriendsList } = useFriendStore();
   const { sendWorkspaceInvite } = useWorkspaceStore();
   const { fetchWorkspaceChannels, createChannel, deleteChannel } =
     useChannelStore();
@@ -1038,6 +1038,7 @@ const WorkSpace = ({
           sendInvites={sendInvites}
           isLoading={isInviteLoading}
           workspaceName={getActiveWorkspace()?.name}
+          workspaceMembers={workspaceMembers}
         />
       </div>
     </>

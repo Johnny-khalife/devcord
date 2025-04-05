@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { X, UserPlus, Search, Check, UserCheck, Users } from 'lucide-react';
+import { X, UserPlus, Search, Check, UserCheck, Users, UserMinus } from 'lucide-react';
 
 const InviteFriendsPortal = ({
   isOpen,
@@ -10,25 +10,52 @@ const InviteFriendsPortal = ({
   toggleFriendSelection,
   sendInvites,
   isLoading,
-  workspaceName
+  workspaceName,
+  workspaceMembers = [] // Provide a default empty array
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filteredFriends, setFilteredFriends] = useState([]);
+  const [availableFriends, setAvailableFriends] = useState([]);
+  
+  // Filter out friends who are already in the workspace
+  useEffect(() => {
+    if (!friends || !workspaceMembers) {
+      setAvailableFriends([]);
+      return;
+    }
+    
+    // Create a Set of member IDs for faster lookup
+    const memberIds = new Set();
+    workspaceMembers.forEach(member => {
+      if (member.id) memberIds.add(member.id);
+      if (member._id) memberIds.add(member._id);
+      if (member.userId) memberIds.add(member.userId);
+      if (member.friendId) memberIds.add(member.friendId);
+    });
+    
+    // Filter friends to only include those not in the workspace
+    const nonMemberFriends = friends.filter(friend => {
+      const friendId = friend.friendId || friend.id || friend._id;
+      return !memberIds.has(friendId);
+    });
+    
+    setAvailableFriends(nonMemberFriends);
+  }, [friends, workspaceMembers]);
   
   // Filter friends when search term changes
   useEffect(() => {
-    if (!friends) {
+    if (!availableFriends) {
       setFilteredFriends([]);
       return;
     }
     
     if (!searchTerm.trim()) {
-      setFilteredFriends(friends);
+      setFilteredFriends(availableFriends);
       return;
     }
     
     const lowerSearchTerm = searchTerm.toLowerCase();
-    const filtered = friends.filter(friend => {
+    const filtered = availableFriends.filter(friend => {
       const username = friend.username ? friend.username.toLowerCase() : '';
       const displayName = friend.displayName ? friend.displayName.toLowerCase() : '';
       
@@ -36,7 +63,7 @@ const InviteFriendsPortal = ({
     });
     
     setFilteredFriends(filtered);
-  }, [searchTerm, friends]);
+  }, [searchTerm, availableFriends]);
   
   // Prevent background scrolling when modal is open
   useEffect(() => {
@@ -127,13 +154,27 @@ const InviteFriendsPortal = ({
               </div>
             ) : filteredFriends.length === 0 ? (
               <div className="text-center py-12 text-gray-400">
-                {friends.length === 0 ? (
+                {availableFriends.length === 0 ? (
                   <>
                     <div className="flex justify-center mb-4">
-                      <Users className="w-16 h-16 opacity-30 text-indigo-400" />
+                      {friends && friends.length > 0 ? (
+                        <>
+                          <UserMinus className="w-16 h-16 opacity-30 text-indigo-400" />
+                          <div className="flex flex-col">
+                            <p className="font-medium text-lg text-gray-300">All friends invited</p>
+                            <p className="text-gray-500 mt-2">Everyone is already in the workspace</p>
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <Users className="w-16 h-16 opacity-30 text-indigo-400" />
+                          <div className="flex flex-col">
+                            <p className="font-medium text-lg text-gray-300">No friends found</p>
+                            <p className="text-gray-500 mt-2">Add friends to invite them to your workspace</p>
+                          </div>
+                        </>
+                      )}
                     </div>
-                    <p className="font-medium text-lg text-gray-300">No friends found</p>
-                    <p className="text-gray-500 mt-2">Add friends to invite them to your workspace</p>
                   </>
                 ) : (
                   <>
@@ -200,10 +241,10 @@ const InviteFriendsPortal = ({
           </div>
           
           {/* Results count and clear filter button */}
-          {!isLoading && friends.length > 0 && searchTerm && (
+          {!isLoading && availableFriends.length > 0 && searchTerm && (
             <div className="py-2 mt-2 flex justify-between items-center">
               <span className="text-xs text-gray-400">
-                Showing {filteredFriends.length} of {friends.length} friends
+                Showing {filteredFriends.length} of {availableFriends.length} friends
               </span>
               <button 
                 className="text-xs text-indigo-400 hover:text-indigo-300 transition-colors"
