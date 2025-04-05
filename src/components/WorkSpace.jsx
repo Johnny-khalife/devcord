@@ -725,8 +725,9 @@ const selectedWorkspaceWhenClick = ({ id, channel }) => {
         ${isMobile && !isWorkspaceSidebarOpen ? 'translate-x-[-100%]' : 'translate-x-0'} 
         bg-base-200 h-full border-r border-base-300 flex flex-col transition-transform duration-300 ease-in-out
       `}>
-        {/* Header with title and search */}
+        {/* Header section */}
         <div className="p-4 border-b border-base-300 flex-shrink-0">
+          {/* Title and Create Workspace */}
           <div className="flex justify-between items-center mb-4">
             <h2 className="font-bold text-lg">
               {activeNavItem === "workspaces"
@@ -743,20 +744,21 @@ const selectedWorkspaceWhenClick = ({ id, channel }) => {
               >
                 <Plus className="w-5 h-5" />
               </button>
+            </div>
+          </div>
 
-              {/* Members list button */}
-              {activeNavItem === "workSpace" && activeWorkspace && (
-                <button
-                  className="p-2 hover:bg-base-300 rounded-md"
-                  onClick={handleShowMembers}
-                  aria-label="Show Workspace Members"
-                >
-                  <Users className="w-5 h-5" />
-                </button>
-              )}
+          {/* Action buttons row */}
+          {activeNavItem === "workSpace" && activeWorkspace && (
+            <div className="flex items-center justify-center gap-4 py-2">
+              <button
+                className="p-2 hover:bg-base-300 rounded-md"
+                onClick={handleShowMembers}
+                aria-label="Show Workspace Members"
+              >
+                <Users className="w-5 h-5" />
+              </button>
 
-              {/* Invite button - show for both owners and admins */}
-              {activeNavItem === "workSpace" && activeWorkspace && hasAdminPrivileges() && (
+              {hasAdminPrivileges() && (
                 <button
                   ref={inviteButtonRef}
                   className="p-2 hover:bg-base-300 rounded-md"
@@ -767,39 +769,15 @@ const selectedWorkspaceWhenClick = ({ id, channel }) => {
                 </button>
               )}
 
-              {/* Settings button */}
-              {activeNavItem === "workSpace" && activeWorkspace && (
-                <button
-                  className="p-2 hover:bg-base-300 rounded-md"
-                  onClick={() => handleOpenSettingsForm(activeWorkspace)}
-                  aria-label="Workspace Settings"
-                >
-                  <Settings className="w-5 h-5" />
-                </button>
-              )}
+              <button
+                className="p-2 hover:bg-base-300 rounded-md"
+                onClick={() => handleOpenSettingsForm(activeWorkspace)}
+                aria-label="Workspace Settings"
+              >
+                <Settings className="w-5 h-5" />
+              </button>
             </div>
-          </div>
-          <div className="relative">
-            <input
-              type="text"
-              placeholder="Search..."
-              className="w-full pl-8 pr-4 py-2 rounded-md bg-base-100 text-sm"
-            />
-            <svg
-              className="w-4 h-4 absolute left-2 top-2.5 text-base-content/50"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="2"
-                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-              ></path>
-            </svg>
-          </div>
+          )}
         </div>
 
         {/* Scrollable content area */}
@@ -1088,8 +1066,12 @@ const selectedWorkspaceWhenClick = ({ id, channel }) => {
                             }}
                           >
                             <div className="flex items-center gap-3">
-                              <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center">
-                                {member.username ? member.username.charAt(0).toUpperCase() : "?"}
+                              <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center overflow-hidden">
+                                <img 
+                                  src={member.avatar || "/avatar.png"} 
+                                  alt={member.username}
+                                  className="w-full h-full object-cover"
+                                />
                               </div>
                               <div>
                                 <div className="font-medium">{member.username}</div>
