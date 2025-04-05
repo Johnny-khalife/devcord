@@ -34,14 +34,25 @@ export const useWorkspaceStore = create(
       deleteWorkspace: async (workspaceId, setIsLoading, onWorkspaceUpdated, onClose) => {
         setIsLoading(true);
         try {
-        const response=  await axiosInstance.delete(`/workspaces/${workspaceId}`);
+          const response = await axiosInstance.delete(`/workspaces/${workspaceId}`);
+          
+          // Update local state after successful deletion
           if (onWorkspaceUpdated) onWorkspaceUpdated(workspaceId, null, 'delete');
           if (onClose) onClose();
-          toast.success(response.data.message ||"Workspace deleted successfully");
+          
+          // Refresh workspaces list
+          try {
+            await get().getUserWorkspaces();
+          } catch (refreshError) {
+            console.error("Error refreshing workspaces after deletion:", refreshError);
+            // Continue with success flow even if refresh fails
+          }
+          
+          toast.success(response.data.message || "Workspace deleted successfully");
         } catch (error) {
           const errorMessage = error.response?.data?.message || "Failed to delete workspace";
           toast.error(errorMessage);
-          console.log(error.response)
+          console.log(error.response);
           throw error;
         } finally {
           setIsLoading(false);
@@ -110,15 +121,17 @@ export const useWorkspaceStore = create(
           const response = await axiosInstance.get('/workspaces/user');
           if (response.data.success) {
             // Extract and format the workspace data
-            const workspaces = response.data.workspaces.map(membership => ({
-              ...membership.workspaceId,  // Spread the actual workspace data
-              _id: membership.workspaceId._id,  // Keep workspace ID
-              id: membership.workspaceId._id,   // Add both id and _id for compatibility
-              membershipId: membership._id,      // Keep membership ID if needed
-              role: membership.role || 'member', // Ensure role is set
-              isOwned: membership.role === 'owner',
-              isAdmin: membership.role === 'admin'
-            }));
+            const workspaces = response.data.workspaces
+              .filter(membership => membership.workspaceId !== null) // Filter out null workspaceIds
+              .map(membership => ({
+                ...membership.workspaceId,  // Spread the actual workspace data
+                _id: membership.workspaceId._id,  // Keep workspace ID
+                id: membership.workspaceId._id,   // Add both id and _id for compatibility
+                membershipId: membership._id,      // Keep membership ID if needed
+                role: membership.role || 'member', // Ensure role is set
+                isOwned: membership.role === 'owner',
+                isAdmin: membership.role === 'admin'
+              }));
             console.log("Formatted workspaces with roles:", workspaces);
             set({ workspacesWithRoles: workspaces }); // Store workspaces with roles
             return workspaces;
