@@ -20,6 +20,8 @@ import { useWorkspaceStore } from "../store/useWorkspaceStore";
 import { useChannelStore } from "../store/useChannelStore";
 import toast from "react-hot-toast";
 import { useAuthStore } from "../store/useAuthStore";
+import WorkspaceMembersPortal from "./WorkspaceMembersPortal";
+import RemoveMemberPortal from "./RemoveMemberPortal";
 
 const WorkSpace = ({
   activeNavItem,
@@ -661,15 +663,6 @@ const WorkSpace = ({
     }
   };
 
-  // Function to toggle member selection
-  const toggleMemberSelection = (memberId) => {
-    setSelectedMembers((prev) =>
-      prev.includes(memberId)
-        ? prev.filter((id) => id !== memberId)
-        : [...prev, memberId]
-    );
-  };
-
   // Function to check if user has admin privileges
   const hasAdminPrivileges = () => {
     const currentWorkspace = workspaces.find((ws) => ws.id === activeWorkspace);
@@ -1101,245 +1094,38 @@ const WorkSpace = ({
           )}
         </div>
 
-        {/* Workspace Members Modal */}
-        {showMembersModal && (
-          <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
-            <div className="bg-[#1E1F22] rounded-lg p-5 w-[350px] max-h-[500px] flex flex-col shadow-xl">
-              <div className="flex justify-between items-center mb-4 pb-2 border-b border-gray-700">
-                <h3 className="text-lg font-semibold text-white">Workspace Members</h3>
-                <button
-                  className="text-gray-400 hover:text-white"
-                  onClick={() => {
-                    setShowMembersModal(false);
-                    setSelectedMembers([]);
-                  }}
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
+        {/* Use portals for modals */}
+        <WorkspaceMembersPortal
+          isOpen={showMembersModal}
+          onClose={() => {
+            setShowMembersModal(false);
+            setSelectedMembers([]);
+          }}
+          workspaceMembers={workspaceMembers}
+          isLoading={isWorkspaceMembersLoading}
+          currentUser={authUser}
+          isAlreadyFriend={isAlreadyFriend}
+          removeFriend={removeFriend}
+          handleSendFriendRequest={handleSendFriendRequest}
+          isSendingFriendRequest={isSendingFriendRequest}
+          handleRemoveMember={handleRemoveMember}
+          isWorkspaceOwner={isWorkspaceOwner()}
+          hasAdminPrivileges={hasAdminPrivileges}
+          selectedMembers={selectedMembers}
+          setSelectedMembers={setSelectedMembers}
+          isPromotingAdmin={isPromotingAdmin}
+          handleToggleAdminRole={handleToggleAdminRole}
+          workspaces={workspaces}
+          activeWorkspace={activeWorkspace}
+        />
 
-              {isWorkspaceMembersLoading ? (
-                <div className="flex-1 flex items-center justify-center">
-                  <span className="loading loading-spinner loading-md"></span>
-                </div>
-              ) : (
-                <div className="flex-1 overflow-y-auto pr-1">
-                  {workspaceMembers.length === 0 ? (
-                    <div className="text-center py-4 text-gray-400">
-                      No members found in this workspace
-                    </div>
-                  ) : (
-                    <>
-                      <div className="space-y-2">
-                        {workspaceMembers.map((member) => (
-                          <div
-                            key={member.id || member._id}
-                            className={`flex items-center justify-between py-2 px-2 rounded-md ${
-                              isWorkspaceOwner() && member.role !== "owner"
-                                ? "cursor-pointer hover:bg-[#2B2D31]"
-                                : ""
-                            } ${
-                              selectedMembers.includes(member.id)
-                                ? "bg-[#2B2D31]"
-                                : ""
-                            }`}
-                            onClick={() => {
-                              if (
-                                isWorkspaceOwner() &&
-                                member.role !== "owner" &&
-                                (member.role === "member" || member.role === "admin")
-                              ) {
-                                toggleMemberSelection(member.id);
-                              }
-                            }}
-                          >
-                            <div className="flex items-center gap-3">
-                              <div className="w-10 h-10 rounded-full bg-gray-700 flex items-center justify-center overflow-hidden">
-                                <img
-                                  src={member.avatar || "/avatar.png"}
-                                  alt={member.username}
-                                  className="w-full h-full object-cover"
-                                />
-                              </div>
-                              <div>
-                                <div className="font-medium text-white">
-                                  {member.username}
-                                </div>
-                                <div className="text-sm text-gray-400 flex items-center gap-1">
-                                  {member.role === "owner" ? (
-                                    <div className="flex items-center gap-1">
-                                      <ShieldCheck className="w-4 h-4 text-green-500" />
-                                      <span>owner</span>
-                                    </div>
-                                  ) : member.role === "admin" ? (
-                                    <div className="flex items-center gap-1">
-                                      <Shield className="w-4 h-4 text-blue-500" />
-                                      <span>admin</span>
-                                    </div>
-                                  ) : (
-                                    <span>member</span>
-                                  )}
-                                </div>
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              {(() => {
-                                // Check if authUser is available
-                                if (!authUser) return null;
-
-                                // Compare the current user's ID with the member's ID
-                                const isSelf = member.id === authUser._id;
-
-                                // Don't show buttons for yourself
-                                if (isSelf) return null;
-
-                                // If already friends, show Remove Friend button
-                                if (isAlreadyFriend(member.id)) {
-                                  return (
-                                    <button
-                                      className="text-yellow-500 hover:bg-yellow-500/10 p-1 rounded"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        removeFriend(member.id);
-                                      }}
-                                      title="Remove Friend"
-                                    >
-                                      <X className="w-4 h-4" />
-                                    </button>
-                                  );
-                                }
-
-                                // Show Add Friend button for non-friends
-                                return (
-                                  <button
-                                    className="text-blue-500 hover:bg-blue-500/10 p-1 rounded"
-                                    onClick={(e) =>
-                                      handleSendFriendRequest(member, e)
-                                    }
-                                    title="Send Friend Request"
-                                    disabled={isSendingFriendRequest}
-                                  >
-                                    <UserPlus className="w-4 h-4" />
-                                  </button>
-                                );
-                              })()}
-                              {/* Remove Member Button */}
-                              {hasAdminPrivileges() &&
-                                member.role !== "owner" &&
-                                (workspaces.find(
-                                  (ws) => ws.id === activeWorkspace
-                                )?.role === "owner" ||
-                                  member.role === "member") && (
-                                  <button
-                                    className="text-red-500 hover:bg-red-500/10 p-1 rounded"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleRemoveMember(member);
-                                    }}
-                                    title="Remove member"
-                                  >
-                                    <UserMinus className="w-4 h-4" />
-                                  </button>
-                                )}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-
-                      {/* Admin Promotion/Demotion Action */}
-                      {isWorkspaceOwner() && selectedMembers.length > 0 && (
-                        <div className="mt-4 pt-3 border-t border-gray-700 flex justify-end gap-2">
-                          <button
-                            className="px-3 py-1 bg-gray-700 text-gray-300 text-sm rounded hover:bg-gray-600"
-                            onClick={() => setSelectedMembers([])}
-                            disabled={isPromotingAdmin}
-                          >
-                            Cancel
-                          </button>
-                          <button
-                            className="px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-500"
-                            onClick={handleToggleAdminRole}
-                            disabled={isPromotingAdmin}
-                          >
-                            {isPromotingAdmin ? (
-                              <>
-                                <span className="loading loading-spinner loading-xs"></span>
-                                Updating...
-                              </>
-                            ) : (
-                              <>
-                                {workspaceMembers.find(m => m.id === selectedMembers[0])?.role === "admin" 
-                                  ? "Demote to Member" 
-                                  : "Promote to Admin"}
-                              </>
-                            )}
-                          </button>
-                        </div>
-                      )}
-                    </>
-                  )}
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* Remove Member Confirmation Modal */}
-        {memberToRemove && (
-          <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
-            <div className="bg-[#1E1F22] rounded-lg p-5 w-[350px] shadow-xl">
-              <h3 className="text-lg font-semibold text-white mb-4 pb-2 border-b border-gray-700">Remove Member</h3>
-              <div className="flex items-center gap-3 p-3 bg-[#2B2D31] rounded-md mb-4">
-                <div className="w-10 h-10 rounded-full bg-gray-700 flex items-center justify-center overflow-hidden">
-                  <img
-                    src={memberToRemove.avatar || "/avatar.png"}
-                    alt={memberToRemove.username}
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-                <div>
-                  <div className="font-medium text-white">{memberToRemove.username}</div>
-                  <div className="text-sm text-gray-400">
-                    {memberToRemove.role === "admin" ? (
-                      <div className="flex items-center gap-1">
-                        <Shield className="w-4 h-4 text-blue-500" />
-                        <span>admin</span>
-                      </div>
-                    ) : (
-                      <span>member</span>
-                    )}
-                  </div>
-                </div>
-              </div>
-              <p className="text-gray-300 mb-5">
-                Are you sure you want to remove this user from your workspace?
-              </p>
-              <div className="flex justify-end gap-2 pt-3 border-t border-gray-700">
-                <button
-                  className="px-3 py-1 bg-gray-700 text-gray-300 text-sm rounded hover:bg-gray-600"
-                  onClick={() => setMemberToRemove(null)}
-                  disabled={isRemovingMember}
-                >
-                  Cancel
-                </button>
-                <button
-                  className="px-3 py-1 bg-red-600 text-white text-sm rounded hover:bg-red-500"
-                  onClick={confirmRemoveMember}
-                  disabled={isRemovingMember}
-                >
-                  {isRemovingMember ? (
-                    <>
-                      <span className="loading loading-spinner loading-xs"></span>
-                      Removing...
-                    </>
-                  ) : (
-                    "Remove Member"
-                  )}
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
+        <RemoveMemberPortal
+          isOpen={memberToRemove !== null}
+          onClose={() => setMemberToRemove(null)}
+          memberToRemove={memberToRemove}
+          isRemovingMember={isRemovingMember}
+          confirmRemoveMember={confirmRemoveMember}
+        />
       </div>
     </>
   );
