@@ -22,6 +22,7 @@ import toast from "react-hot-toast";
 import { useAuthStore } from "../store/useAuthStore";
 import WorkspaceMembersPortal from "./WorkspaceMembersPortal";
 import RemoveMemberPortal from "./RemoveMemberPortal";
+import InviteFriendsPortal from "./InviteFriendsPortal";
 
 const WorkSpace = ({
   activeNavItem,
@@ -992,106 +993,7 @@ const WorkSpace = ({
             </div>
           )}
 
-          {/* Invite Friends Menu - Now using real friends data */}
-          {showInviteMenu && (
-            <div
-              ref={inviteMenuRef}
-              className="absolute top-10 right-0 w-64 bg-base-100 rounded-md shadow-lg border border-base-300 z-50"
-            >
-              <div className="p-3">
-                <h3 className="font-medium text-sm mb-3">
-                  Invite Friends to Workspace
-                </h3>
-
-                {/* Search friends */}
-                <div className="relative mb-3">
-                  <input
-                    type="text"
-                    placeholder="Search friends..."
-                    className="w-full px-3 py-2 rounded-md bg-base-200 text-sm"
-                  />
-                </div>
-
-                {/* Friends list for selection - Now using real data */}
-                <div className="max-h-60 overflow-y-auto">
-                  {isFriendsLoading ? (
-                    <div className="text-center py-4">
-                      <div className="loading loading-spinner loading-sm text-primary"></div>
-                      <p className="text-sm mt-2">Loading friends...</p>
-                    </div>
-                  ) : friends.length === 0 ? (
-                    <p className="text-sm text-base-content/70 text-center py-2">
-                      No friends found
-                    </p>
-                  ) : (
-                    <div className="space-y-2">
-                      {friends.map((friend) => (
-                        <div
-                          key={friend.friendId}
-                          className={`flex items-center justify-between p-2 rounded-md hover:bg-base-200 cursor-pointer ${
-                            selectedFriends.includes(friend.friendId)
-                              ? "bg-primary/10"
-                              : ""
-                          }`}
-                          onClick={() => toggleFriendSelection(friend.friendId)}
-                        >
-                          <div className="flex items-center gap-2">
-                            <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
-                              {friend.username
-                                ? friend.username.charAt(0).toUpperCase()
-                                : friend.displayName
-                                ? friend.displayName.charAt(0).toUpperCase()
-                                : "?"}
-                            </div>
-                            <div>
-                              <div className="text-sm font-medium">
-                                {friend.username ||
-                                  friend.displayName ||
-                                  `Friend #${friend.friendId}`}
-                              </div>
-                              <div className="text-xs text-base-content/70">
-                                {friend.status || "Status unknown"}
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* Checkmark for selected friends */}
-                          {selectedFriends.includes(friend.friendId) && (
-                            <Check className="w-5 h-5 text-primary" />
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                {/* Action buttons */}
-                <div className="mt-3 flex justify-between">
-                  <button
-                    className="btn btn-sm btn-ghost"
-                    onClick={() => setShowInviteMenu(false)}
-                    disabled={isInviteLoading}
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    className="btn btn-sm btn-primary"
-                    onClick={sendInvites}
-                    disabled={selectedFriends.length === 0 || isInviteLoading}
-                  >
-                    {isInviteLoading ? (
-                      <>
-                        <span className="loading loading-spinner loading-xs"></span>
-                        Inviting...
-                      </>
-                    ) : (
-                      `Invite (${selectedFriends.length})`
-                    )}
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
+          {/* Replace the Invite Friends Menu with portal implementation */}
         </div>
 
         {/* Use portals for modals */}
@@ -1125,6 +1027,17 @@ const WorkSpace = ({
           memberToRemove={memberToRemove}
           isRemovingMember={isRemovingMember}
           confirmRemoveMember={confirmRemoveMember}
+        />
+        
+        <InviteFriendsPortal
+          isOpen={showInviteMenu}
+          onClose={() => setShowInviteMenu(false)}
+          friends={friends}
+          selectedFriends={selectedFriends}
+          toggleFriendSelection={toggleFriendSelection}
+          sendInvites={sendInvites}
+          isLoading={isInviteLoading}
+          workspaceName={getActiveWorkspace()?.name}
         />
       </div>
     </>

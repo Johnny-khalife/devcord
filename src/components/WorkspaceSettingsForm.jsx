@@ -276,7 +276,7 @@ const WorkspaceSettingsForm = ({ workspaceId, workspace, onClose, onWorkspaceUpd
           {activeTab === 'invites' && (
             <div className="space-y-4">
               <p className="text-gray-300 text-sm">
-                Generate an invite link to share with others. Anyone with this link can join your workspace.
+                Only allowed users will be able to join the workspace by the the generated link.
               </p>
               
               {inviteUrl ? (
