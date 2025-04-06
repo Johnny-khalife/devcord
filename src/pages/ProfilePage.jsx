@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useAuthStore } from "../store/useAuthStore";
 import {
   Camera,
@@ -19,7 +19,8 @@ import {
   Plus,
   Star,
   Tag,
-  Trash2
+  Trash2,
+  AlertCircle
 } from "lucide-react";
 
 const ProfilePage = () => {
@@ -40,13 +41,15 @@ const ProfilePage = () => {
   const [linkedin, setlinkedin] = useState(
     authUser?.socialLinks?.linkedin || ""
   );
-  const [skillsInput, setSkillsInput] = useState("");
-  const [updateSuccess, setUpdateSuccess] = useState(false);
   
   // New state variables for enhanced skills section
   const [currentSkill, setCurrentSkill] = useState("");
   const [skillSuggestions, setSkillSuggestions] = useState([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
+  
+  // Modern alert states
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  const confirmDialogRef = useRef(null);
   
   // Popular skill suggestions for developers
   const popularSkills = [
@@ -67,7 +70,6 @@ const ProfilePage = () => {
       const base64Image = reader.result;
       setSelectedImg(base64Image);
       await updateAvatar({ avatar: base64Image });
-      showUpdateSuccess();
     };
   };
 
@@ -78,7 +80,6 @@ const ProfilePage = () => {
     }
     await updateProfile({ username: username.trim() });
     setIsEditingName(false);
-    showUpdateSuccess();
   };
 
   const handleGithubUpdate = async () => {
@@ -88,7 +89,6 @@ const ProfilePage = () => {
     }
     await updateProfile({ github: github.trim() });
     setIsEditingGithub(false);
-    showUpdateSuccess();
   };
 
   const handleLinkedinUpdate = async () => {
@@ -98,7 +98,6 @@ const ProfilePage = () => {
     }
     await updateProfile({ linkedin: linkedin.trim() });
     setIsEditingLinkedin(false);
-    showUpdateSuccess();
   };
 
   const handleBioUpdate = async () => {
@@ -108,7 +107,6 @@ const ProfilePage = () => {
     }
     await updateProfile({ bio: bio.trim() });
     setIsEditingBio(false);
-    showUpdateSuccess();
   };
 
   const handleSkillsUpdate = async (processedSkills = skills) => {
@@ -124,7 +122,6 @@ const ProfilePage = () => {
     }
     await updateProfile({ skills: currentSkills });
     setIsEditingSkills(false);
-    showUpdateSuccess();
   };
   
   // Function to add a new skill
@@ -164,11 +161,6 @@ const ProfilePage = () => {
     setShowSuggestions(filtered.length > 0);
   };
 
-  const showUpdateSuccess = () => {
-    setUpdateSuccess(true);
-    setTimeout(() => setUpdateSuccess(false), 3000);
-  };
-
   const formatDate = (dateString) => {
     if (!dateString) return "Not available";
     const date = new Date(dateString);
@@ -180,9 +172,7 @@ const ProfilePage = () => {
   };
 
   useEffect(() => {
-    if (isEditingSkills) {
-      setSkillsInput(skills.join(", "));
-    }
+    // No longer need to set skillsInput value
   }, [isEditingSkills, skills]);
   
   // Update suggestions when currentSkill changes
@@ -190,8 +180,90 @@ const ProfilePage = () => {
     filterSuggestions(currentSkill);
   }, [currentSkill, skills]);
 
+  // Function to handle click outside the confirm dialog
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (confirmDialogRef.current && !confirmDialogRef.current.contains(event.target)) {
+        setShowConfirmDialog(false);
+      }
+    };
+
+    if (showConfirmDialog) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [showConfirmDialog]);
+
+  // Function to reset avatar to default
+  const handleResetAvatar = async () => {
+    setShowConfirmDialog(true);
+  };
+  
+  // Function to confirm avatar reset
+  const confirmResetAvatar = async () => {
+    try {
+      // First reset the UI state immediately
+      setSelectedImg(null);
+      setShowConfirmDialog(false);
+      
+      // We need to ensure the avatar image is refreshed to avoid caching issues
+      const defaultAvatarWithTimestamp = "/avatar.png?t=" + new Date().getTime();
+      const profileImg = document.querySelector("img[alt='Profile']");
+      if (profileImg) {
+        profileImg.src = defaultAvatarWithTimestamp;
+      }
+      
+      // Then call the API to reset server-side
+      await updateAvatar({ avatar: "" });
+      
+      // Manually update the authUser object to ensure consistency
+      if (authUser) {
+        const updatedUser = { ...authUser, avatar: null };
+        useAuthStore.setState({ authUser: updatedUser });
+      }
+    } catch (error) {
+      console.error("Error resetting avatar:", error);
+    }
+  };
+
   return (
     <div className="min-h-screen pt-20 bg-gradient-to-b from-base-300 to-gray-900 text-gray-100">
+      {/* Confirmation Dialog */}
+      {showConfirmDialog && (
+        <div className="fixed inset-0 flex items-center justify-center z-50 bg-black/50 backdrop-blur-sm">
+          <div 
+            ref={confirmDialogRef}
+            className="bg-gray-800 border border-gray-700 rounded-lg shadow-xl p-5 max-w-sm w-full mx-4 transform transition-all"
+          >
+            <div className="flex items-center gap-3 mb-4">
+              <AlertCircle className="text-indigo-400 w-6 h-6" />
+              <h3 className="text-lg font-semibold text-white">Reset Avatar</h3>
+            </div>
+            <p className="text-gray-300 mb-5">
+              Are you sure you want to reset your avatar to the default? 
+            </p>
+            <div className="flex justify-end gap-3">
+              <button 
+                onClick={() => setShowConfirmDialog(false)}
+                className="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-md text-gray-200 transition-colors"
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={confirmResetAvatar}
+                className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 rounded-md text-white transition-colors flex items-center gap-1.5"
+              >
+                <Check className="w-4 h-4" />
+                Confirm
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      
       <div className="max-w-2xl mx-auto p-4 py-8">
         {/* Profile Header */}
         <div className="mb-8 text-center">
@@ -201,14 +273,6 @@ const ProfilePage = () => {
 
         {/* Main Profile Card */}
         <div className="bg-base-100 rounded-xl p-6 space-y-8 shadow-2xl border border-gray-700 relative overflow-hidden">
-          {/* Success indicator */}
-          {updateSuccess && (
-            <div className="absolute top-4 right-4 bg-green-500/90 text-white px-4 py-2 rounded-lg shadow-lg animate-fadeIn flex items-center">
-              <Check className="mr-2 h-4 w-4" />
-              Updated successfully
-            </div>
-          )}
-          
           {/* Decorative element */}
           <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500"></div>
 
@@ -221,6 +285,8 @@ const ProfilePage = () => {
                 className="w-36 h-36 rounded-full object-cover border-4 border-gray-700 group-hover:border-indigo-500 group-hover:shadow-lg group-hover:shadow-indigo-500/25 transition-all"
               />
               <div className="absolute inset-0 rounded-full bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+              
+              {/* Camera upload button */}
               <label
                 htmlFor="avatar-upload"
                 className={`
@@ -243,11 +309,22 @@ const ProfilePage = () => {
                 />
               </label>
             </div>
-            <p className="text-sm text-gray-400">
-              {isUpdatingProfile
-                ? "Uploading..."
-                : "Click the camera icon to update your photo"}
-            </p>
+            <div className="text-center">
+              <p className="text-sm text-gray-400">
+                {isUpdatingProfile
+                  ? "Updating avatar..."
+                  : "Click the camera icon to update your photo"}
+              </p>
+              {(selectedImg || authUser.avatar) && (
+                <button 
+                  onClick={handleResetAvatar}
+                  disabled={isUpdatingProfile}
+                  className="text-sm text-indigo-400 hover:text-indigo-300 mt-2 transition-colors font-medium"
+                >
+                  Reset to default avatar
+                </button>
+              )}
+            </div>
           </div>
 
           <div className="w-full h-px bg-gradient-to-r from-transparent via-gray-700 to-transparent my-4"></div>

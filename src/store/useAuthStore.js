@@ -213,12 +213,21 @@ export const useAuthStore = create(
       updateAvatar: async (data) => {
         set({ isUpdatingProfile: true });
         try {
-          const response = await axiosInstance.put("/users/avatar", data);
-          console.log(data);
-          set({ authUser: response.data.user });
+          // Ensure we're sending the right format for default avatar
+          const payload = data.avatar === null ? { avatar: "" } : data;
+          
+          const response = await axiosInstance.put("/users/avatar", payload);
+          // Update the local user state with the response
+          const updatedUser = response.data.user;
+          
+          // Update only the authUser state, preserving authentication
+          set((state) => ({ 
+            authUser: { ...state.authUser, ...updatedUser }
+          }));
+          
           toast.success(response.data.message);
         } catch (error) {
-          toast.error(error.response?.data?.message || "avatar update failed");
+          toast.error(error.response?.data?.message || "Avatar update failed");
         } finally {
           set({ isUpdatingProfile: false });
         }
