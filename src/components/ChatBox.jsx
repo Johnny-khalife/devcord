@@ -7,8 +7,6 @@ import MessageSkeleton from "./skeletons/MessageSkeleton";
 
 const ChatBox = ({
   activeNavItem,
-  activeWorkspace,
-  activeChannel,
   selectedWorkspace,
 }) => {
   const [isMobile, setIsMobile] = useState(false);
@@ -31,7 +29,7 @@ const ChatBox = ({
     return () => window.removeEventListener("resize", checkIfMobile);
   }, []);
 
-  const { messages, getMessages, isMessagesLoading, selectedFriend } =
+  const { getMessages, isMessagesLoading } =
     useChatStore();
     
     useEffect(() => {
@@ -45,7 +43,6 @@ const ChatBox = ({
       <div className="flex-1 flex flex-col overflow-auto">
         <ChatHeader
           activeNavItem={activeNavItem}
-          activeChannel={activeChannel}
           selectedWorkspace={selectedWorkspace}
         />
         <MessageSkeleton />
@@ -58,7 +55,6 @@ const ChatBox = ({
     <div className="flex flex-col h-full">
       <ChatHeader
         activeNavItem={activeNavItem}
-        activeChannel={activeChannel}
         selectedWorkspace={selectedWorkspace}
       />
 

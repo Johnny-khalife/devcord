@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
-import { Link } from "react-router-dom";
-import { UserPlus, Users, MessageSquare, X, Menu, MoreVertical, ShieldAlert, ShieldCheck } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
+import { UserPlus, Users, MessageSquare, X, Menu, MoreVertical, ShieldAlert, ShieldCheck, User } from "lucide-react";
 import { useAuthStore } from "../store/useAuthStore";
 import { useFriendStore } from "../store/useFriendsStore";
 import { useChatStore } from "../store/useChatStore";
@@ -14,6 +14,7 @@ const UserFriends = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [showFriendActions, setShowFriendActions] = useState(null);
   const { setSelectedFriend } = useChatStore();
+  const navigate = useNavigate();
   
   // Responsive state
   const [isMobile, setIsMobile] = useState(false);
@@ -130,6 +131,11 @@ const UserFriends = () => {
     if (window.confirm("Are you sure you want to unblock this user?")) {
       await unblockUser(userId);
     }
+  };
+
+  const handleViewProfile = (friendId) => {
+    navigate(`/profile/${friendId}`);
+    setShowFriendActions(null);
   };
 
   // Toggle friend actions dropdown
@@ -328,6 +334,13 @@ const UserFriends = () => {
                           className="absolute right-0 mt-1 w-40 bg-base-100 shadow-lg rounded-md z-50 py-1"
                           ref={friendActionsRef}
                         >
+                          <button
+                            className="w-full px-3 py-2 text-sm text-left hover:bg-base-200 flex items-center gap-2"
+                            onClick={() => handleViewProfile(friend.friendId)}
+                          >
+                            <User size={14} />
+                            View Profile
+                          </button>
                           <button
                             className="w-full px-3 py-2 text-sm text-left hover:bg-base-200 flex items-center gap-2"
                             onClick={() => handleRemoveFriend(friend.friendId)}

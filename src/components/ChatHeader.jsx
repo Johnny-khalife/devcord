@@ -1,17 +1,13 @@
 import React, { useState, useEffect } from "react";
 import { useChatStore } from "../store/useChatStore";
-import { X, Lock, Hash, Menu, User } from "lucide-react";
-import { useWorkspaceStore } from "../store/useWorkspaceStore";
+import { X, Lock, Hash, Menu } from "lucide-react";
 import { useAuthStore } from "../store/useAuthStore";
-import { useNavigate } from "react-router-dom";
 
-const ChatHeader = ({ activeNavItem, activeChannel, selectedWorkspace }) => {
+const ChatHeader = ({ activeNavItem, selectedWorkspace }) => {
   const { selectedFriend, setSelectedFriend } = useChatStore();
-  const { setSelectedWorkspace } = useWorkspaceStore();
   const { getUserById } = useAuthStore();
   const [friendProfile, setFriendProfile] = useState(null);
   const [isMobile, setIsMobile] = useState(false);
-  const navigate = useNavigate();
   
   // Fetch friend profile when selectedFriend changes
   useEffect(() => {
@@ -48,12 +44,6 @@ const ChatHeader = ({ activeNavItem, activeChannel, selectedWorkspace }) => {
       setFriendProfile(null);
     }
     // You could add additional close functionality for workspaces here if needed
-  };
-
-  const handleViewProfile = () => {
-    if (friendProfile) {
-      navigate(`/profile/${friendProfile._id}`);
-    }
   };
   
   // Function to trigger sidebar toggles via custom events
@@ -124,13 +114,6 @@ const ChatHeader = ({ activeNavItem, activeChannel, selectedWorkspace }) => {
       {/* Right section with buttons */}
       {activeNavItem === "users" && selectedFriend && (
         <div className="flex items-center gap-2">
-          <button
-            onClick={handleViewProfile}
-            className="p-2 bg-base-200 hover:bg-base-300 rounded-full flex items-center justify-center"
-            title="View Profile"
-          >
-            <User size={18} />
-          </button>
           <button
             onClick={handleClose}
             className="p-2 bg-blue-500 hover:bg-blue-600 rounded-full flex items-center justify-center shadow-md"
