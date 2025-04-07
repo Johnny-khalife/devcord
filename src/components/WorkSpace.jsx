@@ -42,7 +42,6 @@ const WorkSpace = ({
   const inviteMenuRef = useRef(null);
   const inviteButtonRef = useRef(null);
   const [isInviteLoading, setIsInviteLoading] = useState(false);
-
   // State for channels
   const [channelName, setChannelName] = useState("");
   const [channels, setChannels] = useState([]);
@@ -65,9 +64,10 @@ const WorkSpace = ({
   const { user: currentUser } = useAuthStore();
   const [workspaceMembers, setWorkspaceMembers] = useState([]);
   const [isWorkspaceMembersLoading, setIsWorkspaceMembersLoading] =
-    useState(false);
+  useState(false);
   const [isSendingFriendRequest, setIsSendingFriendRequest] = useState(false);
-
+  
+  console.log("friends is jsdsd",friends);
   // State for responsive design
   const [isMobile, setIsMobile] = useState(false);
   const [isWorkspaceSidebarOpen, setIsWorkspaceSidebarOpen] = useState(true);
@@ -90,20 +90,20 @@ const WorkSpace = ({
       setIsMobile(mobile);
       setIsWorkspaceSidebarOpen(!mobile); // Close sidebar by default on mobile
     };
-
+    
     // Initial check
     checkIfMobile();
-
+    
     // Add event listener for window resize
     window.addEventListener("resize", checkIfMobile);
-
+    
     // Listen for custom toggle event from ChatHeader
     const handleToggleSidebar = () => {
       setIsWorkspaceSidebarOpen((prev) => !prev);
     };
-
+    
     window.addEventListener("toggle-workspace-sidebar", handleToggleSidebar);
-
+    
     // Cleanup
     return () => {
       window.removeEventListener("resize", checkIfMobile);
@@ -171,12 +171,12 @@ const WorkSpace = ({
         // If there are channels, set one as active
         if (workspaceChannels.length > 0) {
           const defaultChannel = workspaceChannels[0];
-
+          
           // Check if activeChannel exists in the list of channels
           const currentChannel = workspaceChannels.find(
             (channel) => channel._id === activeChannel
           );
-
+          
           if (currentChannel) {
             // Set the current channel as selected
             setActiveChannel(currentChannel._id);
@@ -231,7 +231,7 @@ const WorkSpace = ({
         const members = await getWorkspaceMembers(activeWorkspace);
 
         if (Array.isArray(members)) {
-          // Map members to include both id and _id and role
+          // Map members to include both id and _id and role 
           const formattedMembers = members.map((member) => ({
             ...member,
             id: member.id || member._id || member.userId,
@@ -261,13 +261,13 @@ const WorkSpace = ({
     fetchWorkspaceMembers();
   }, [activeWorkspace, getWorkspaceMembers]);
 
-  ///////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////
 
-  // In WorkSpace.jsx, update the selectedWorkspaceWhenClick function
+// In WorkSpace.jsx, update the selectedWorkspaceWhenClick function
   const handleChannelClick = (channel) => {
     setActiveChannel(channel._id);
     setSelectedWorkspace(channel);
-  };
+};
 
   // Create a new channel
   const handleCreateChannel = async () => {
@@ -377,7 +377,7 @@ const WorkSpace = ({
     }
 
     if (channels.length === 0) {
-      return (
+    return (
         <div className="text-center py-8 px-3">
           <Hash className="w-12 h-12 mx-auto mb-3 text-primary/50" />
           <h3 className="font-medium mb-1">No Channels</h3>
@@ -472,93 +472,93 @@ const WorkSpace = ({
                     </div>
                     <h2 className="text-xl font-bold">Create New Channel</h2>
                   </div>
-                  <button 
+            <button
                     onClick={resetChannelCreation} 
                     className="h-8 w-8 rounded-full flex items-center justify-center text-base-content/70 hover:text-base-content hover:bg-base-300 transition-colors"
-                  >
+            >
                     <X className="w-5 h-5" />
-                  </button>
-                </div>
+            </button>
+          </div>
                 
                 {/* Gradient border effect */}
                 <div className="absolute left-0 right-0 bottom-0 h-[1px] bg-gradient-to-r from-transparent via-base-content/20 to-transparent"></div>
               </div>
               
               <div className="p-6">
-                {/* Channel Name Input */}
-                <div className="mb-4">
-                  <label className="block text-sm font-medium mb-2">
-                    Channel Name
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="Enter channel name"
+              {/* Channel Name Input */}
+              <div className="mb-4">
+                <label className="block text-sm font-medium mb-2">
+                  Channel Name
+                </label>
+                <input
+                  type="text"
+                  placeholder="Enter channel name"
                     className="w-full px-4 py-2.5 bg-base-200 border-none rounded-lg focus:ring-2 focus:ring-primary text-sm"
-                    value={channelName}
-                    onChange={(e) => setChannelName(e.target.value)}
-                  />
-                </div>
+                  value={channelName}
+                  onChange={(e) => setChannelName(e.target.value)}
+                />
+              </div>
 
-                {/* Private Channel Toggle */}
+              {/* Private Channel Toggle */}
                 <div className="mb-4">
                   <label className="flex items-center justify-between cursor-pointer py-2">
                     <span className="flex items-center gap-2">
                       <Lock className="w-4 h-4 text-base-content/70" /> Private Channel
-                    </span>
+                  </span>
                     <div className="relative">
-                      <input
-                        type="checkbox"
+                  <input
+                    type="checkbox"
                         className="sr-only"
-                        checked={isPrivateChannel}
-                        onChange={() => setIsPrivateChannel(!isPrivateChannel)}
-                      />
+                    checked={isPrivateChannel}
+                    onChange={() => setIsPrivateChannel(!isPrivateChannel)}
+                  />
                       <div className={`w-10 h-5 ${isPrivateChannel ? 'bg-primary' : 'bg-base-300'} rounded-full transition-colors`}></div>
                       <div className={`absolute top-0.5 left-0.5 bg-white w-4 h-4 rounded-full transition-transform ${isPrivateChannel ? 'translate-x-5' : ''}`}></div>
                     </div>
-                  </label>
-                </div>
+                </label>
+              </div>
 
-                {/* User Selection for Private Channels */}
-                {isPrivateChannel && (
-                  <div>
-                    <label className="block text-sm font-medium mb-2">
-                      Select Users for this Channel
-                    </label>
-                    {isWorkspaceMembersLoading ? (
+              {/* User Selection for Private Channels */}
+              {isPrivateChannel && (
+                <div>
+                  <label className="block text-sm font-medium mb-2">
+                    Select Users for this Channel
+                  </label>
+                  {isWorkspaceMembersLoading ? (
                       <div className="flex items-center justify-center py-8">
                         <div className="spinner">
                           <div className="double-bounce1 bg-primary/60"></div>
                           <div className="double-bounce2 bg-primary/40"></div>
                         </div>
                         <p className="ml-3 text-base-content/70">Loading members...</p>
-                      </div>
-                    ) : workspaceMembers.length === 0 ? (
+                    </div>
+                  ) : workspaceMembers.length === 0 ? (
                       <div className="text-center p-4 rounded-md bg-base-200">
-                        <p className="text-sm">
-                          No members found in this workspace.
-                        </p>
-                        <p className="text-xs text-base-content/70 mt-1">
-                          Invite members using the invite button at the top.
-                        </p>
-                      </div>
-                    ) : (
+                      <p className="text-sm">
+                        No members found in this workspace.
+                      </p>
+                      <p className="text-xs text-base-content/70 mt-1">
+                        Invite members using the invite button at the top.
+                      </p>
+                    </div>
+                  ) : (
                       <div className="max-h-60 overflow-y-auto rounded-md bg-base-200 custom-scrollbar">
-                        {workspaceMembers
-                          // Only filter out the current owner, not all users
+                      {workspaceMembers
+                        // Only filter out the current owner, not all users
                           .filter(
                             (member) =>
                               !(member.role === "owner" || member.isOwned)
                           )
-                          .map((member) => (
-                            <div
-                              key={member.id}
+                        .map((member) => (
+                          <div
+                            key={member.id}
                               className={`flex items-center justify-between p-3 cursor-pointer border-b border-base-300 last:border-0 ${
-                                selectedChannelUsers.includes(member.id)
+                              selectedChannelUsers.includes(member.id)
                                   ? "bg-primary/20"
                                   : "hover:bg-base-300"
                               } transition-colors`}
-                              onClick={() => toggleUserSelection(member.id)}
-                            >
+                            onClick={() => toggleUserSelection(member.id)}
+                          >
                               <div className="flex items-center gap-3">
                                 <div className="w-8 h-8 rounded-full bg-base-300 flex items-center justify-center ring-2 ring-base-300">
                                   <img
@@ -570,9 +570,9 @@ const WorkSpace = ({
                                       e.target.src = "/avatar.png";
                                     }}
                                   />
-                                </div>
-                                <span>{member.username}</span>
                               </div>
+                              <span>{member.username}</span>
+                            </div>
                               <div className={`w-6 h-6 rounded-md flex items-center justify-center transition-colors ${
                                 selectedChannelUsers.includes(member.id)
                                   ? "bg-primary text-primary-content"
@@ -580,12 +580,12 @@ const WorkSpace = ({
                               }`}>
                                 <Check className="w-4 h-4" />
                               </div>
-                            </div>
-                          ))}
-                      </div>
-                    )}
-                  </div>
-                )}
+                          </div>
+                        ))}
+                    </div>
+                  )}
+                </div>
+              )}
               </div>
 
               {/* Footer with action buttons */}
@@ -598,23 +598,23 @@ const WorkSpace = ({
                   )}
                 </div>
                 <div className="flex gap-2">
-                  <button
+                <button
                     className="px-4 py-2 bg-base-300 rounded-lg hover:bg-base-300/80 transition-colors text-sm"
-                    onClick={resetChannelCreation}
-                  >
-                    Cancel
-                  </button>
-                  <button
+                  onClick={resetChannelCreation}
+                >
+                  Cancel
+                </button>
+                <button
                     className="px-4 py-2 bg-primary text-primary-content rounded-lg hover:bg-primary/90 disabled:opacity-50 transition-colors text-sm flex items-center gap-2"
-                    onClick={handleCreateChannel}
-                    disabled={
-                      !channelName ||
-                      (isPrivateChannel && selectedChannelUsers.length === 0)
-                    }
-                  >
+                  onClick={handleCreateChannel}
+                  disabled={
+                    !channelName ||
+                    (isPrivateChannel && selectedChannelUsers.length === 0)
+                  }
+                >
                     <Plus className="w-4 h-4" />
-                    Create Channel
-                  </button>
+                  Create Channel
+                </button>
                 </div>
               </div>
             </div>
@@ -851,9 +851,9 @@ const WorkSpace = ({
   // Mobile view toggle for workspace sidebar
   const MobileWorkspaceToggle = () => {
     if (!isMobile) return null;
-
+    
     return (
-      <button
+      <button 
         onClick={toggleWorkspaceSidebar}
         className="fixed top-20 left-4 z-40 p-2 bg-primary text-primary-content rounded-md shadow-md"
       >
@@ -921,13 +921,13 @@ const WorkSpace = ({
                 </button>
               )}
 
-              <button
+                <button
                 className="p-2 hover:bg-base-300 rounded-lg transition-colors"
-                onClick={() => handleOpenSettingsForm(activeWorkspace)}
-                aria-label="Workspace Settings"
-              >
-                <Settings className="w-5 h-5" />
-              </button>
+                  onClick={() => handleOpenSettingsForm(activeWorkspace)}
+                  aria-label="Workspace Settings"
+                >
+                  <Settings className="w-5 h-5" />
+                </button>
             </div>
           )}
         </div>
@@ -1011,9 +1011,9 @@ const WorkSpace = ({
                         </div>
                         {workspaces.filter(
                           (ws) =>
-                            ws &&
-                            ws.isInvited &&
-                            ws.role !== "owner" &&
+                          ws && 
+                          ws.isInvited && 
+                          ws.role !== "owner" && 
                             !ws.isOwned &&
                             // Only keep the first occurrence of a workspace with the same ID
                             workspaces.findIndex((w) => w?.id === ws?.id) ===
@@ -1026,9 +1026,9 @@ const WorkSpace = ({
                           workspaces
                             .filter(
                               (ws) =>
-                                ws &&
-                                ws.isInvited &&
-                                ws.role !== "owner" &&
+                              ws && 
+                              ws.isInvited && 
+                              ws.role !== "owner" && 
                                 !ws.isOwned &&
                                 // Only keep the first occurrence of a workspace with the same ID
                                 workspaces.findIndex(
@@ -1152,7 +1152,7 @@ const WorkSpace = ({
           workspaceName={getActiveWorkspace()?.name}
           workspaceMembers={workspaceMembers}
         />
-      </div>
+                    </div>
 
       {/* Add global styles for animations and scrollbars */}
       <style jsx="true">{`

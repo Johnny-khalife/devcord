@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { UserPlus, Users, MessageSquare, X, Menu } from "lucide-react";
+import { UserPlus, Users, MessageSquare, X, Menu, MoreVertical, ShieldAlert, ShieldCheck } from "lucide-react";
 import { useAuthStore } from "../store/useAuthStore";
 import { useFriendStore } from "../store/useFriendsStore";
 import { useChatStore } from "../store/useChatStore";
@@ -12,6 +12,7 @@ const UserFriends = () => {
   const [activeFriend, setActiveFriend] = useState(null);
   const [showFriendSearchPortal, setShowFriendSearchPortal] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [showFriendActions, setShowFriendActions] = useState(null);
   const { setSelectedFriend } = useChatStore();
   
   // Responsive state
@@ -61,20 +62,40 @@ const UserFriends = () => {
   const {
     friendRequests,
     friends,
+    blockedUsers,
     getFriendRequests,
     getFriendsList,
+    getBlockedUsers,
     removeFriend,
+    blockUser,
+    unblockUser,
     isLoading: friendLoading,
   } = useFriendStore();
 
   // Refs for click outside detection
   const addFriendButtonRef = useRef(null);
+  const friendActionsRef = useRef(null);
+
+  // Close friend actions dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (friendActionsRef.current && !friendActionsRef.current.contains(event.target)) {
+        setShowFriendActions(null);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
 
   // Initialize data on component mount
   useEffect(() => {
     const loadData = async () => {
       await getFriendsList();
       await getFriendRequests();
+      await getBlockedUsers();
     };
 
     loadData();
@@ -84,7 +105,7 @@ const UserFriends = () => {
     setSelectedFriend(null);
     setActiveFriend(null);
     
-  }, [getFriendsList, getFriendRequests, setSelectedFriend]);
+  }, [getFriendsList, getFriendRequests, getBlockedUsers, setSelectedFriend]);
 
   // Handler functions
   const handleAddFriend = () => {
@@ -94,7 +115,26 @@ const UserFriends = () => {
   const handleRemoveFriend = async (userId) => {
     if (window.confirm("Are you sure you want to remove this friend?")) {
       await removeFriend(userId);
+      setShowFriendActions(null);
     }
+  };
+
+  const handleBlockFriend = async (userId) => {
+    if (window.confirm("Are you sure you want to block this user? They will be removed from your friends list.")) {
+      await blockUser(userId);
+      setShowFriendActions(null);
+    }
+  };
+
+  const handleUnblockUser = async (userId) => {
+    if (window.confirm("Are you sure you want to unblock this user?")) {
+      await unblockUser(userId);
+    }
+  };
+
+  // Toggle friend actions dropdown
+  const toggleFriendActions = (friendId) => {
+    setShowFriendActions(showFriendActions === friendId ? null : friendId);
   };
 
   // Search friends in the sidebar
@@ -130,7 +170,7 @@ const UserFriends = () => {
   };
 
   // Empty state if no friends and no friend requests
-  if (friends.length === 0 && friendRequests.length === 0 && !isLoadingData) {
+  if (friends.length === 0 && friendRequests.length === 0 && blockedUsers.length === 0 && !isLoadingData) {
     return (
       <>
         <MobileUserFriendsToggle />
@@ -275,16 +315,69 @@ const UserFriends = () => {
                         )}
                       </div>
                     </button>
-                    <button
-                      className="w-5 h-5 flex items-center justify-center bg-blue-500 text-white hover:bg-blue-600 rounded-full"
-                      onClick={() => handleRemoveFriend(friend.friendId)}
-                      title="Remove Friend"
-                    >
-                      <X size={12} />
-                    </button>
+                    <div className="relative">
+                      <button
+                        className="w-8 h-8 flex items-center justify-center hover:bg-base-300 rounded-full"
+                        onClick={() => toggleFriendActions(friend.friendId)}
+                      >
+                        <MoreVertical size={16} />
+                      </button>
+                      
+                      {showFriendActions === friend.friendId && (
+                        <div 
+                          className="absolute right-0 mt-1 w-40 bg-base-100 shadow-lg rounded-md z-50 py-1"
+                          ref={friendActionsRef}
+                        >
+                          <button
+                            className="w-full px-3 py-2 text-sm text-left hover:bg-base-200 flex items-center gap-2"
+                            onClick={() => handleRemoveFriend(friend.friendId)}
+                          >
+                            <X size={14} />
+                            Remove Friend
+                          </button>
+                          <button
+                            className="w-full px-3 py-2 text-sm text-left hover:bg-base-200 flex items-center gap-2 text-red-500"
+                            onClick={() => handleBlockFriend(friend.friendId)}
+                          >
+                            <ShieldAlert size={14} />
+                            Block User
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>
+
+              {/* Blocked Users section */}
+              {blockedUsers.length > 0 && (
+                <div className="space-y-1 mt-4 border-t border-base-300 pt-4">
+                  <div className="px-2 py-1 text-xs font-semibold text-base-content/70">
+                    BLOCKED USERS
+                  </div>
+                  {blockedUsers.map((user) => (
+                    <div key={user.id} className="flex items-center">
+                      <div className="flex items-center gap-2 px-2 py-2 rounded-md flex-grow">
+                        <div className="flex items-center justify-center">
+                          <img
+                            src={user.avatar || "/avatar.png"}
+                            alt=""
+                            className="w-6 h-6 rounded-full mr-2 opacity-50"
+                          />
+                        </div>
+                        <span className="text-sm text-base-content/50">{user.username}</span>
+                      </div>
+                      <button
+                        className="w-8 h-8 flex items-center justify-center hover:bg-base-300 rounded-full text-green-500"
+                        onClick={() => handleUnblockUser(user.id)}
+                        title="Unblock User"
+                      >
+                        <ShieldCheck size={16} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
 
               {/* Direct Messages section */}
               {friends.length > 0 && (

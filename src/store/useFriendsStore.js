@@ -91,6 +91,7 @@ export const useFriendStore = create(
       getFriendsList: async () => {
         set({ isLoading: true });
         try {
+          console.log("getFriendsList is called",get().friends)	
           const response = await axiosInstance.get("/friends");
           set({ friends: response.data.data, isLoading: false });
           console.log(response.data)
@@ -144,7 +145,7 @@ export const useFriendStore = create(
       blockUser: async (userId) => {
         set({ isLoading: true });
         try {
-          const response = await axiosInstance.post("/friends/block", { userId });
+          const response = await axiosInstance.post(`/friends/${userId}/block`, { userId });
           
           // Refresh blocked users list
           await get().getBlockedUsers();
@@ -168,7 +169,7 @@ export const useFriendStore = create(
       unblockUser: async (userId) => {
         set({ isLoading: true });
         try {
-          const response = await axiosInstance.delete(`/friends/block/${userId}`);
+          const response = await axiosInstance.delete(`/friends/${userId}/block`, { data: { userId } });
           
           // Update the blockedUsers list to remove the unblocked user
           const updatedBlockedUsers = get().blockedUsers.filter(

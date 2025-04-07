@@ -51,9 +51,11 @@ const InviteFriendsPortal = ({
     
     if (!searchTerm.trim()) {
       setFilteredFriends(availableFriends);
+      if (availableFriends.length > 0) {
+        console.log("Friend object structure:", availableFriends[0]);
+      }
       return;
     }
-    
     const lowerSearchTerm = searchTerm.toLowerCase();
     const filtered = availableFriends.filter(friend => {
       const username = friend.username ? friend.username.toLowerCase() : '';
@@ -67,7 +69,9 @@ const InviteFriendsPortal = ({
   
   // Prevent background scrolling when modal is open
   useEffect(() => {
+    
     if (isOpen) {
+      console.log("sdadhash",filteredFriends.username)
       document.body.style.overflow = 'hidden';
     } else {
       document.body.style.overflow = 'auto';
@@ -75,6 +79,7 @@ const InviteFriendsPortal = ({
     return () => {
       document.body.style.overflow = 'auto';
     };
+
   }, [isOpen]);
   
   if (!isOpen) return null;
@@ -189,6 +194,7 @@ const InviteFriendsPortal = ({
             ) : (
               <div className="space-y-2 mt-4">
                 {filteredFriends.map((friend) => (
+                  
                   <div
                     key={friend.friendId}
                     className={`flex items-center justify-between p-3 rounded-lg hover:bg-[#2F3136] cursor-pointer transition-all duration-200 ${
@@ -205,6 +211,7 @@ const InviteFriendsPortal = ({
                             src={friend.avatar} 
                             alt={friend.username || friend.displayName}
                             className="w-full h-full object-cover" 
+                            
                           />
                         ) : (
                           <span className="font-bold text-gray-300">
