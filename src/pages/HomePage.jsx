@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useLocation } from "react-router-dom";
 import ChatBox from "../components/ChatBox";
 import Sidebar from "../components/Sidebar";
 import WorkSpace from "../components/WorkSpace";
@@ -12,6 +13,7 @@ import { createPortal } from 'react-dom';
 import { Plus, X } from 'lucide-react';
 
 const HomePage = () => {
+  const location = useLocation();
   // State for mobile view
   const [isMobile, setIsMobile] = useState(false);
   
@@ -30,6 +32,16 @@ const HomePage = () => {
     // Cleanup
     return () => window.removeEventListener('resize', checkIfMobile);
   }, []);
+
+  // Handle openSearchPortal state from location
+  useEffect(() => {
+    if (location.state?.openSearchPortal) {
+      // Dispatch a custom event to open the search portal
+      window.dispatchEvent(new CustomEvent('open-search-portal'));
+      // Clean up the location state
+      window.history.replaceState({ ...location.state, openSearchPortal: false }, '');
+    }
+  }, [location.state]);
 
   const [showOptions, setShowOptions] = useState(false);
   const [showWorkspaceMenu, setShowWorkspaceMenu] = useState(false);

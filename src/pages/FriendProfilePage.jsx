@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { useAuthStore } from "../store/useAuthStore";
 import { useFriendStore } from "../store/useFriendsStore";
 import {
@@ -22,22 +22,31 @@ import {
   CheckCircle,
   AlertTriangle,
   Clock as ClockIcon,
+  ShieldAlert,
+  Ban
 } from "lucide-react";
+import { toast } from "react-hot-toast";
 
 const FriendProfilePage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
+  const fromSearchPortal = location.state?.fromSearchPortal || false;
   const { getUserById } = useAuthStore();
   const { 
     friends, 
     sentRequests, 
     friendRequests,
+    blockedUsers,
     sendFriendRequest, 
     removeFriend, 
     getFriendsList, 
     getSentFriendRequests,
     acceptFriendRequest,
-    declineFriendRequest
+    declineFriendRequest,
+    blockUser,
+    unblockUser,
+    getBlockedUsers
   } = useFriendStore();
   
   const [friendProfile, setFriendProfile] = useState(null);
@@ -46,8 +55,10 @@ const FriendProfilePage = () => {
   const [errorMessage, setErrorMessage] = useState("This profile doesn't exist or may have been removed.");
   const [relationshipStatus, setRelationshipStatus] = useState('none'); // none, friend, sent, received
   const [actionLoading, setActionLoading] = useState(false);
+  const [showBlockModal, setShowBlockModal] = useState(false);
   const fetchController = useRef(null);
   const hasFetched = useRef(false);
+  const [isBlocked, setIsBlocked] = useState(false);
 
   // Check relationship status with the profile user
   useEffect(() => {
@@ -86,6 +97,21 @@ const FriendProfilePage = () => {
     checkRelationshipStatus();
   }, [id, friends, sentRequests, friendRequests]);
 
+  // Check if the user is blocked
+  useEffect(() => {
+    const checkIfBlocked = () => {
+      const userIsBlocked = blockedUsers.some(user => user.id === id);
+      setIsBlocked(userIsBlocked);
+    };
+    
+    checkIfBlocked();
+  }, [id, blockedUsers]);
+
+  // Initial load of blocked users
+  useEffect(() => {
+    getBlockedUsers();
+  }, [getBlockedUsers]);
+
   // Fetch profile data
   useEffect(() => {
     // Reset states when ID changes and set up a new fetch
@@ -105,6 +131,14 @@ const FriendProfilePage = () => {
       hasFetched.current = true;
       
       try {
+        // First check if the user is blocked
+        if (blockedUsers.some(user => user.id === id)) {
+          setError(true);
+          setErrorMessage("You cannot view this profile because you have blocked this user");
+          setIsLoading(false);
+          return;
+        }
+        
         const profile = await getUserById(id);
         
         // Handle non-existent profile or error cases
@@ -134,7 +168,7 @@ const FriendProfilePage = () => {
         fetchController.current.abort();
       }
     };
-  }, [id, getUserById]);
+  }, [id, getUserById, blockedUsers]);
 
   // Handle relationship actions (add/remove/accept/decline)
   const handleRelationshipAction = async () => {
@@ -198,6 +232,48 @@ const FriendProfilePage = () => {
     }
   };
 
+  // Handle blocking a user
+  const handleBlockUser = async () => {
+    setActionLoading(true);
+    try {
+      await blockUser(id);
+      setIsBlocked(true);
+      toast.success(`${friendProfile.username} has been blocked`);
+      setShowBlockModal(false);
+    } catch (error) {
+      console.error("Failed to block user:", error);
+      toast.error("Failed to block user");
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  // Handle unblocking a user
+  const handleUnblockUser = async () => {
+    setActionLoading(true);
+    try {
+      await unblockUser(id);
+      setIsBlocked(false);
+      toast.success(`${friendProfile.username} has been unblocked`);
+    } catch (error) {
+      console.error("Failed to unblock user:", error);
+      toast.error("Failed to unblock user");
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  // Handle back button click
+  const handleBackClick = () => {
+    if (fromSearchPortal) {
+      // Navigate to home page with state to reopen search portal
+      navigate("/", { state: { openSearchPortal: true } });
+    } else {
+      // Default back behavior
+      navigate(-1);
+    }
+  };
+
   // Skeleton loading state
   if (isLoading) {
     return (
@@ -246,18 +322,32 @@ const FriendProfilePage = () => {
 
   // Profile not found or error state
   if (error || !friendProfile) {
+    const isBlockedError = errorMessage.includes("blocked this user");
+    
     return (
       <div className="min-h-screen pt-16 bg-gray-900 flex items-center justify-center">
         <div className="text-center p-8 bg-gray-800 rounded-2xl shadow-xl max-w-md mx-auto border border-gray-700">
           <div className="w-20 h-20 bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-6">
-            <AlertTriangle size={32} className="text-amber-500" />
+            {isBlockedError ? (
+              <ShieldAlert size={32} className="text-red-500" />
+            ) : (
+              <AlertTriangle size={32} className="text-amber-500" />
+            )}
           </div>
-          <h1 className="text-2xl font-bold text-white mb-4">Profile Not Found</h1>
+          <h1 className="text-2xl font-bold text-white mb-4">
+            {isBlockedError ? "Profile Blocked" : "Profile Not Found"}
+          </h1>
           <p className="text-gray-400 mb-6">
             {errorMessage}
           </p>
           <button
-            onClick={() => navigate('/friends')}
+            onClick={() => {
+              if (fromSearchPortal) {
+                navigate('/', { state: { openSearchPortal: true } });
+              } else {
+                navigate(-1);
+              }
+            }}
             className="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl transition-colors flex items-center gap-2 mx-auto"
           >
             <ArrowLeft size={18} />
@@ -368,10 +458,66 @@ const FriendProfilePage = () => {
 
   return (
     <div className="min-h-screen bg-gray-900 text-gray-100 pt-16">
+      {/* Block User Modal */}
+      {showBlockModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-gray-800 rounded-lg shadow-xl w-full max-w-md border border-gray-700">
+            <div className="p-4 border-b border-gray-700 flex items-center gap-3">
+              <div className="p-2 bg-red-900/30 rounded-full">
+                <Ban size={20} className="text-red-500" />
+              </div>
+              <h3 className="text-lg font-semibold text-white">Block {friendProfile.username}</h3>
+            </div>
+            
+            <div className="p-6">
+              <p className="mb-4 text-sm text-gray-300">
+                Blocking this user will:
+              </p>
+              
+              <ul className="mb-6 space-y-2 text-sm text-gray-400 pl-5">
+                <li className="list-disc">Prevent them from messaging you</li>
+                <li className="list-disc">Remove them from your friends list</li>
+                <li className="list-disc">Cancel any pending friend requests</li>
+                <li className="list-disc">Hide your activity from them</li>
+              </ul>
+              
+              <div className="flex justify-end gap-3">
+                <button 
+                  onClick={() => setShowBlockModal(false)}
+                  className="px-4 py-2 rounded-md bg-gray-700 hover:bg-gray-600 text-sm font-medium"
+                >
+                  Cancel
+                </button>
+                <button 
+                  onClick={handleBlockUser}
+                  disabled={actionLoading}
+                  className="px-4 py-2 rounded-md bg-red-600 hover:bg-red-700 text-white text-sm font-medium flex items-center gap-2"
+                >
+                  {actionLoading ? (
+                    <>
+                      <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      <span>Processing...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Ban size={16} />
+                      <span>Block User</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header with back button */}
         <button
-          onClick={() => navigate(-1)}
+          onClick={handleBackClick}
           className="group flex items-center gap-2 text-gray-400 hover:text-white transition-colors mb-6"
         >
           <div className="p-2 bg-gray-800 rounded-lg group-hover:bg-indigo-600 transition-colors">
@@ -454,45 +600,84 @@ const FriendProfilePage = () => {
 
             {/* Action buttons */}
             <div className="flex flex-wrap gap-3 mt-8">
-              <button className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 rounded-lg flex items-center gap-2 text-sm font-medium transition-colors">
-                <MessageSquare size={16} />
-                <span>Send Message</span>
-              </button>
+              {!isBlocked && (
+                <>
+                  {/* Only show Send Message button if they are friends */}
+                  {relationshipStatus === 'friend' && (
+                    <button className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 rounded-lg flex items-center gap-2 text-sm font-medium transition-colors">
+                      <MessageSquare size={16} />
+                      <span>Send Message</span>
+                    </button>
+                  )}
+                  
+                  {/* Dynamic Relationship Button - only show if not blocked */}
+                  <button 
+                    onClick={relationshipButton.onClick}
+                    disabled={relationshipButton.disabled}
+                    className={`px-4 py-2 rounded-lg flex items-center gap-2 text-sm font-medium transition-colors ${
+                      actionLoading 
+                        ? 'bg-gray-600 cursor-not-allowed' 
+                        : relationshipButton.bgClass
+                    }`}
+                  >
+                    {actionLoading ? (
+                      <span className="flex items-center gap-2">
+                        <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        <span>Processing...</span>
+                      </span>
+                    ) : (
+                      <>
+                        {relationshipButton.icon}
+                        <span>{relationshipButton.text}</span>
+                      </>
+                    )}
+                  </button>
+                  
+                  {/* Show Decline Button when there's a received request */}
+                  {relationshipStatus === 'received' && !actionLoading && (
+                    <button 
+                      onClick={handleDeclineRequest}
+                      className="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg flex items-center gap-2 text-sm font-medium transition-colors"
+                    >
+                      <AlertTriangle size={16} />
+                      <span>Decline Request</span>
+                    </button>
+                  )}
+                </>
+              )}
               
-              {/* Dynamic Relationship Button */}
-              <button 
-                onClick={relationshipButton.onClick}
-                disabled={relationshipButton.disabled}
-                className={`px-4 py-2 rounded-lg flex items-center gap-2 text-sm font-medium transition-colors ${
-                  actionLoading 
-                    ? 'bg-gray-600 cursor-not-allowed' 
-                    : relationshipButton.bgClass
-                }`}
-              >
-                {actionLoading ? (
-                  <span className="flex items-center gap-2">
-                    <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    <span>Processing...</span>
-                  </span>
-                ) : (
-                  <>
-                    {relationshipButton.icon}
-                    <span>{relationshipButton.text}</span>
-                  </>
-                )}
-              </button>
-              
-              {/* Show Decline Button when there's a received request */}
-              {relationshipStatus === 'received' && !actionLoading && (
+              {/* Block/Unblock User Button */}
+              {isBlocked ? (
                 <button 
-                  onClick={handleDeclineRequest}
-                  className="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg flex items-center gap-2 text-sm font-medium transition-colors"
+                  onClick={handleUnblockUser}
+                  disabled={actionLoading}
+                  className="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg flex items-center gap-2 text-sm font-medium transition-colors text-green-400 hover:text-green-300"
                 >
-                  <AlertTriangle size={16} />
-                  <span>Decline Request</span>
+                  {actionLoading ? (
+                    <span className="flex items-center gap-2">
+                      <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      <span>Processing...</span>
+                    </span>
+                  ) : (
+                    <>
+                      <Shield size={16} />
+                      <span>Unblock User</span>
+                    </>
+                  )}
+                </button>
+              ) : (
+                <button 
+                  onClick={() => setShowBlockModal(true)}
+                  className="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg flex items-center gap-2 text-sm font-medium transition-colors text-red-400 hover:text-red-300"
+                >
+                  <ShieldAlert size={16} />
+                  <span>Block User</span>
                 </button>
               )}
             </div>

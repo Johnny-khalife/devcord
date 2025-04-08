@@ -1,8 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { X, UserPlus, Search, Check, User, Users, Clock, AlertTriangle, CheckCircle } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { X, UserPlus, Search, Check, User, Users, Clock, AlertTriangle, CheckCircle, ShieldAlert } from 'lucide-react';
 import { useAuthStore } from '../store/useAuthStore';
 import { useFriendStore } from '../store/useFriendsStore';
+import { toast } from 'react-hot-toast';
 
 const SearchFriendsPortal = ({ isOpen, onClose }) => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -11,6 +13,7 @@ const SearchFriendsPortal = ({ isOpen, onClose }) => {
   const [timeoutId, setTimeoutId] = useState(null);
   const [activeTab, setActiveTab] = useState('search'); // 'search' or 'pending'
   const [isActionLoading, setIsActionLoading] = useState(false);
+  const navigate = useNavigate();
 
   const { 
     getUsers, 
@@ -21,12 +24,39 @@ const SearchFriendsPortal = ({ isOpen, onClose }) => {
     friends, 
     friendRequests,
     sentRequests,
+    blockedUsers,
     sendFriendRequest,
     acceptFriendRequest,
     declineFriendRequest,
     getFriendRequests,
+    getBlockedUsers,
     isLoading: friendLoading
   } = useFriendStore();
+
+  // Load blocked users when component mounts
+  useEffect(() => {
+    if (isOpen) {
+      getBlockedUsers();
+    }
+  }, [isOpen, getBlockedUsers]);
+
+  // Check if a user is blocked
+  const isUserBlocked = useCallback((userId) => {
+    return blockedUsers.some(user => user.id === userId);
+  }, [blockedUsers]);
+
+  // Handle view profile navigation with block check
+  const handleViewProfile = (userId) => {
+    onClose(); // Close the search portal
+    
+    // Check if the user is blocked before navigating
+    if (isUserBlocked(userId)) {
+      toast.error("You cannot view this profile because you have blocked this user");
+      return;
+    }
+    
+    navigate(`/profile/${userId}`, { state: { fromSearchPortal: true } });
+  };
 
   // Determine if a user already has a relationship with the current user
   const getUserRelationship = useCallback((userId) => {
@@ -92,7 +122,8 @@ const SearchFriendsPortal = ({ isOpen, onClose }) => {
             })
             .map(user => ({
               ...user,
-              relationshipStatus: getUserRelationship(user._id)
+              relationshipStatus: getUserRelationship(user._id),
+              isBlocked: isUserBlocked(user._id)
             }));
           
           setSearchResults(enrichedResults);
@@ -108,7 +139,7 @@ const SearchFriendsPortal = ({ isOpen, onClose }) => {
     }, 500); // 500ms debounce delay
 
     setTimeoutId(newTimeoutId);
-  }, [timeoutId, getUsers, currentUser, getUserRelationship]);
+  }, [timeoutId, getUsers, currentUser, getUserRelationship, isUserBlocked]);
 
   // Handle search input change
   const handleSearchChange = (e) => {
@@ -345,7 +376,16 @@ const SearchFriendsPortal = ({ isOpen, onClose }) => {
                         key={user._id}
                         className="flex items-center justify-between p-3 rounded-lg bg-[#2B2D31]/60 hover:bg-[#2F3136] transition-all duration-200"
                       >
-                        <div className="flex items-center gap-3">
+                        <div 
+                          className="flex items-center gap-3 cursor-pointer flex-grow"
+                          onClick={() => {
+                            if (user.isBlocked) {
+                              toast.error("You cannot view this profile because you have blocked this user");
+                              return;
+                            }
+                            handleViewProfile(user._id);
+                          }}
+                        >
                           <div className="w-10 h-10 rounded-full bg-gray-700 flex items-center justify-center overflow-hidden ring-2 ring-gray-700">
                             {user.avatar ? (
                               <img 
@@ -360,7 +400,7 @@ const SearchFriendsPortal = ({ isOpen, onClose }) => {
                             )}
                           </div>
                           <div>
-                            <div className="font-medium text-white">
+                            <div className="font-medium text-white hover:text-indigo-400 transition-colors">
                               {user.username || `User #${user._id}`}
                             </div>
                             <div className="text-sm text-gray-400">
@@ -370,9 +410,20 @@ const SearchFriendsPortal = ({ isOpen, onClose }) => {
                         </div>
                         
                         {/* Action button based on relationship status */}
-                        {user.relationshipStatus === 'none' && (
+                        {user.isBlocked ? (
+                          <div 
+                            className="px-3 py-1.5 bg-red-700 text-white rounded-md text-sm flex items-center gap-1.5"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <ShieldAlert className="w-3.5 h-3.5" />
+                            <span>Blocked</span>
+                          </div>
+                        ) : user.relationshipStatus === 'none' ? (
                           <button
-                            onClick={() => handleSendFriendRequest(user._id)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleSendFriendRequest(user._id);
+                            }}
                             disabled={isActionLoading}
                             className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-md text-sm flex items-center gap-1.5 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                           >
@@ -391,24 +442,27 @@ const SearchFriendsPortal = ({ isOpen, onClose }) => {
                               </>
                             )}
                           </button>
-                        )}
-                        
-                        {user.relationshipStatus === 'sent' && (
-                          <div className="px-3 py-1.5 bg-gray-700 text-gray-300 rounded-md text-sm flex items-center gap-1.5">
+                        ) : user.relationshipStatus === 'sent' ? (
+                          <div 
+                            className="px-3 py-1.5 bg-gray-700 text-gray-300 rounded-md text-sm flex items-center gap-1.5"
+                            onClick={(e) => e.stopPropagation()}
+                          >
                             <Clock className="w-3.5 h-3.5" />
                             <span>Request Sent</span>
                           </div>
-                        )}
-                        
-                        {user.relationshipStatus === 'received' && (
-                          <div className="px-3 py-1.5 bg-purple-600 text-white rounded-md text-sm flex items-center gap-1.5">
+                        ) : user.relationshipStatus === 'received' ? (
+                          <div 
+                            className="px-3 py-1.5 bg-purple-600 text-white rounded-md text-sm flex items-center gap-1.5"
+                            onClick={(e) => e.stopPropagation()}
+                          >
                             <Check className="w-3.5 h-3.5" />
                             <span>Accept Request</span>
                           </div>
-                        )}
-                        
-                        {user.relationshipStatus === 'friend' && (
-                          <div className="px-3 py-1.5 bg-purple-700 text-white rounded-md text-sm flex items-center gap-1.5">
+                        ) : (
+                          <div 
+                            className="px-3 py-1.5 bg-purple-700 text-white rounded-md text-sm flex items-center gap-1.5"
+                            onClick={(e) => e.stopPropagation()}
+                          >
                             <CheckCircle className="w-3.5 h-3.5" />
                             <span>Friends</span>
                           </div>
@@ -462,68 +516,106 @@ const SearchFriendsPortal = ({ isOpen, onClose }) => {
                       {friendRequests.length} Pending {friendRequests.length === 1 ? 'Request' : 'Requests'}
                     </p>
                     
-                    {friendRequests.map((request) => (
-                      <div
-                        key={request.requestId}
-                        className="p-3 rounded-lg bg-[#2B2D31]/60 hover:bg-[#2F3136] transition-all duration-200"
-                      >
-                        <div className="flex items-center gap-3 mb-3">
-                          <div className="w-10 h-10 rounded-full bg-gray-700 flex items-center justify-center overflow-hidden ring-2 ring-gray-700">
-                            {request.user?.avatar ? (
-                              <img 
-                                src={request.user.avatar} 
-                                alt={request.user.username}
-                                className="w-full h-full object-cover" 
-                              />
-                            ) : (
-                              <span className="font-bold text-gray-300">
-                                {request.user?.username ? request.user.username.charAt(0).toUpperCase() : "?"}
-                              </span>
+                    {friendRequests.map((request) => {
+                      const isRequesterBlocked = isUserBlocked(request.senderId);
+                      
+                      return (
+                        <div
+                          key={request.requestId}
+                          className="p-3 rounded-lg bg-[#2B2D31]/60 hover:bg-[#2F3136] transition-all duration-200"
+                        >
+                          <div 
+                            className="flex items-center gap-3 mb-3 cursor-pointer"
+                            onClick={() => {
+                              if (isRequesterBlocked) {
+                                toast.error("You cannot view this profile because you have blocked this user");
+                                return;
+                              }
+                              handleViewProfile(request.senderId);
+                            }}
+                          >
+                            <div className="w-10 h-10 rounded-full bg-gray-700 flex items-center justify-center overflow-hidden ring-2 ring-gray-700">
+                              {request.user?.avatar ? (
+                                <img 
+                                  src={request.user.avatar} 
+                                  alt={request.user.username}
+                                  className="w-full h-full object-cover" 
+                                />
+                              ) : (
+                                <span className="font-bold text-gray-300">
+                                  {request.user?.username ? request.user.username.charAt(0).toUpperCase() : "?"}
+                                </span>
+                              )}
+                            </div>
+                            <div>
+                              <div className="font-medium text-white hover:text-indigo-400 transition-colors">
+                                {request.user?.username || `User #${request.senderId}`}
+                              </div>
+                              <div className="flex items-center text-xs text-gray-400">
+                                {isRequesterBlocked ? (
+                                  <>
+                                    <ShieldAlert className="w-3 h-3 mr-1 text-red-400" />
+                                    Blocked user
+                                  </>
+                                ) : (
+                                  <>
+                                    <Clock className="w-3 h-3 mr-1" />
+                                    Sent you a friend request
+                                  </>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                          
+                          <div className="flex gap-2">
+                            {!isRequesterBlocked && (
+                              <>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleAcceptRequest(request.requestId);
+                                  }}
+                                  disabled={isActionLoading}
+                                  className="flex-1 py-1.5 bg-purple-600 hover:bg-purple-500 text-white rounded-md text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+                                >
+                                  {isActionLoading ? (
+                                    <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                    </svg>
+                                  ) : (
+                                    <>Accept</>
+                                  )}
+                                </button>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDeclineRequest(request.requestId);
+                                  }}
+                                  disabled={isActionLoading}
+                                  className="flex-1 py-1.5 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded-md text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+                                >
+                                  {isActionLoading ? (
+                                    <svg className="animate-spin h-4 w-4 text-gray-300" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                    </svg>
+                                  ) : (
+                                    <>Decline</>
+                                  )}
+                                </button>
+                              </>
+                            )}
+                            {isRequesterBlocked && (
+                              <div className="flex-1 py-1.5 bg-red-700 text-white rounded-md text-sm font-medium flex items-center justify-center gap-2">
+                                <ShieldAlert className="w-3.5 h-3.5" />
+                                <span>Blocked User</span>
+                              </div>
                             )}
                           </div>
-                          <div>
-                            <div className="font-medium text-white">
-                              {request.user?.username || `User #${request.senderId}`}
-                            </div>
-                            <div className="flex items-center text-xs text-gray-400">
-                              <Clock className="w-3 h-3 mr-1" />
-                              Sent you a friend request
-                            </div>
-                          </div>
                         </div>
-                        
-                        <div className="flex gap-2">
-                          <button
-                            onClick={() => handleAcceptRequest(request.requestId)}
-                            disabled={isActionLoading}
-                            className="flex-1 py-1.5 bg-purple-600 hover:bg-purple-500 text-white rounded-md text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
-                          >
-                            {isActionLoading ? (
-                              <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                              </svg>
-                            ) : (
-                              <>Accept</>
-                            )}
-                          </button>
-                          <button
-                            onClick={() => handleDeclineRequest(request.requestId)}
-                            disabled={isActionLoading}
-                            className="flex-1 py-1.5 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded-md text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
-                          >
-                            {isActionLoading ? (
-                              <svg className="animate-spin h-4 w-4 text-gray-300" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                              </svg>
-                            ) : (
-                              <>Decline</>
-                            )}
-                          </button>
-                        </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
               </>
