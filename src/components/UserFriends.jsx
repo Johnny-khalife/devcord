@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { UserPlus, Users, MessageSquare, X, Menu, MoreVertical, ShieldAlert, ShieldCheck, User } from "lucide-react";
+import { UserPlus, Users, MessageSquare, X, Menu, MoreVertical, ShieldAlert, ShieldCheck, User, AlertCircle, Ban } from "lucide-react";
 import { useAuthStore } from "../store/useAuthStore";
 import { useFriendStore } from "../store/useFriendsStore";
 import { useChatStore } from "../store/useChatStore";
@@ -13,6 +13,9 @@ const UserFriends = () => {
   const [showFriendSearchPortal, setShowFriendSearchPortal] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [showFriendActions, setShowFriendActions] = useState(null);
+  const [showBlockModal, setShowBlockModal] = useState(false);
+  const [showBlockedUsersModal, setShowBlockedUsersModal] = useState(false);
+  const [userToBlock, setUserToBlock] = useState(null);
   const { setSelectedFriend } = useChatStore();
   const navigate = useNavigate();
   
@@ -113,6 +116,10 @@ const UserFriends = () => {
     setShowFriendSearchPortal(true);
   };
 
+  const handleShowBlockedUsers = () => {
+    setShowBlockedUsersModal(true);
+  };
+
   const handleRemoveFriend = async (userId) => {
     if (window.confirm("Are you sure you want to remove this friend?")) {
       await removeFriend(userId);
@@ -120,11 +127,24 @@ const UserFriends = () => {
     }
   };
 
-  const handleBlockFriend = async (userId) => {
-    if (window.confirm("Are you sure you want to block this user? They will be removed from your friends list.")) {
-      await blockUser(userId);
-      setShowFriendActions(null);
+  const handleBlockFriend = async (userId, username) => {
+    // Show block modal instead of immediate confirmation
+    setUserToBlock({ id: userId, username });
+    setShowBlockModal(true);
+    setShowFriendActions(null);
+  };
+  
+  const confirmBlock = async () => {
+    if (userToBlock) {
+      await blockUser(userToBlock.id);
+      setShowBlockModal(false);
+      setUserToBlock(null);
     }
+  };
+  
+  const cancelBlock = () => {
+    setShowBlockModal(false);
+    setUserToBlock(null);
   };
 
   const handleUnblockUser = async (userId) => {
@@ -230,7 +250,7 @@ const UserFriends = () => {
         <div className="p-4 border-b border-base-300">
           <div className="flex justify-between items-center mb-4">
             <h2 className="font-bold text-lg">Friends</h2>
-            <div className="flex items-center relative">
+            <div className="flex items-center relative gap-2">
               <div className="relative">
                 <button
                   ref={addFriendButtonRef}
@@ -243,6 +263,23 @@ const UserFriends = () => {
                   {friendRequests.length > 0 && (
                     <span className="absolute -top-1 -right-1 w-5 h-5 bg-purple-500 text-white text-xs rounded-full flex items-center justify-center">
                       {friendRequests.length > 9 ? "9+" : friendRequests.length}
+                    </span>
+                  )}
+                </button>
+              </div>
+              
+              {/* Blocked Users Button */}
+              <div className="relative">
+                <button
+                  className="p-2 hover:bg-base-300 rounded-md relative"
+                  onClick={handleShowBlockedUsers}
+                  aria-label="Blocked Users"
+                >
+                  <Ban className="w-5 h-5" />
+                  {/* Blocked users count indicator */}
+                  {blockedUsers.length > 0 && (
+                    <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
+                      {blockedUsers.length > 9 ? "9+" : blockedUsers.length}
                     </span>
                   )}
                 </button>
@@ -350,10 +387,13 @@ const UserFriends = () => {
                           </button>
                           <button
                             className="w-full px-3 py-2 text-sm text-left hover:bg-base-200 flex items-center gap-2 text-red-500"
-                            onClick={() => handleBlockFriend(friend.friendId)}
+                            onClick={() => handleBlockFriend(friend.friendId, friend.username)}
                           >
                             <ShieldAlert size={14} />
-                            Block User
+                            <div>
+                              <span>Block User</span>
+                              <p className="text-xs text-gray-500">Prevents all interaction</p>
+                            </div>
                           </button>
                         </div>
                       )}
@@ -361,36 +401,6 @@ const UserFriends = () => {
                   </div>
                 ))}
               </div>
-
-              {/* Blocked Users section */}
-              {blockedUsers.length > 0 && (
-                <div className="space-y-1 mt-4 border-t border-base-300 pt-4">
-                  <div className="px-2 py-1 text-xs font-semibold text-base-content/70">
-                    BLOCKED USERS
-                  </div>
-                  {blockedUsers.map((user) => (
-                    <div key={user.id} className="flex items-center">
-                      <div className="flex items-center gap-2 px-2 py-2 rounded-md flex-grow">
-                        <div className="flex items-center justify-center">
-                          <img
-                            src={user.avatar || "/avatar.png"}
-                            alt=""
-                            className="w-6 h-6 rounded-full mr-2 opacity-50"
-                          />
-                        </div>
-                        <span className="text-sm text-base-content/50">{user.username}</span>
-                      </div>
-                      <button
-                        className="w-8 h-8 flex items-center justify-center hover:bg-base-300 rounded-full text-green-500"
-                        onClick={() => handleUnblockUser(user.id)}
-                        title="Unblock User"
-                      >
-                        <ShieldCheck size={16} />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
 
               {/* Direct Messages section */}
               {friends.length > 0 && (
@@ -423,6 +433,123 @@ const UserFriends = () => {
         isOpen={showFriendSearchPortal} 
         onClose={() => setShowFriendSearchPortal(false)}
       />
+      
+      {/* Block User Modal */}
+      {showBlockModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-base-100 rounded-lg shadow-xl w-full max-w-md">
+            <div className="p-4 border-b border-base-300 flex items-center gap-3">
+              <div className="p-2 bg-red-100 rounded-full">
+                <AlertCircle size={20} className="text-red-600" />
+              </div>
+              <h3 className="text-lg font-semibold">Block {userToBlock?.username}</h3>
+            </div>
+            
+            <div className="p-6">
+              <p className="mb-4 text-sm text-base-content/80">
+                Blocking this user will:
+              </p>
+              
+              <ul className="mb-6 space-y-2 text-sm text-base-content/70 pl-5">
+                <li className="list-disc">Prevent them from messaging you</li>
+                <li className="list-disc">Remove them from your friends list</li>
+                <li className="list-disc">Cancel any pending friend requests</li>
+                <li className="list-disc">Hide your activity from them</li>
+              </ul>
+              
+              <div className="flex justify-end gap-3">
+                <button 
+                  onClick={cancelBlock}
+                  className="px-4 py-2 rounded-md bg-base-200 hover:bg-base-300 text-sm font-medium"
+                >
+                  Cancel
+                </button>
+                <button 
+                  onClick={confirmBlock}
+                  className="px-4 py-2 rounded-md bg-red-600 hover:bg-red-700 text-white text-sm font-medium"
+                >
+                  Block User
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* Blocked Users Modal */}
+      {showBlockedUsersModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-base-100 rounded-lg shadow-xl w-full max-w-md">
+            <div className="p-4 border-b border-base-300 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-red-100 rounded-full">
+                  <Ban size={20} className="text-red-600" />
+                </div>
+                <h3 className="text-lg font-semibold">Blocked Users</h3>
+              </div>
+              <button 
+                onClick={() => setShowBlockedUsersModal(false)}
+                className="p-1 hover:bg-base-200 rounded-full"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            
+            <div className="p-6">
+              {blockedUsers.length === 0 ? (
+                <div className="text-center py-8">
+                  <Ban size={40} className="mx-auto text-base-content/30 mb-3" />
+                  <p className="text-base-content/70">You haven't blocked any users</p>
+                </div>
+              ) : (
+                <>
+                  <div className="bg-base-300/30 rounded-md p-3 mb-4">
+                    <p className="text-xs text-base-content/70">
+                      Blocked users cannot message you, see your activity, or add you as a friend
+                    </p>
+                  </div>
+                  
+                  <div className="space-y-2 max-h-80 overflow-y-auto">
+                    {blockedUsers.map((user) => (
+                      <div key={user.id} className="flex items-center bg-red-500/5 rounded-md border-l-2 border-red-500">
+                        <div className="flex items-center gap-2 px-3 py-3 rounded-md flex-grow">
+                          <div className="flex items-center justify-center relative">
+                            <img
+                              src={user.avatar || "/avatar.png"}
+                              alt=""
+                              className="w-8 h-8 rounded-full mr-2 grayscale"
+                            />
+                            <div className="absolute -bottom-1 -right-1">
+                              <ShieldAlert size={12} className="text-red-500" />
+                            </div>
+                          </div>
+                          <div>
+                            <span className="text-sm font-medium text-base-content/70 line-through">{user.username}</span>
+                            {user.blockedAt && (
+                              <p className="text-xs text-base-content/50">
+                                Blocked on {new Date(user.blockedAt).toLocaleDateString()}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                        <div className="tooltip tooltip-left" data-tip="Unblock this user">
+                          <button
+                            className="w-10 h-10 flex items-center justify-center hover:bg-base-300 rounded-full text-green-500 mr-2"
+                            onClick={() => handleUnblockUser(user.id)}
+                            title="Unblock User"
+                          >
+                            <ShieldCheck size={18} />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 };

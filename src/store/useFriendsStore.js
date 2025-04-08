@@ -142,10 +142,17 @@ export const useFriendStore = create(
       },
 
       // Block a user
-      blockUser: async (userId) => {
+      blockUser: async (userId, blockReason = "") => {
         set({ isLoading: true });
         try {
-          const response = await axiosInstance.post(`/friends/${userId}/block`, { userId });
+          // Add blocking metadata
+          const blockData = {
+            userId,
+            blockReason,
+            blockedAt: new Date().toISOString()
+          };
+          
+          const response = await axiosInstance.post(`/friends/${userId}/block`, blockData);
           
           // Refresh blocked users list
           await get().getBlockedUsers();
@@ -155,7 +162,23 @@ export const useFriendStore = create(
             (friend) => friend.friendId !== userId
           );
           
-          set({ friends: updatedFriends, isLoading: false });
+          // Remove any pending friend requests from this user
+          const updatedRequests = get().friendRequests.filter(
+            (request) => request.senderId !== userId
+          );
+          
+          // Remove any sent friend requests to this user
+          const updatedSentRequests = get().sentRequests.filter(
+            (request) => request.receiverId !== userId
+          );
+          
+          set({ 
+            friends: updatedFriends,
+            friendRequests: updatedRequests,
+            sentRequests: updatedSentRequests,
+            isLoading: false 
+          });
+          
           toast.success("User blocked successfully");
           return response.data;
         } catch (error) {
