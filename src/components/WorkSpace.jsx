@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+import { createPortal } from 'react-dom';
 import { Link } from "react-router-dom";
 import {
   Plus,
@@ -23,6 +24,178 @@ import { useAuthStore } from "../store/useAuthStore";
 import WorkspaceMembersPortal from "./WorkspaceMembersPortal";
 import RemoveMemberPortal from "./RemoveMemberPortal";
 import InviteFriendsPortal from "./InviteFriendsPortal";
+
+const ChannelCreationModal = ({ 
+  isOpen, 
+  onClose, 
+  channelName, 
+  setChannelName, 
+  isPrivateChannel, 
+  setIsPrivateChannel,
+  selectedChannelUsers,
+  workspaceMembers,
+  isWorkspaceMembersLoading,
+  toggleUserSelection,
+  handleCreateChannel
+}) => {
+  if (!isOpen) return null;
+
+  return createPortal(
+    <div className="fixed inset-0 flex items-center justify-center z-[9999] animate-fadeIn">
+      <div 
+        className="fixed inset-0 bg-black/60 backdrop-blur-sm"
+        onClick={onClose}
+      />
+      
+      <div 
+        className="bg-base-100 backdrop-blur-md rounded-xl w-full max-w-md shadow-2xl border border-base-300 relative animate-scaleIn"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="p-6 relative">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="h-8 w-8 bg-primary rounded-lg flex items-center justify-center">
+                <Hash className="w-4 h-4 text-primary-content" />
+              </div>
+              <h2 className="text-xl font-bold">Create New Channel</h2>
+            </div>
+            <button
+              onClick={onClose}
+              className="h-8 w-8 rounded-full flex items-center justify-center text-base-content/70 hover:text-base-content hover:bg-base-300 transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+          <div className="absolute left-0 right-0 bottom-0 h-[1px] bg-gradient-to-r from-transparent via-base-content/20 to-transparent" />
+        </div>
+
+        {/* Content */}
+        <div className="p-6">
+          <div className="mb-4">
+            <label className="block text-sm font-medium mb-2">Channel Name</label>
+            <input
+              type="text"
+              placeholder="Enter channel name"
+              className="w-full px-4 py-2.5 bg-base-200 border-none rounded-lg focus:ring-2 focus:ring-primary text-sm"
+              value={channelName}
+              onChange={(e) => setChannelName(e.target.value)}
+            />
+          </div>
+
+          <div className="mb-4">
+            <label className="flex items-center justify-between cursor-pointer py-2">
+              <span className="flex items-center gap-2">
+                <Lock className="w-4 h-4 text-base-content/70" /> Private Channel
+              </span>
+              <div className="relative">
+                <input
+                  type="checkbox"
+                  className="sr-only"
+                  checked={isPrivateChannel}
+                  onChange={() => setIsPrivateChannel(!isPrivateChannel)}
+                />
+                <div className={`w-10 h-5 ${isPrivateChannel ? 'bg-primary' : 'bg-base-300'} rounded-full transition-colors`} />
+                <div className={`absolute top-0.5 left-0.5 bg-white w-4 h-4 rounded-full transition-transform ${isPrivateChannel ? 'translate-x-5' : ''}`} />
+              </div>
+            </label>
+          </div>
+
+          {isPrivateChannel && (
+            <div>
+              <label className="block text-sm font-medium mb-2">Select Users for this Channel</label>
+              {isWorkspaceMembersLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <div className="spinner">
+                    <div className="double-bounce1 bg-primary/60" />
+                    <div className="double-bounce2 bg-primary/40" />
+                  </div>
+                  <p className="ml-3 text-base-content/70">Loading members...</p>
+                </div>
+              ) : workspaceMembers.length === 0 ? (
+                <div className="text-center p-4 rounded-md bg-base-200">
+                  <p className="text-sm">No members found in this workspace.</p>
+                  <p className="text-xs text-base-content/70 mt-1">
+                    Invite members using the invite button at the top.
+                  </p>
+                </div>
+              ) : (
+                <div className="max-h-60 overflow-y-auto rounded-md bg-base-200 custom-scrollbar">
+                  {workspaceMembers
+                    .filter((member) => !(member.role === "owner" || member.isOwned))
+                    .map((member) => (
+                      <div
+                        key={member.id}
+                        className={`flex items-center justify-between p-3 cursor-pointer border-b border-base-300 last:border-0 ${
+                          selectedChannelUsers.includes(member.id)
+                            ? "bg-primary/20"
+                            : "hover:bg-base-300"
+                        } transition-colors`}
+                        onClick={() => toggleUserSelection(member.id)}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-full bg-base-300 flex items-center justify-center ring-2 ring-base-300">
+                            <img
+                              src={member.avatar || "/avatar.png"}
+                              alt={member.username}
+                              className="w-full h-full object-cover rounded-full"
+                              onError={(e) => {
+                                e.target.onerror = null;
+                                e.target.src = "/avatar.png";
+                              }}
+                            />
+                          </div>
+                          <span>{member.username}</span>
+                        </div>
+                        <div
+                          className={`w-6 h-6 rounded-md flex items-center justify-center transition-colors ${
+                            selectedChannelUsers.includes(member.id)
+                              ? "bg-primary text-primary-content"
+                              : "bg-base-300 text-base-content/50"
+                          }`}
+                        >
+                          <Check className="w-4 h-4" />
+                        </div>
+                      </div>
+                    ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="p-4 border-t border-base-300 bg-base-200 rounded-b-xl flex justify-between items-center">
+          <div className="text-sm text-base-content/70">
+            {isPrivateChannel && (
+              <span>
+                <span className="text-primary font-medium">{selectedChannelUsers.length}</span> user
+                {selectedChannelUsers.length !== 1 ? 's' : ''} selected
+              </span>
+            )}
+          </div>
+          <div className="flex gap-2">
+            <button
+              className="px-4 py-2 bg-base-300 rounded-lg hover:bg-base-300/80 transition-colors text-sm"
+              onClick={onClose}
+            >
+              Cancel
+            </button>
+            <button
+              className="px-4 py-2 bg-primary text-primary-content rounded-lg hover:bg-primary/90 disabled:opacity-50 transition-colors text-sm flex items-center gap-2"
+              onClick={handleCreateChannel}
+              disabled={!channelName || (isPrivateChannel && selectedChannelUsers.length === 0)}
+            >
+              <Plus className="w-4 h-4" />
+              Create Channel
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>,
+    document.body
+  );
+};
 
 const WorkSpace = ({
   activeNavItem,
@@ -326,11 +499,17 @@ const WorkSpace = ({
   };
 
   const resetChannelCreation = () => {
+    console.log("Resetting channel creation");
     setShowChannelUserSelector(false);
     setChannelName("");
     setIsPrivateChannel(false);
     setSelectedChannelUsers([]);
   };
+
+  // Add useEffect to monitor modal state
+  useEffect(() => {
+    console.log("Channel creation modal state:", showChannelUserSelector);
+  }, [showChannelUserSelector]);
 
   // Delete a channel
   const handleDeleteChannel = async (channelId) => {
@@ -362,7 +541,7 @@ const WorkSpace = ({
     }
   };
 
-  // Render channels list with private channel indicator
+  // Move the channel creation modal outside of the channels.map section
   const renderChannelsList = () => {
     if (isChannelsLoading) {
       return (
@@ -377,7 +556,7 @@ const WorkSpace = ({
     }
 
     if (channels.length === 0) {
-    return (
+      return (
         <div className="text-center py-8 px-3">
           <Hash className="w-12 h-12 mx-auto mb-3 text-primary/50" />
           <h3 className="font-medium mb-1">No Channels</h3>
@@ -388,8 +567,13 @@ const WorkSpace = ({
           </p>
           {isWorkspaceOwner() && (
             <button
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log("Opening channel creation modal from empty state");
+                setShowChannelUserSelector(true);
+              }}
               className="px-4 py-2 bg-primary hover:bg-primary/90 text-primary-content rounded-lg transition-colors flex items-center gap-2 mx-auto"
-              onClick={() => setShowChannelUserSelector(true)}
             >
               <Plus className="w-4 h-4" />
               Create Channel
@@ -398,7 +582,7 @@ const WorkSpace = ({
         </div>
       );
     }
-console.log("dsadadda",setShowChannelUserSelector)
+
     return (
       <div className="space-y-1 mt-2">
         <div className="px-3 mb-2 flex items-center justify-between">
@@ -408,7 +592,10 @@ console.log("dsadadda",setShowChannelUserSelector)
           {isWorkspaceOwner() && (
             <button
               className="p-1 hover:bg-base-300 rounded transition-colors text-base-content/70 hover:text-base-content"
-              onClick={() => setShowChannelUserSelector(true)}
+              onClick={() => {
+                console.log("Opening channel creation modal from header");
+                setShowChannelUserSelector(true);
+              }}
               title="Add Channel"
             >
               <Plus className="w-4 h-4" />
@@ -449,177 +636,6 @@ console.log("dsadadda",setShowChannelUserSelector)
             )}
           </div>
         ))}
-        
-        {/* Channel Creation Modal - Keep the modern style but update colors to match theme */}
-        {showChannelUserSelector && (
-          <div className="fixed inset-0 flex items-center justify-center z-[9999] animate-fadeIn" onClick={resetChannelCreation}>
-            <div 
-              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-              onClick={resetChannelCreation}
-            ></div>
-            
-            <div 
-              className="bg-base-100 backdrop-blur-md rounded-xl w-full max-w-md p-0 shadow-2xl border border-base-300 relative transition-all duration-300 animate-scaleIn"
-              style={{ maxHeight: 'calc(100vh - 40px)' }}
-              onClick={(e) => e.stopPropagation()}
-            >
-              {/* Header with gradient border */}
-              <div className="p-6 relative">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="h-8 w-8 bg-primary rounded-lg flex items-center justify-center">
-                      <Hash className="w-4 h-4 text-primary-content" />
-                    </div>
-                    <h2 className="text-xl font-bold">Create New Channel</h2>
-                  </div>
-            <button
-                    onClick={resetChannelCreation} 
-                    className="h-8 w-8 rounded-full flex items-center justify-center text-base-content/70 hover:text-base-content hover:bg-base-300 transition-colors"
-            >
-                    <X className="w-5 h-5" />
-            </button>
-          </div>
-                
-                {/* Gradient border effect */}
-                <div className="absolute left-0 right-0 bottom-0 h-[1px] bg-gradient-to-r from-transparent via-base-content/20 to-transparent"></div>
-              </div>
-              
-              <div className="p-6">
-              {/* Channel Name Input */}
-              <div className="mb-4">
-                <label className="block text-sm font-medium mb-2">
-                  Channel Name
-                </label>
-                <input
-                  type="text"
-                  placeholder="Enter channel name"
-                    className="w-full px-4 py-2.5 bg-base-200 border-none rounded-lg focus:ring-2 focus:ring-primary text-sm"
-                  value={channelName}
-                  onChange={(e) => setChannelName(e.target.value)}
-                />
-              </div>
-
-              {/* Private Channel Toggle */}
-                <div className="mb-4">
-                  <label className="flex items-center justify-between cursor-pointer py-2">
-                    <span className="flex items-center gap-2">
-                      <Lock className="w-4 h-4 text-base-content/70" /> Private Channel
-                  </span>
-                    <div className="relative">
-                  <input
-                    type="checkbox"
-                        className="sr-only"
-                    checked={isPrivateChannel}
-                    onChange={() => setIsPrivateChannel(!isPrivateChannel)}
-                  />
-                      <div className={`w-10 h-5 ${isPrivateChannel ? 'bg-primary' : 'bg-base-300'} rounded-full transition-colors`}></div>
-                      <div className={`absolute top-0.5 left-0.5 bg-white w-4 h-4 rounded-full transition-transform ${isPrivateChannel ? 'translate-x-5' : ''}`}></div>
-                    </div>
-                </label>
-              </div>
-
-              {/* User Selection for Private Channels */}
-              {isPrivateChannel && (
-                <div>
-                  <label className="block text-sm font-medium mb-2">
-                    Select Users for this Channel
-                  </label>
-                  {isWorkspaceMembersLoading ? (
-                      <div className="flex items-center justify-center py-8">
-                        <div className="spinner">
-                          <div className="double-bounce1 bg-primary/60"></div>
-                          <div className="double-bounce2 bg-primary/40"></div>
-                        </div>
-                        <p className="ml-3 text-base-content/70">Loading members...</p>
-                    </div>
-                  ) : workspaceMembers.length === 0 ? (
-                      <div className="text-center p-4 rounded-md bg-base-200">
-                      <p className="text-sm">
-                        No members found in this workspace.
-                      </p>
-                      <p className="text-xs text-base-content/70 mt-1">
-                        Invite members using the invite button at the top.
-                      </p>
-                    </div>
-                  ) : (
-                      <div className="max-h-60 overflow-y-auto rounded-md bg-base-200 custom-scrollbar">
-                      {workspaceMembers
-                        // Only filter out the current owner, not all users
-                          .filter(
-                            (member) =>
-                              !(member.role === "owner" || member.isOwned)
-                          )
-                        .map((member) => (
-                          <div
-                            key={member.id}
-                              className={`flex items-center justify-between p-3 cursor-pointer border-b border-base-300 last:border-0 ${
-                              selectedChannelUsers.includes(member.id)
-                                  ? "bg-primary/20"
-                                  : "hover:bg-base-300"
-                              } transition-colors`}
-                            onClick={() => toggleUserSelection(member.id)}
-                          >
-                              <div className="flex items-center gap-3">
-                                <div className="w-8 h-8 rounded-full bg-base-300 flex items-center justify-center ring-2 ring-base-300">
-                                  <img
-                                    src={member.avatar || "/avatar.png"}
-                                    alt={member.username}
-                                    className="w-full h-full object-cover rounded-full"
-                                    onError={(e) => {
-                                      e.target.onerror = null;
-                                      e.target.src = "/avatar.png";
-                                    }}
-                                  />
-                              </div>
-                              <span>{member.username}</span>
-                            </div>
-                              <div className={`w-6 h-6 rounded-md flex items-center justify-center transition-colors ${
-                                selectedChannelUsers.includes(member.id)
-                                  ? "bg-primary text-primary-content"
-                                  : "bg-base-300 text-base-content/50"
-                              }`}>
-                                <Check className="w-4 h-4" />
-                              </div>
-                          </div>
-                        ))}
-                    </div>
-                  )}
-                </div>
-              )}
-              </div>
-
-              {/* Footer with action buttons */}
-              <div className="p-4 border-t border-base-300 bg-base-200 flex justify-between items-center">
-                <div className="text-sm text-base-content/70">
-                  {isPrivateChannel && (
-                    <span>
-                      <span className="text-primary font-medium">{selectedChannelUsers.length}</span> user{selectedChannelUsers.length !== 1 ? 's' : ''} selected
-                    </span>
-                  )}
-                </div>
-                <div className="flex gap-2">
-                <button
-                    className="px-4 py-2 bg-base-300 rounded-lg hover:bg-base-300/80 transition-colors text-sm"
-                  onClick={resetChannelCreation}
-                >
-                  Cancel
-                </button>
-                <button
-                    className="px-4 py-2 bg-primary text-primary-content rounded-lg hover:bg-primary/90 disabled:opacity-50 transition-colors text-sm flex items-center gap-2"
-                  onClick={handleCreateChannel}
-                  disabled={
-                    !channelName ||
-                    (isPrivateChannel && selectedChannelUsers.length === 0)
-                  }
-                >
-                    <Plus className="w-4 h-4" />
-                  Create Channel
-                </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
       </div>
     );
   };
@@ -1120,6 +1136,20 @@ console.log("dsadadda",setShowChannelUserSelector)
           isLoading={isInviteLoading}
           workspaceName={getActiveWorkspace()?.name}
           workspaceMembers={workspaceMembers}
+        />
+
+        <ChannelCreationModal
+          isOpen={showChannelUserSelector}
+          onClose={resetChannelCreation}
+          channelName={channelName}
+          setChannelName={setChannelName}
+          isPrivateChannel={isPrivateChannel}
+          setIsPrivateChannel={setIsPrivateChannel}
+          selectedChannelUsers={selectedChannelUsers}
+          workspaceMembers={workspaceMembers}
+          isWorkspaceMembersLoading={isWorkspaceMembersLoading}
+          toggleUserSelection={toggleUserSelection}
+          handleCreateChannel={handleCreateChannel}
         />
       </div>
 
