@@ -2,10 +2,9 @@
 import {
   Briefcase,
   MessageSquare,
-  Settings,
   Users2,
-  Phone,
   Menu,
+  Newspaper,
 } from "lucide-react";
 import { useWorkspaceStore } from "../store/useWorkspaceStore";
 import { useChatStore } from "../store/useChatStore";
@@ -43,6 +42,12 @@ const Sidebar = ({ activeNavItem, setActiveNavItem }) => {
   const userChatPage = () => {
     setActiveNavItem("users");
     // Don't reset selectedFriend here, let it be handled by the UserFriends component
+    if (isMobile) setIsMenuOpen(false);
+  };
+
+  const jobsPage = () => {
+    setSelectedFriend(null);
+    setActiveNavItem("jobs");
     if (isMobile) setIsMenuOpen(false);
   };
 
@@ -106,36 +111,13 @@ const Sidebar = ({ activeNavItem, setActiveNavItem }) => {
 
         <button
           className={`${isMobile ? 'p-2' : 'w-10 h-10 rounded-lg'} flex items-center justify-center ${
-            activeNavItem === "calls" ? "bg-primary/20" : "hover:bg-base-200"
+            activeNavItem === "jobs" ? "bg-primary/20" : "hover:bg-base-200"
           }`}
-          onClick={() => {
-            setSelectedFriend(null);
-            setActiveNavItem("calls");
-            if (isMobile) setIsMenuOpen(false);
-          }}
+          onClick={jobsPage}
         >
-          <Phone
+          <Newspaper
             className={`w-5 h-5 ${
-              activeNavItem === "calls" ? "text-primary" : ""
-            }`}
-          />
-        </button>
-
-        <button
-          className={`${isMobile ? 'p-2' : 'w-10 h-10 rounded-lg'} flex items-center justify-center ${
-            activeNavItem === "settings"
-              ? "bg-primary/20"
-              : "hover:bg-base-200"
-          }`}
-          onClick={() => {
-            setSelectedFriend(null);
-            setActiveNavItem("settings");
-            if (isMobile) setIsMenuOpen(false);
-          }}
-        >
-          <Settings
-            className={`w-5 h-5 ${
-              activeNavItem === "settings" ? "text-primary" : ""
+              activeNavItem === "jobs" ? "text-primary" : ""
             }`}
           />
         </button>

@@ -398,7 +398,7 @@ const WorkSpace = ({
         </div>
       );
     }
-
+console.log("dsadadda",setShowChannelUserSelector)
     return (
       <div className="space-y-1 mt-2">
         <div className="px-3 mb-2 flex items-center justify-between">
@@ -867,13 +867,13 @@ const WorkSpace = ({
       <MobileWorkspaceToggle />
       <div
         className={`
-        ${isMobile ? "fixed left-0 top-16 bottom-0 z-30" : "w-72"} 
+        ${isMobile ? "fixed left-0 top-16 bottom-0 z-30" : "w-72 h-[calc(100vh-4rem)] sticky top-16"} 
         ${
           isMobile && !isWorkspaceSidebarOpen
             ? "translate-x-[-100%]"
             : "translate-x-0"
         } 
-        bg-base-200 h-full border-r border-base-300 flex flex-col transition-transform duration-300 ease-in-out
+        bg-base-200 border-r border-base-300 flex flex-col transition-transform duration-300 ease-in-out overflow-hidden
       `}
       >
         {/* Header section - modernized */}
@@ -899,7 +899,7 @@ const WorkSpace = ({
             </div>
           </div>
 
-          {/* Action buttons row - modernized */}
+          {/* Action buttons row */}
           {activeNavItem === "workSpace" && activeWorkspace && (
             <div className="flex items-center justify-center gap-2 py-2">
               <button
@@ -921,23 +921,23 @@ const WorkSpace = ({
                 </button>
               )}
 
-                <button
+              <button
                 className="p-2 hover:bg-base-300 rounded-lg transition-colors"
-                  onClick={() => handleOpenSettingsForm(activeWorkspace)}
-                  aria-label="Workspace Settings"
-                >
-                  <Settings className="w-5 h-5" />
-                </button>
+                onClick={() => handleOpenSettingsForm(activeWorkspace)}
+                aria-label="Workspace Settings"
+              >
+                <Settings className="w-5 h-5" />
+              </button>
             </div>
           )}
         </div>
 
-        {/* Scrollable content area - modernized */}
-        <div className="overflow-y-auto flex-grow custom-scrollbar">
-          {/* Workspace section for workSpace view */}
+        {/* Scrollable content area */}
+        <div className="flex-1 overflow-y-auto custom-scrollbar">
+          {/* Workspace section */}
           {activeNavItem === "workSpace" && (
             <div className="p-3">
-              {/* Workspace header with dropdown - modernized */}
+              {/* Workspace header with dropdown */}
               <div className="relative mb-3">
                 <button
                   className="w-full flex items-center justify-between p-3 rounded-lg bg-base-300/60 hover:bg-base-300 transition-colors border border-base-300"
@@ -1075,38 +1075,7 @@ const WorkSpace = ({
               {activeWorkspace && renderChannelsList()}
             </div>
           )}
-
-          {/* Replace the Invite Friends Menu with portal implementation */}
         </div>
-        
-        {/* Add custom scrollbar style */}
-        <style jsx="true">{`
-          .custom-scrollbar::-webkit-scrollbar {
-            width: 6px;
-          }
-          
-          .custom-scrollbar::-webkit-scrollbar-track {
-            background: transparent;
-          }
-          
-          .custom-scrollbar::-webkit-scrollbar-thumb {
-            background: #4c4f57;
-            border-radius: 3px;
-          }
-          
-          .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-            background: #6366f1;
-          }
-          
-          @keyframes scaleIn {
-            from { transform: scale(0.95); opacity: 0; }
-            to { transform: scale(1); opacity: 1; }
-          }
-          
-          .animate-scaleIn {
-            animation: scaleIn 0.25s ease-out;
-          }
-        `}</style>
 
         {/* Use portals for modals */}
         <WorkspaceMembersPortal
@@ -1152,28 +1121,10 @@ const WorkSpace = ({
           workspaceName={getActiveWorkspace()?.name}
           workspaceMembers={workspaceMembers}
         />
-                    </div>
+      </div>
 
       {/* Add global styles for animations and scrollbars */}
       <style jsx="true">{`
-        @keyframes fadeIn {
-          from { opacity: 0; }
-          to { opacity: 1; }
-        }
-        
-        @keyframes scaleIn {
-          from { transform: scale(0.95); opacity: 0; }
-          to { transform: scale(1); opacity: 1; }
-        }
-        
-        .animate-fadeIn {
-          animation: fadeIn 0.2s ease-out;
-        }
-        
-        .animate-scaleIn {
-          animation: scaleIn 0.25s ease-out;
-        }
-        
         .custom-scrollbar::-webkit-scrollbar {
           width: 6px;
         }
@@ -1190,28 +1141,6 @@ const WorkSpace = ({
         .custom-scrollbar::-webkit-scrollbar-thumb:hover {
           background: #6366f1;
         }
-        
-        .spinner {
-          width: 30px;
-          height: 30px;
-          position: relative;
-        }
-        
-        .double-bounce1, .double-bounce2 {
-          width: 100%;
-          height: 100%;
-          border-radius: 50%;
-          position: absolute;
-          top: 0;
-          left: 0;
-          animation: bounce 2s infinite ease-in-out;
-        }
-        
-        .double-bounce2 {
-          animation-delay: -1.0s;
-        }
-        
-        
       `}</style>
     </>
   );

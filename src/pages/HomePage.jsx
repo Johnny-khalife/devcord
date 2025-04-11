@@ -4,6 +4,7 @@ import ChatBox from "../components/ChatBox";
 import Sidebar from "../components/Sidebar";
 import WorkSpace from "../components/WorkSpace";
 import UserFriends from "../components/UserFriends";
+import JobsView from "../components/JobsView";
 import WorkspaceSettingsForm from "../components/WorkspaceSettingsForm";
 import { useWorkspaceStore } from "../store/useWorkspaceStore";
 import { useChatStore } from "../store/useChatStore";
@@ -276,7 +277,7 @@ const HomePage = () => {
   };
 
   return (
-    <div className={`flex flex-col md:flex-row h-screen pt-16 ${isMobile ? 'overflow-hidden' : ''}`}>
+    <div className="flex h-screen pt-16">
       {/* Left sidebar with nav icons */}
       <Sidebar 
         activeNavItem={activeNavItem}
@@ -284,9 +285,9 @@ const HomePage = () => {
       />
       
       {/* Mid section - varies based on activeNavItem */}
-      <div className="flex flex-1 relative">
+      <div className="flex flex-1 relative overflow-hidden">
         {/* Secondary sidebar - either workspace or user friends */}
-        <div className={`${isMobile ? 'absolute inset-0 z-20' : 'relative border-r border-base-300'}`}>
+        <div className={`${isMobile ? 'absolute inset-0 z-20' : 'relative'}`}>
           {isLoading ? (
             <div className="flex-1 flex items-center justify-center h-full">
               <div className="loading loading-spinner loading-lg text-primary"></div>
@@ -316,30 +317,29 @@ const HomePage = () => {
           )}
         </div>
         
-        {/* Main content area - ChatBox */}
-        <div className={`flex-1 ${isMobile ? 'min-h-[calc(100vh-4rem)]' : ''}`}>
-        {
-          // Show NoChatSelected when:
-          // 1. In users view with no selected friend
-          // 2. In workspace view with no selected workspace (no channels)
-          // 3. Any other view
-          (activeNavItem === "users" && !selectedFriend) || 
-          (activeNavItem === "workSpace" && !selectedWorkspace) || 
-          (activeNavItem !== "users" && activeNavItem !== "workSpace") 
-          ? 
-          <NoChatSelected /> 
-          : 
-          <ChatBox 
-            activeNavItem={activeNavItem}
-            activeWorkspace={activeWorkspace}
-            activeChannel={activeChannel}
-            selectedWorkspace={selectedWorkspace}
-          />
-        }
+        {/* Main content area - ChatBox or JobsView */}
+        <div className="flex-1 overflow-y-auto">
+          {activeNavItem === "jobs" ? (
+            <JobsView />
+          ) : (
+            <>
+              {((activeNavItem === "users" && !selectedFriend) || 
+                (activeNavItem === "workSpace" && !selectedWorkspace)) ? (
+                <NoChatSelected />
+              ) : (
+                <ChatBox 
+                  activeNavItem={activeNavItem}
+                  activeWorkspace={activeWorkspace}
+                  activeChannel={activeChannel}
+                  selectedWorkspace={selectedWorkspace}
+                />
+              )}
+            </>
+          )}
         </div>
       </div>
       
-      {/* Add CreateWorkspaceModal */}
+      {/* Modals */}
       {showCreateWorkspaceModal && (
         <CreateWorkspaceModal
           onClose={() => setShowCreateWorkspaceModal(false)}
@@ -350,7 +350,6 @@ const HomePage = () => {
         />
       )}
       
-      {/* Add the settings form modal */}
       {showSettingsForm && selectedWorkspaceForSettings && (
         <WorkspaceSettingsForm
           workspaceId={selectedWorkspaceForSettings.id}
