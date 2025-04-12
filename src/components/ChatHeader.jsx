@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useChatStore } from "../store/useChatStore";
 import { X, Lock, Hash, Menu } from "lucide-react";
 import { useAuthStore } from "../store/useAuthStore";
+import MessageSearch from "./MessageSearch";
 
 const ChatHeader = ({ activeNavItem, selectedWorkspace }) => {
   const { selectedFriend, setSelectedFriend } = useChatStore();
@@ -112,8 +113,13 @@ const ChatHeader = ({ activeNavItem, selectedWorkspace }) => {
       </div>
 
       {/* Right section with buttons */}
-      {activeNavItem === "users" && selectedFriend && (
-        <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2">
+        {/* Add search component for workspace chat */}
+        {activeNavItem === "workSpace" && selectedWorkspace && (
+          <MessageSearch channelId={selectedWorkspace._id} />
+        )}
+        
+        {activeNavItem === "users" && selectedFriend && (
           <button
             onClick={handleClose}
             className="p-2 bg-blue-500 hover:bg-blue-600 rounded-full flex items-center justify-center shadow-md"
@@ -129,8 +135,8 @@ const ChatHeader = ({ activeNavItem, selectedWorkspace }) => {
           >
             <X size={20} color="white" strokeWidth={3} />
           </button>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 };

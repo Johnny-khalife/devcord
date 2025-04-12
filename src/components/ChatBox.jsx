@@ -155,6 +155,19 @@ const ChatBox = ({ activeNavItem, selectedWorkspace }) => {
     });
   };
 
+  // Helper function to scroll to a message by ID
+  const scrollToMessage = (messageId) => {
+    const messageElement = document.getElementById(`message-${messageId}`);
+    if (messageElement) {
+      messageElement.scrollIntoView({ behavior: "smooth", block: "center" });
+      // Highlight the message temporarily
+      messageElement.classList.add("bg-primary", "bg-opacity-10");
+      setTimeout(() => {
+        messageElement.classList.remove("bg-primary", "bg-opacity-10");
+      }, 2000);
+    }
+  };
+
   if (isMessagesLoading) {
     return (
       <div className="flex-1 flex flex-col h-full">
@@ -204,7 +217,8 @@ const ChatBox = ({ activeNavItem, selectedWorkspace }) => {
               {pinnedMessages.map((message) => (
                 <div 
                   key={`pinned-${message._id}`} 
-                  className="bg-base-100 p-2 rounded-md mb-2 flex items-start gap-2 hover:bg-base-300"
+                  className="bg-base-100 p-2 rounded-md mb-2 flex items-start gap-2 hover:bg-base-300 cursor-pointer"
+                  onClick={() => scrollToMessage(message._id)}
                 >
                   <div className="avatar">
                     <div className="size-6 rounded-full">
@@ -244,9 +258,10 @@ const ChatBox = ({ activeNavItem, selectedWorkspace }) => {
         {sortedMessages.map((message) => (
           <div
             key={message._id}
+            id={`message-${message._id}`}
             className={`chat ${
               message.userId && message.userId._id === authUser._id ? "chat-end" : "chat-start"
-            } ${message.isPinnedByCurrentUser ? 'border-l-4 border-warning pl-2' : ''}`}
+            } ${message.isPinnedByCurrentUser ? 'border-l-4 border-warning pl-2' : ''} transition-colors duration-300`}
           >
             <div className="chat-image avatar">
               <div className="size-10 rounded-full border">

@@ -11,6 +11,10 @@ export const useChatStore = create((set, get) => ({
   isDeletingMessage: false,
   isReacting: false,
   isPinningMessage: false,
+  isSearching: false,
+  searchResults: [],
+  searchQuery: "",
+  searchPagination: null,
   pinnedMessages: [],
   
   getMessages: async (channelId) => {
@@ -250,7 +254,52 @@ export const useChatStore = create((set, get) => ({
     }
   },
   
-  setSelectedFriend: (selectedFriend) => set({ selectedFriend }),
+  searchMessages: async (channelId, query, page = 1, limit = 20) => {
+    if (!query || query.trim() === "") {
+      set({ 
+        searchResults: [],
+        searchQuery: "",
+        searchPagination: null
+      });
+      return;
+    }
     
+    set({ 
+      isSearching: true,
+      searchQuery: query
+    });
+    
+    try {
+      const response = await axiosInstance.get(`/messages/${channelId}/search`, {
+        params: { query, page, limit }
+      });
+      
+      const { messages, pagination } = response.data.data;
+      
+      set({ 
+        searchResults: messages,
+        searchPagination: pagination
+      });
+    } catch (error) {
+      console.error("Error searching messages:", error);
+      toast.error(error.response?.data?.message || "Failed to search messages");
+      
+      set({ 
+        searchResults: [],
+        searchPagination: null
+      });
+    } finally {
+      set({ isSearching: false });
+    }
+  },
   
+  clearSearch: () => {
+    set({ 
+      searchResults: [],
+      searchQuery: "",
+      searchPagination: null
+    });
+  },
+  
+  setSelectedFriend: (selectedFriend) => set({ selectedFriend }),
 }));
