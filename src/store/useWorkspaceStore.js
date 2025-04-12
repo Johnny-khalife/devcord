@@ -313,7 +313,18 @@ export const useWorkspaceStore = create(
         }
       },
 
-      setSelectedWorkspace: (selectedWorkspace) => set({ selectedWorkspace }),      // Other existing methods...
+      setSelectedWorkspace: (selectedWorkspace) => {
+        console.log("Setting selectedWorkspace:", selectedWorkspace);
+        
+        // Make sure it's a valid object with at least an _id property
+        if (!selectedWorkspace) {
+          console.warn("Attempt to set selectedWorkspace to null or undefined");
+        } else if (!selectedWorkspace._id) {
+          console.warn("selectedWorkspace is missing _id property:", selectedWorkspace);
+        }
+        
+        set({ selectedWorkspace });
+      },
     }),
     {
       name: "workspace-storage",

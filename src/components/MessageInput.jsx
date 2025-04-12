@@ -4,13 +4,13 @@ import { Image, Send, X } from "lucide-react";
 import toast from "react-hot-toast";
 import { useWorkspaceStore } from "../store/useWorkspaceStore";
 
-const MessageInput = () => {
+const MessageInput = ({ activeNavItem }) => {
   const [text, setText] = useState("");
   const [imagePreview, setImagePreview] = useState(null);
   const fileInputRef = useRef(null);
-  const { sendMessage } = useChatStore();
+  const { sendMessage, sendDirectMessage, selectedFriend } = useChatStore();
   const { selectedWorkspace } = useWorkspaceStore();
-console.log("selectedWorkspace",selectedWorkspace)
+
   const handleImageChange = (e) => {
     const file = e.target.files[0];
     if (!file.type.startsWith("image/")) {
@@ -35,18 +35,35 @@ console.log("selectedWorkspace",selectedWorkspace)
     if (!text.trim() && !imagePreview) return;
 
     try {
-      await sendMessage({
-        message: text.trim(),
-        image: imagePreview,
+      // Determine if this is a channel message or direct message
+      if (activeNavItem === "workSpace" && selectedWorkspace?._id) {
+        // Send channel message
+        const messageData = {
+          message: text.trim(),
+          image: imagePreview,
+        };
+        await sendMessage(messageData, selectedWorkspace._id);
+      } else if (activeNavItem === "users" && selectedFriend?.friendId) {
+        // Send direct message - simplified to avoid code message complexity
+        const messageData = {
+          message: text.trim(),
+          // Always set isCode to false and language to null
+          isCode: false,
+          language: "text",
+          image: imagePreview,
+        };
+        await sendDirectMessage(messageData, selectedFriend.friendId);
+      } else {
+        toast.error("Cannot send message - no chat selected");
+        return;
+      }
       
-      }, selectedWorkspace._id);
-      console.log("selectedWorkspace._id",selectedWorkspace._id)
       // Clear form
       setText("");
       setImagePreview(null);
       if (fileInputRef.current) fileInputRef.current.value = "";
     } catch (error) {
-      console.error("Failed to send messagesss:", error);
+      console.error("Failed to send message:", error);
     }
   };
 

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { useChatStore } from "../store/useChatStore";
 import { Search, X, ArrowUp, ArrowDown } from "lucide-react";
 import { formatMessageTime } from "../lib/utils";
+import toast from "react-hot-toast";
 
 const MessageSearch = ({ channelId }) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -35,15 +36,18 @@ const MessageSearch = ({ channelId }) => {
   // Handle input change with debounce
   useEffect(() => {
     const handler = setTimeout(() => {
-      if (query.trim()) {
+      if (query.trim() && channelId) {
+        console.log("Searching messages with query:", query, "in channel:", channelId);
         searchMessages(channelId, query, currentPage);
+      } else if (!query.trim()) {
+        clearSearch();
       }
     }, 500);
 
     return () => {
       clearTimeout(handler);
     };
-  }, [query, channelId, currentPage, searchMessages]);
+  }, [query, channelId, currentPage, searchMessages, clearSearch]);
 
   const handleToggleSearch = () => {
     setIsOpen(!isOpen);
@@ -80,6 +84,9 @@ const MessageSearch = ({ channelId }) => {
       setTimeout(() => {
         messageElement.classList.remove("bg-primary", "bg-opacity-10");
       }, 2000);
+    } else {
+      console.error("Could not find message element with ID:", `message-${messageId}`);
+      toast.error("Could not locate this message in the current view");
     }
   };
 
@@ -128,7 +135,7 @@ const MessageSearch = ({ channelId }) => {
             ) : searchResults.length > 0 ? (
               <>
                 <div className="p-2 text-xs text-base-content/70 border-b border-base-300">
-                  {searchPagination?.total} results for "{searchQuery}"
+                  {searchPagination?.total || searchResults.length} results for "{searchQuery}"
                 </div>
                 {searchResults.map((message) => (
                   <div
@@ -146,7 +153,7 @@ const MessageSearch = ({ channelId }) => {
                         </div>
                       </div>
                       <span className="font-semibold text-xs">
-                        {message.userId?.username}
+                        {message.userId?.username || "Unknown user"}
                       </span>
                       <time className="text-xs opacity-50 ml-auto">
                         {formatMessageTime(message.createdAt)}
@@ -157,49 +164,40 @@ const MessageSearch = ({ channelId }) => {
                     </p>
                   </div>
                 ))}
+
+                {/* Pagination */}
+                {searchPagination && searchPagination.pages > 1 && (
+                  <div className="p-2 flex justify-between items-center border-t border-base-300">
+                    <button
+                      onClick={handlePrevPage}
+                      disabled={currentPage === 1}
+                      className={`btn btn-xs ${currentPage === 1 ? 'btn-disabled' : ''}`}
+                    >
+                      <ArrowUp size={14} />
+                    </button>
+                    <span className="text-xs">
+                      Page {currentPage} of {searchPagination.pages}
+                    </span>
+                    <button
+                      onClick={handleNextPage}
+                      disabled={currentPage >= searchPagination.pages}
+                      className={`btn btn-xs ${currentPage >= searchPagination.pages ? 'btn-disabled' : ''}`}
+                    >
+                      <ArrowDown size={14} />
+                    </button>
+                  </div>
+                )}
               </>
-            ) : query && !isSearching ? (
-              <div className="p-4 text-center text-base-content/70">
-                <p className="text-sm">No results found</p>
-                <p className="text-xs mt-1">Try different keywords</p>
+            ) : query ? (
+              <div className="p-4 text-center text-base-content/60">
+                <p>No messages found</p>
               </div>
             ) : (
-              <div className="p-4 text-center text-base-content/70">
-                <p className="text-sm">Type to search messages</p>
+              <div className="p-4 text-center text-base-content/60">
+                <p>Type to search messages</p>
               </div>
             )}
           </div>
-
-          {/* Pagination */}
-          {searchPagination && searchPagination.pages > 1 && (
-            <div className="p-2 border-t border-base-300 flex justify-between items-center">
-              <button
-                onClick={handlePrevPage}
-                disabled={currentPage === 1}
-                className={`p-1 rounded ${
-                  currentPage === 1
-                    ? "opacity-50 cursor-not-allowed"
-                    : "hover:bg-base-200"
-                }`}
-              >
-                <ArrowUp size={16} />
-              </button>
-              <span className="text-xs">
-                Page {currentPage} of {searchPagination.pages}
-              </span>
-              <button
-                onClick={handleNextPage}
-                disabled={currentPage === searchPagination.pages}
-                className={`p-1 rounded ${
-                  currentPage === searchPagination.pages
-                    ? "opacity-50 cursor-not-allowed"
-                    : "hover:bg-base-200"
-                }`}
-              >
-                <ArrowDown size={16} />
-              </button>
-            </div>
-          )}
         </div>
       )}
     </div>

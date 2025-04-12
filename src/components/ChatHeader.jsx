@@ -21,7 +21,6 @@ const ChatHeader = ({ activeNavItem, selectedWorkspace }) => {
     
     fetchFriendProfile();
   }, [selectedFriend, getUserById]);
-  
   // Check if we're on a mobile device
   useEffect(() => {
     const checkIfMobile = () => {

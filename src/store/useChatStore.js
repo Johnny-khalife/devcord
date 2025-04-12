@@ -4,6 +4,7 @@ import { axiosInstance } from "../lib/axios";
 
 export const useChatStore = create((set, get) => ({
   messages: [],
+  directMessages: [],
   users: [],
   selectedFriend: null,
   isUsersLoading: false,
@@ -18,9 +19,10 @@ export const useChatStore = create((set, get) => ({
   pinnedMessages: [],
   
   getMessages: async (channelId) => {
+    if (!channelId) return;
+    
     set({ isMessagesLoading: true });
     try {
-      console.log("message data is :", get().messages);
       const res = await axiosInstance.get(`/messages/${channelId}`);
       const messagesData = res.data.data.messages || [];
       
@@ -38,6 +40,7 @@ export const useChatStore = create((set, get) => ({
       
       set({ 
         messages: processedMessages,
+        directMessages: [],
         pinnedMessages
       });
     } catch (error) {
@@ -47,33 +50,45 @@ export const useChatStore = create((set, get) => ({
     }
   },
 
-  // getMessages: async (friendId, channelId) => {
-  //   set({ isMessagesLoading: true });
-  //   try {
-  //     let endpoint;
+  getDirectMessages: async (friendId) => {
+    if (!friendId) return;
+    
+    set({ isMessagesLoading: true });
+    try {
+      // Update the route to match backend implementation
+      const res = await axiosInstance.get(`/direct-messages/friend/${friendId}`);
       
-  //     // Determine which type of messages to fetch
-  //     if (friendId) {
-  //       endpoint = `/messages/user/${friendId}`;
-  //     } else if (channelId) {
-  //       endpoint = `/messages/channel/${channelId}`;
-  //     } else {
-  //       throw new Error("Either friendId or channelId must be provided");
-  //     }
+      // Extract conversation data from the response
+      const messagesData = res.data.data.conversation || [];
       
-  //     const res = await axiosInstance.get(endpoint);
-  //     set({ messages: res.data });
-  //   } catch (error) {
-  //     toast.error(error?.response?.data?.message || "Failed to load messages");
-  //   } finally {
-  //     set({ isMessagesLoading: false });
-  //   }
-  // },
+      // For each message, make sure it has sender information
+      const processedMessages = messagesData.map(message => {
+        // Structure the message for consistent UI rendering
+        return {
+          ...message,
+          // Make sure sender information is available for display
+         
+        };
+      });
+      console.log("directMessages", get().directMessages);
+      set({ 
+        directMessages: processedMessages,
+        messages: [],
+        pinnedMessages: []
+      });
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Failed to load direct messages");
+    } finally {
+      set({ isMessagesLoading: false });
+    }
+  },
 
-  sendMessage: async (messageData,channelId) => {
-    // const {  messages } = get();
-
-    console.log(" id of crrent message is :",messageData)
+  sendMessage: async (messageData, channelId) => {
+    if (!channelId) {
+      toast.error("Channel ID is required");
+      return;
+    }
+    
     try {
       const response = await axiosInstance.post(`/messages/${channelId}`, messageData);
       const newMessage = response.data.data;
@@ -82,49 +97,141 @@ export const useChatStore = create((set, get) => ({
       await get().getMessages(channelId);
       
       return newMessage;
-
     } catch (error) {
-      console.log(error.message)
-      toast.error(error.response?.data.message);
+      console.log(error.message);
+      toast.error(error.response?.data?.message || "Failed to send message");
     }
   },
 
-  deleteMessage: async (messageId, channelId) => {
+  sendDirectMessage: async (messageData, friendId) => {
+    if (!friendId) {
+      toast.error("Friend ID is required");
+      return;
+    }
+    
+    try {
+      // Simplify to avoid language validation issues
+      const requestData = {
+        content: messageData.message,
+        // Always set these values explicitly
+        isCode: false,
+        language: "text"
+      };
+      
+      console.log("Sending direct message with data:", requestData);
+      
+      // Use the direct messages route
+      const response = await axiosInstance.post(
+        `/direct-messages/friend/${friendId}`, 
+        requestData
+      );
+      
+      const newMessage = response.data.data;
+
+      // Fetch all messages again to ensure consistent data structure
+      await get().getDirectMessages(friendId);
+      
+      return newMessage;
+    } catch (error) {
+      console.error("Error in sendDirectMessage:", error);
+      if (error.response?.data?.message) {
+        toast.error(error.response.data.message);
+      } else {
+        toast.error("Failed to send direct message");
+      }
+    }
+  },
+
+  deleteMessage: async (messageId, channelId, isDirect = false) => {
+    console.log("deleteMessage called with:", { messageId, channelId, isDirect });
+    
+    if (!messageId) {
+      console.error("Missing messageId in deleteMessage");
+      toast.error("Message ID is required");
+      return;
+    }
+    
     set({ isDeletingMessage: true });
     try {
-      await axiosInstance.delete(`/messages/${messageId}`);
+      let response;
       
-      // Option 1: Optimistic update (faster UI response)
-      set((state) => ({
-        messages: state.messages.filter((message) => message._id !== messageId)
-      }));
-      
-      // If we need to refetch instead of optimistic updates:
-      if (channelId) {
-        // Uncomment to use refetch approach instead of optimistic updates
-        // await get().getMessages(channelId);
+      if (isDirect) {
+        console.log(`Sending delete request for direct message ${messageId}`);
+        response = await axiosInstance.delete(`/direct-messages/${messageId}`);
+        
+        set((state) => ({
+          directMessages: state.directMessages.filter((message) => message._id !== messageId)
+        }));
+      } else {
+        if (!channelId) {
+          console.error("Missing channelId in deleteMessage for channel message");
+          toast.error("Channel ID is required to delete messages");
+          return;
+        }
+        
+        console.log(`Sending delete request for message ${messageId} in channel ${channelId}`);
+        response = await axiosInstance.delete(`/messages/${messageId}`);
+        
+        set((state) => ({
+          messages: state.messages.filter((message) => message._id !== messageId)
+        }));
       }
       
+      console.log("Delete response:", response.data);
       toast.success("Message deleted successfully");
     } catch (error) {
       console.error("Error deleting message:", error);
-      toast.error(error.response?.data?.message || "Failed to delete messageeeeeeeee");
+      console.error("Error details:", error.response?.data);
+      toast.error(error.response?.data?.message || "Failed to delete message");
+      
+      if (isDirect) {
+        const { selectedFriend } = get();
+        if (selectedFriend?.friendId) {
+          await get().getDirectMessages(selectedFriend.friendId);
+        }
+      } else if (channelId) {
+        await get().getMessages(channelId);
+      }
     } finally {
       set({ isDeletingMessage: false });
     }
   },
   
   reactToMessage: async (messageId, emoji, channelId, userId) => {
+    console.log("reactToMessage called with:", { messageId, emoji, channelId, userId });
+    
+    if (!messageId) {
+      console.error("Missing messageId in reactToMessage");
+      toast.error("Message ID is required");
+      return;
+    }
+    
+    if (!emoji) {
+      console.error("Missing emoji in reactToMessage");
+      toast.error("Emoji is required");
+      return;
+    }
+    
+    if (!channelId) {
+      console.error("Missing channelId in reactToMessage");
+      toast.error("Channel ID is required to add reactions");
+      return;
+    }
+    
+    if (!userId) {
+      console.error("Missing userId in reactToMessage");
+      toast.error("User not authenticated");
+      return;
+    }
+    
     set({ isReacting: true });
     try {
-      await axiosInstance.post(`/messages/${messageId}/react`, { emoji });
+      console.log(`Sending reaction request for message ${messageId} in channel ${channelId}`);
+      const response = await axiosInstance.post(`/messages/${messageId}/react`, { emoji });
+      console.log("Reaction response:", response.data);
       
       // Optimistic update - add/toggle user's reaction
       const { messages } = get();
-      
-      if (!userId) {
-        throw new Error("User not authenticated");
-      }
       
       const updatedMessages = messages.map(message => {
         if (message._id === messageId) {
@@ -198,11 +305,9 @@ export const useChatStore = create((set, get) => ({
       
       set({ messages: updatedMessages });
       
-      // If optimistic update failed or we prefer server data:
-      // await get().getMessages(channelId);
-      
     } catch (error) {
       console.error("Error reacting to message:", error);
+      console.error("Error details:", error.response?.data);
       toast.error(error.response?.data?.message || "Failed to add reaction");
       
       // Refresh messages from server if optimistic update failed
@@ -215,9 +320,26 @@ export const useChatStore = create((set, get) => ({
   },
   
   pinMessage: async (messageId, channelId) => {
+    console.log("pinMessage called with:", { messageId, channelId });
+    
+    if (!messageId) {
+      console.error("Missing messageId in pinMessage");
+      toast.error("Message ID is required");
+      return;
+    }
+    
+    if (!channelId) {
+      console.error("Missing channelId in pinMessage");
+      toast.error("Channel ID is required to pin messages");
+      return;
+    }
+    
     set({ isPinningMessage: true });
     try {
+      console.log(`Sending pin request for message ${messageId} in channel ${channelId}`);
       const response = await axiosInstance.patch(`/messages/${messageId}/pin`);
+      console.log("Pin response:", response.data);
+      
       const { isPinned } = response.data.data;
       
       // Optimistic update for global pin status
@@ -243,19 +365,27 @@ export const useChatStore = create((set, get) => ({
       
     } catch (error) {
       console.error("Error pinning message:", error);
+      console.error("Error details:", error.response?.data);
       toast.error(error.response?.data?.message || "Failed to pin message");
       
       // Refresh messages on error
-      if (channelId) {
-        await get().getMessages(channelId);
-      }
+      await get().getMessages(channelId);
     } finally {
       set({ isPinningMessage: false });
     }
   },
   
   searchMessages: async (channelId, query, page = 1, limit = 20) => {
+    console.log("searchMessages called with:", { channelId, query, page, limit });
+    
+    if (!channelId) {
+      console.error("Missing channelId in searchMessages");
+      toast.error("Channel ID is required to search messages");
+      return;
+    }
+    
     if (!query || query.trim() === "") {
+      console.log("Empty query, clearing search results");
       set({ 
         searchResults: [],
         searchQuery: "",
@@ -270,18 +400,32 @@ export const useChatStore = create((set, get) => ({
     });
     
     try {
+      console.log(`Sending search request for query "${query}" in channel ${channelId}`);
       const response = await axiosInstance.get(`/messages/${channelId}/search`, {
         params: { query, page, limit }
       });
+      console.log("Search response:", response.data);
       
-      const { messages, pagination } = response.data.data;
-      
-      set({ 
-        searchResults: messages,
-        searchPagination: pagination
-      });
+      // Check if the response has the expected structure
+      if (response.data && response.data.data) {
+        const { messages, pagination } = response.data.data;
+        
+        console.log(`Found ${messages?.length || 0} search results`);
+        set({ 
+          searchResults: messages || [],
+          searchPagination: pagination || null
+        });
+      } else {
+        console.error("Unexpected search response format:", response.data);
+        set({ 
+          searchResults: [],
+          searchPagination: null
+        });
+        toast.error("Invalid search response from server");
+      }
     } catch (error) {
       console.error("Error searching messages:", error);
+      console.error("Error details:", error.response?.data);
       toast.error(error.response?.data?.message || "Failed to search messages");
       
       set({ 
