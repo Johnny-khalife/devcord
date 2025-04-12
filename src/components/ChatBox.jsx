@@ -2,15 +2,20 @@
 import { useChatStore } from "../store/useChatStore";
 import ChatHeader from "./ChatHeader";
 import MessageInput from "./MessageInput";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import MessageSkeleton from "./skeletons/MessageSkeleton";
 import { useAuthStore } from "../store/useAuthStore";
 import { formatMessageTime } from "../lib/utils";
-import { Trash2 } from "lucide-react";
+import { Trash2, SmilePlus } from "lucide-react";
 import toast from "react-hot-toast";
+
+// Common emoji reactions
+const COMMON_EMOJIS = ["👍", "❤️", "😂", "😮", "😢", "👏", "🔥", "🎉", "👎", "🤔"];
 
 const ChatBox = ({ activeNavItem, selectedWorkspace }) => {
   const [isMobile, setIsMobile] = useState(false);
+  const [activeEmojiPicker, setActiveEmojiPicker] = useState(null);
+  const emojiPickerRef = useRef(null);
   const { authUser } = useAuthStore();
 
   console.log("waht is the id of selectedworkspace", selectedWorkspace);
@@ -31,7 +36,30 @@ const ChatBox = ({ activeNavItem, selectedWorkspace }) => {
     return () => window.removeEventListener("resize", checkIfMobile);
   }, []);
 
-  const { getMessages, isMessagesLoading, messages, deleteMessage, isDeletingMessage } = useChatStore();
+  // Close emoji picker when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (emojiPickerRef.current && !emojiPickerRef.current.contains(event.target)) {
+        setActiveEmojiPicker(null);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
+
+  const { 
+    getMessages, 
+    isMessagesLoading, 
+    messages, 
+    deleteMessage, 
+    isDeletingMessage,
+    reactToMessage,
+    isReacting
+  } = useChatStore();
+  
   console.log("messages is gfdstbsdfsjkbs,ds", messages);
   useEffect(() => {
     if (selectedWorkspace && selectedWorkspace._id) {
@@ -55,6 +83,32 @@ const ChatBox = ({ activeNavItem, selectedWorkspace }) => {
     } catch (error) {
       console.error("Error deleting message:", error);
     }
+  };
+
+  const toggleEmojiPicker = (messageId) => {
+    setActiveEmojiPicker(activeEmojiPicker === messageId ? null : messageId);
+  };
+
+  const handleReaction = async (messageId, emoji) => {
+    if (!selectedWorkspace?._id) {
+      toast.error("Workspace not found");
+      return;
+    }
+
+    try {
+      await reactToMessage(messageId, emoji, selectedWorkspace._id, authUser._id);
+      setActiveEmojiPicker(null);
+    } catch (error) {
+      console.error("Error adding reaction:", error);
+    }
+  };
+
+  // Check if current user has reacted with a specific emoji
+  const hasUserReacted = (reaction) => {
+    return reaction.users?.some(user => {
+      const userId = typeof user === 'object' ? user._id : user;
+      return userId === authUser._id;
+    });
   };
 
   if (isMessagesLoading) {
@@ -128,16 +182,63 @@ const ChatBox = ({ activeNavItem, selectedWorkspace }) => {
                   {message.content && <p>{message.content}</p>}
                 </div>
                 
-                {message.userId && message.userId._id === authUser._id && (
+                <div className="flex items-center gap-2">
                   <button 
-                    className="opacity-50 hover:opacity-100 transition-opacity ml-2 -mt-1" 
-                    onClick={() => handleDeleteMessage(message._id)}
-                    disabled={isDeletingMessage}
+                    className="opacity-50 hover:opacity-100 transition-opacity" 
+                    onClick={() => toggleEmojiPicker(message._id)}
+                    disabled={isReacting}
                   >
-                    <Trash2 size={16} />
+                    <SmilePlus size={16} />
                   </button>
-                )}
+                  
+                  {message.userId && message.userId._id === authUser._id && (
+                    <button 
+                      className="opacity-50 hover:opacity-100 transition-opacity ml-2 -mt-1" 
+                      onClick={() => handleDeleteMessage(message._id)}
+                      disabled={isDeletingMessage}
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  )}
+                </div>
               </div>
+              
+              {/* Emoji Picker */}
+              {activeEmojiPicker === message._id && (
+                <div 
+                  ref={emojiPickerRef}
+                  className="mt-2 p-2 bg-base-200 rounded-lg shadow-md flex flex-wrap gap-2 max-w-xs"
+                >
+                  {COMMON_EMOJIS.map(emoji => (
+                    <button
+                      key={emoji}
+                      className="hover:bg-base-300 p-1 rounded-md transition-colors"
+                      onClick={() => handleReaction(message._id, emoji)}
+                    >
+                      {emoji}
+                    </button>
+                  ))}
+                </div>
+              )}
+              
+              {/* Display Reactions */}
+              {message.reactions && message.reactions.length > 0 && (
+                <div className="mt-2 flex flex-wrap gap-1">
+                  {message.reactions.map((reaction, index) => (
+                    <button
+                      key={`${reaction.emoji}-${index}`}
+                      className={`px-1.5 py-0.5 rounded-full text-xs flex items-center gap-1 border border-base-300 transition-colors ${
+                        hasUserReacted(reaction) ? 'bg-primary bg-opacity-20' : 'bg-base-200'
+                      }`}
+                      onClick={() => handleReaction(message._id, reaction.emoji)}
+                      disabled={isReacting}
+                    >
+                      <span>{reaction.emoji}</span>
+                      <span className="font-semibold">{reaction.users?.length || 0}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         ))}

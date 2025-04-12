@@ -9,6 +9,7 @@ export const useChatStore = create((set, get) => ({
   isUsersLoading: false,
   isMessagesLoading: false,
   isDeletingMessage: false,
+  isReacting: false,
   
   getMessages: async (channelId) => {
         set({ isMessagesLoading: true });
@@ -88,6 +89,106 @@ export const useChatStore = create((set, get) => ({
           toast.error(error.response?.data?.message || "Failed to delete messageeeeeeeee");
         } finally {
           set({ isDeletingMessage: false });
+        }
+      },
+      
+      reactToMessage: async (messageId, emoji, channelId, userId) => {
+        set({ isReacting: true });
+        try {
+          await axiosInstance.post(`/messages/${messageId}/react`, { emoji });
+          
+          // Optimistic update - add/toggle user's reaction
+          const { messages } = get();
+          
+          if (!userId) {
+            throw new Error("User not authenticated");
+          }
+          
+          const updatedMessages = messages.map(message => {
+            if (message._id === messageId) {
+              // Clone the message to avoid direct state mutation
+              const updatedMessage = { ...message };
+              
+              // Initialize reactions array if it doesn't exist
+              if (!updatedMessage.reactions) {
+                updatedMessage.reactions = [];
+              }
+              
+              // Find if this emoji reaction already exists
+              const existingReactionIndex = updatedMessage.reactions.findIndex(
+                reaction => reaction.emoji === emoji
+              );
+              
+              if (existingReactionIndex !== -1) {
+                // Check if user already reacted with this emoji
+                const reaction = { ...updatedMessage.reactions[existingReactionIndex] };
+                
+                // Initialize users array if it doesn't exist
+                if (!reaction.users) {
+                  reaction.users = [];
+                }
+                
+                const userReactedIndex = reaction.users.findIndex(
+                  id => id === userId || id._id === userId
+                );
+                
+                if (userReactedIndex !== -1) {
+                  // User already reacted, remove their reaction
+                  const updatedUsers = [...reaction.users];
+                  updatedUsers.splice(userReactedIndex, 1);
+                  reaction.users = updatedUsers;
+                  
+                  // If no users left for this reaction, remove it
+                  if (reaction.users.length === 0) {
+                    const updatedReactions = [...updatedMessage.reactions];
+                    updatedReactions.splice(existingReactionIndex, 1);
+                    updatedMessage.reactions = updatedReactions;
+                  } else {
+                    // Otherwise update the reaction with new users list
+                    const updatedReactions = [...updatedMessage.reactions];
+                    updatedReactions[existingReactionIndex] = reaction;
+                    updatedMessage.reactions = updatedReactions;
+                  }
+                } else {
+                  // Add user to existing reaction
+                  const updatedReactions = [...updatedMessage.reactions];
+                  updatedReactions[existingReactionIndex] = {
+                    ...reaction,
+                    users: [...reaction.users, userId]
+                  };
+                  updatedMessage.reactions = updatedReactions;
+                }
+              } else {
+                // Create new reaction
+                updatedMessage.reactions = [
+                  ...updatedMessage.reactions,
+                  {
+                    emoji,
+                    users: [userId]
+                  }
+                ];
+              }
+              
+              return updatedMessage;
+            }
+            return message;
+          });
+          
+          set({ messages: updatedMessages });
+          
+          // If optimistic update failed or we prefer server data:
+          // await get().getMessages(channelId);
+          
+        } catch (error) {
+          console.error("Error reacting to message:", error);
+          toast.error(error.response?.data?.message || "Failed to add reaction");
+          
+          // Refresh messages from server if optimistic update failed
+          if (channelId) {
+            await get().getMessages(channelId);
+          }
+        } finally {
+          set({ isReacting: false });
         }
       },
       
