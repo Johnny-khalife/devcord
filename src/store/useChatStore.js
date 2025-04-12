@@ -8,6 +8,7 @@ export const useChatStore = create((set, get) => ({
   selectedFriend: null,
   isUsersLoading: false,
   isMessagesLoading: false,
+  isDeletingMessage: false,
   
   getMessages: async (channelId) => {
         set({ isMessagesLoading: true });
@@ -64,6 +65,32 @@ export const useChatStore = create((set, get) => ({
           toast.error(error.response?.data.message);
         }
       },
+
+      deleteMessage: async (messageId, channelId) => {
+        set({ isDeletingMessage: true });
+        try {
+          await axiosInstance.delete(`/messages/${messageId}`);
+          
+          // Option 1: Optimistic update (faster UI response)
+          set((state) => ({
+            messages: state.messages.filter((message) => message._id !== messageId)
+          }));
+          
+          // If we need to refetch instead of optimistic updates:
+          if (channelId) {
+            // Uncomment to use refetch approach instead of optimistic updates
+            // await get().getMessages(channelId);
+          }
+          
+          toast.success("Message deleted successfully");
+        } catch (error) {
+          console.error("Error deleting message:", error);
+          toast.error(error.response?.data?.message || "Failed to delete messageeeeeeeee");
+        } finally {
+          set({ isDeletingMessage: false });
+        }
+      },
+      
       setSelectedFriend: (selectedFriend) => set({ selectedFriend }),
         
       
