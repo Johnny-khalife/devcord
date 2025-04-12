@@ -21,7 +21,7 @@ const App = () => {
   const { authUser, checkAuth, isCheckingAuth, onlineUsers, } = useAuthStore();
   const { theme } = useThemeStore();
   
-
+console.log("authUser is ", authUser);
   
   // console.log({ onlineUsers });
 

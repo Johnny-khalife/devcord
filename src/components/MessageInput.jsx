@@ -10,7 +10,7 @@ const MessageInput = () => {
   const fileInputRef = useRef(null);
   const { sendMessage } = useChatStore();
   const { selectedWorkspace } = useWorkspaceStore();
-
+console.log("selectedWorkspace",selectedWorkspace)
   const handleImageChange = (e) => {
     const file = e.target.files[0];
     if (!file.type.startsWith("image/")) {
@@ -40,6 +40,7 @@ const MessageInput = () => {
         image: imagePreview,
       
       }, selectedWorkspace._id);
+      console.log("selectedWorkspace._id",selectedWorkspace._id)
       // Clear form
       setText("");
       setImagePreview(null);

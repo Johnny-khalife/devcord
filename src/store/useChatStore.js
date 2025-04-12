@@ -15,7 +15,7 @@ export const useChatStore = create((set, get) => ({
         try {
           console.log("message data is :",messages)
           const res = await axiosInstance.get(`/messages/${channelId}`);
-          set({ messages: res.data });
+          set({ messages: res.data.data.messages ||[] });
         } catch (error) {
           toast.error(error.response.data.message);
         } finally {
@@ -47,12 +47,17 @@ export const useChatStore = create((set, get) => ({
       // },
 
       sendMessage: async (messageData,channelId) => {
-        const {  messages } = get();
+        // const {  messages } = get();
   
         console.log(" id of crrent message is :",messageData)
         try {
           const response = await axiosInstance.post(`/messages/${channelId}`, messageData);
-          set({ messages: [...messages, response.data] });
+          const newMessage = response.data.data;
+    
+          // Fetch all messages again to ensure consistent data structure
+          await get().getMessages(channelId);
+          
+          return newMessage;
 
         } catch (error) {
           console.log(error.message)
@@ -62,5 +67,4 @@ export const useChatStore = create((set, get) => ({
       setSelectedFriend: (selectedFriend) => set({ selectedFriend }),
         
       
-
     }));
