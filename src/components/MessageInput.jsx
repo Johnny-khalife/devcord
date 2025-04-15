@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useRef, useState, useEffect } from "react";
 import { useChatStore } from "../store/useChatStore";
 import { Image, Send, X } from "lucide-react";
 import toast from "react-hot-toast";
@@ -10,6 +10,29 @@ const MessageInput = ({ activeNavItem }) => {
   const fileInputRef = useRef(null);
   const { sendMessage, sendDirectMessage, selectedFriend } = useChatStore();
   const { selectedWorkspace } = useWorkspaceStore();
+  
+  // Store previous selectedFriend ID to detect changes
+  const prevFriendIdRef = useRef(selectedFriend?.friendId);
+  const prevWorkspaceIdRef = useRef(selectedWorkspace?._id);
+  
+  // Clear input when selected friend or workspace changes
+  useEffect(() => {
+    const currentFriendId = selectedFriend?.friendId;
+    const currentWorkspaceId = selectedWorkspace?._id;
+    
+    // Check if the friend or workspace has changed
+    if (currentFriendId !== prevFriendIdRef.current || 
+        currentWorkspaceId !== prevWorkspaceIdRef.current) {
+      // Clear the input
+      setText("");
+      setImagePreview(null);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      
+      // Update refs with current values
+      prevFriendIdRef.current = currentFriendId;
+      prevWorkspaceIdRef.current = currentWorkspaceId;
+    }
+  }, [selectedFriend?.friendId, selectedWorkspace?._id]);
 
   const handleImageChange = (e) => {
     const file = e.target.files[0];
