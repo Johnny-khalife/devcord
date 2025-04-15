@@ -1,10 +1,12 @@
 // import React, { useEffect } from "react";
 import { useChatStore } from "../store/useChatStore";
-import { useEffect, useRef } from "react";
-import { Loader2 } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Loader2, X } from "lucide-react";
 import Message from "./Message";
 import MessageInput from "./MessageInput";
 import MessageSearch from "./MessageSearch";
+import DirectMessageSearch from "./DirectMessageSearch";
+import NoChatSelected from "./NoChatSelected";
 import { useWorkspaceStore } from "../store/useWorkspaceStore";
 import { useAuthStore } from "../store/useAuthStore";
 import MessageSkeleton from "./skeletons/MessageSkeleton";
@@ -15,6 +17,7 @@ const COMMON_EMOJIS = ["👍", "❤️", "😂", "😮", "😢", "👏", "🔥",
 const ChatBox = ({ activeNavItem }) => {
   const messageEndRef = useRef(null);
   const { authUser } = useAuthStore();
+  const [showChat, setShowChat] = useState(true);
   const { 
     messages, 
     directMessages, 
@@ -22,9 +25,23 @@ const ChatBox = ({ activeNavItem }) => {
     error, 
     getMessages, 
     getDirectMessages, 
-    selectedFriend 
+    selectedFriend
   } = useChatStore();
   const { selectedWorkspace } = useWorkspaceStore();
+
+  // Handle closing the direct message chat
+  const handleCloseChat = () => {
+    if (activeNavItem === "users") {
+      setShowChat(false);
+    }
+  };
+
+  // Reset showChat when selectedFriend changes
+  useEffect(() => {
+    if (selectedFriend) {
+      setShowChat(true);
+    }
+  }, [selectedFriend]);
 
   console.log("what is the id of selectedworkspace", selectedWorkspace);
 
@@ -46,6 +63,11 @@ const ChatBox = ({ activeNavItem }) => {
   useEffect(() => {
     messageEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, directMessages]);
+
+  // If chat is closed and in direct messages view, show NoChatSelected
+  if (!showChat && activeNavItem === "users") {
+    return <NoChatSelected />;
+  }
 
   // Determine which messages to display based on the active navigation
   const messagesToDisplay = activeNavItem === "workSpace" ? messages : directMessages;
@@ -106,30 +128,47 @@ const ChatBox = ({ activeNavItem }) => {
       {/* Fixed header */}
       <div className="bg-base-200 p-4 border-b border-b-zinc-800 sticky top-0 z-10">
         {activeNavItem === "users" && selectedFriend ? (
-          <div className="flex items-center gap-3">
-            <div className="avatar">
-              <div className="w-8 h-8 rounded-full">
-                <img 
-                  src={selectedFriend.avatar || "https://ui-avatars.com/api/?name=" + selectedFriend.username} 
-                  alt={selectedFriend.username}
-                />
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="avatar">
+                <div className="w-8 h-8 rounded-full">
+                  <img 
+                    src={selectedFriend.avatar || "https://ui-avatars.com/api/?name=" + selectedFriend.username} 
+                    alt={selectedFriend.username}
+                  />
+                </div>
               </div>
+              <h2 className="text-xl font-bold">{selectedFriend.username}</h2>
             </div>
-            <h2 className="text-xl font-bold">{selectedFriend.username}</h2>
+            <div className="flex items-center gap-2">
+              <DirectMessageSearch friendId={selectedFriend.friendId} />
+              <button
+                onClick={handleCloseChat}
+                className="p-2 bg-blue-500 hover:bg-blue-600 rounded-full flex items-center justify-center shadow-md"
+                style={{ 
+                  width: '36px', 
+                  height: '36px'
+                }}
+              >
+                <X size={18} color="white" strokeWidth={3} />
+              </button>
+            </div>
           </div>
         ) : (
           <div className="flex justify-between items-center">
             <h2 className="text-xl font-bold">{renderTitle()}</h2>
-            {/* Only show search in workspace view with a valid workspace */}
-            {activeNavItem === "workSpace" && selectedWorkspace?._id && (
-              <MessageSearch channelId={selectedWorkspace._id} />
-            )}
+            <div className="flex items-center gap-2">
+              {/* Only show search in workspace view with a valid workspace */}
+              {activeNavItem === "workSpace" && selectedWorkspace?._id && (
+                <MessageSearch channelId={selectedWorkspace._id} />
+              )}
+            </div>
           </div>
         )}
       </div>
 
       {/* Scrollable messages area */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+      <div className="flex-1 overflow-y-auto p-4 pt-16 space-y-4">
         {loading ? (
           <div className="flex h-[200px] w-full items-center justify-center text-center">
             <Loader2 className="h-8 w-8 animate-spin text-zinc-400" />
@@ -153,7 +192,7 @@ const ChatBox = ({ activeNavItem }) => {
       </div>
 
       {/* Fixed message input at bottom */}
-      <div className="sticky bottom-0 bg-base-100 border-t border-zinc-800 z-10">
+      <div className="sticky bottom-0 mt-5 bg-base-100 border-t border-zinc-800 z-10">
         <MessageInput activeNavItem={activeNavItem} />
       </div>
     </div>

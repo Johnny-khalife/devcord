@@ -318,7 +318,7 @@ const HomePage = () => {
         </div>
         
         {/* Main content area - ChatBox or JobsView */}
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 overflow-hidden">
           {activeNavItem === "jobs" ? (
             <JobsView />
           ) : (

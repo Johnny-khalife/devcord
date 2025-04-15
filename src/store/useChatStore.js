@@ -182,7 +182,7 @@ export const useChatStore = create((set, get) => ({
     } catch (error) {
       console.error("Error deleting message:", error);
       console.error("Error details:", error.response?.data);
-      toast.error(error.response?.data?.message || "Failed to delete message");
+      toast.error(error.response?.data?.message || "Failed to delete messageeeeeee");
       
       if (isDirect) {
         const { selectedFriend } = get();
@@ -437,11 +437,77 @@ export const useChatStore = create((set, get) => ({
     }
   },
   
+  // Add function to search direct messages
+  searchDirectMessages: async (friendId, query, page = 1, limit = 20) => {
+    console.log("searchDirectMessages called with:", { friendId, query, page, limit });
+    
+    if (!friendId) {
+      console.error("Missing friendId in searchDirectMessages");
+      toast.error("Friend ID is required to search direct messages");
+      return;
+    }
+    
+    if (!query || query.trim() === "") {
+      console.log("Empty query, clearing direct message search results");
+      set({ 
+        directMessageSearchResults: [],
+        directMessageSearchQuery: "",
+        directMessageSearchPagination: null
+      });
+      return;
+    }
+    
+    set({ 
+      isSearching: true,
+      directMessageSearchQuery: query
+    });
+    
+    try {
+      console.log(`Sending direct message search request for query "${query}" with friend ${friendId}`);
+      const response = await axiosInstance.get(`/direct-messages/search/${friendId}`, {
+        params: { query, page, limit }
+      });
+      console.log("Direct message search response:", response.data);
+      
+      // Check if the response has the expected structure
+      if (response.data && response.data.data) {
+        const { messages, pagination } = response.data.data;
+        
+        console.log(`Found ${messages?.length || 0} direct message search results`);
+        set({ 
+          directMessageSearchResults: messages || [],
+          directMessageSearchPagination: pagination || null
+        });
+      } else {
+        console.error("Unexpected direct message search response format:", response.data);
+        set({ 
+          directMessageSearchResults: [],
+          directMessageSearchPagination: null
+        });
+        toast.error("Invalid search response from server");
+      }
+    } catch (error) {
+      console.error("Error searching direct messages:", error);
+      console.error("Error details:", error.response?.data);
+      toast.error(error.response?.data?.message || "Failed to search direct messages");
+      
+      set({ 
+        directMessageSearchResults: [],
+        directMessageSearchPagination: null
+      });
+    } finally {
+      set({ isSearching: false });
+    }
+  },
+  
   clearSearch: () => {
     set({ 
       searchResults: [],
       searchQuery: "",
-      searchPagination: null
+      searchPagination: null,
+      directMessageSearchResults: [],
+      directMessageSearchQuery: "",
+      directMessageSearchPagination: null
     });
   },
   

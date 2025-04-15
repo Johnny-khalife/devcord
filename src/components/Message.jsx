@@ -68,7 +68,7 @@ const getUsername = () => {
         </div>
       </div>
       
-      <div className="chat-header mb-1 flex items-center gap-2">
+      <div className="chat-header mb-1 flex items-center gap-2 ">
         <span className="font-bold">
           {getUsername()}
         </span>
