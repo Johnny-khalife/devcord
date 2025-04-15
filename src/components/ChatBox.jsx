@@ -1,7 +1,7 @@
 // import React, { useEffect } from "react";
 import { useChatStore } from "../store/useChatStore";
 import { useEffect, useRef, useState } from "react";
-import { Loader2, X } from "lucide-react";
+import { Loader2, X, ArrowLeft, MessageSquare } from "lucide-react";
 import Message from "./Message";
 import MessageInput from "./MessageInput";
 import MessageSearch from "./MessageSearch";
@@ -14,10 +14,50 @@ import MessageSkeleton from "./skeletons/MessageSkeleton";
 // Common emoji reactions
 const COMMON_EMOJIS = ["👍", "❤️", "😂", "😮", "😢", "👏", "🔥", "🎉", "👎", "🤔"];
 
+// Modified NoChatSelected component with reopen functionality
+const CustomNoChatSelected = ({ lastFriend, onReopen }) => {
+  if (!lastFriend) {
+    return <NoChatSelected />;
+  }
+
+  return (
+    <div className="w-full flex flex-1 flex-col items-center justify-center p-16 bg-base-100/50">
+      <div className="max-w-md text-center space-y-6 pt-28">
+        {/* Icon Display */}
+        <div className="flex justify-center gap-4 mb-4">
+          <div className="relative">
+            <div
+              className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center
+             justify-center animate-bounce"
+            >
+              <MessageSquare className="w-10 h-10 text-primary" />
+            </div>
+          </div>
+        </div>
+
+        {/* Welcome Text */}
+        <h2 className="text-2xl font-bold">Chat Closed</h2>
+        <p className="text-base-content/60 mb-6">
+          You closed your conversation with {lastFriend.username}
+        </p>
+        
+        <button 
+          onClick={onReopen}
+          className="btn btn-primary"
+        >
+          <ArrowLeft className="w-4 h-4 mr-2" />
+          Reopen Chat
+        </button>
+      </div>
+    </div>
+  );
+};
+
 const ChatBox = ({ activeNavItem }) => {
   const messageEndRef = useRef(null);
   const { authUser } = useAuthStore();
   const [showChat, setShowChat] = useState(true);
+  const [lastClosedFriend, setLastClosedFriend] = useState(null);
   const { 
     messages, 
     directMessages, 
@@ -32,8 +72,14 @@ const ChatBox = ({ activeNavItem }) => {
   // Handle closing the direct message chat
   const handleCloseChat = () => {
     if (activeNavItem === "users") {
+      setLastClosedFriend(selectedFriend);
       setShowChat(false);
     }
+  };
+
+  // Handle reopening the direct message chat
+  const handleReopenChat = () => {
+    setShowChat(true);
   };
 
   // Reset showChat when selectedFriend changes
@@ -66,7 +112,7 @@ const ChatBox = ({ activeNavItem }) => {
 
   // If chat is closed and in direct messages view, show NoChatSelected
   if (!showChat && activeNavItem === "users") {
-    return <NoChatSelected />;
+    return <CustomNoChatSelected lastFriend={lastClosedFriend} onReopen={handleReopenChat} />;
   }
 
   // Determine which messages to display based on the active navigation

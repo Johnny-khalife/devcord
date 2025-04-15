@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useAuthStore } from "../store/useAuthStore";
 import { useChatStore } from "../store/useChatStore";
 import { formatMessageTime } from "../lib/utils";
-import { Trash2, SmilePlus, Pin, PinOff } from "lucide-react";
+import { Trash2, SmilePlus } from "lucide-react";
 import toast from "react-hot-toast";
 
 // Direct message component for friend chats
@@ -47,7 +47,7 @@ const getAvatarUrl = () => {
 // Get username
 const getUsername = () => {
   if (isCurrentUser) {
-    return authUser.username || "You";
+    return "You";
   } else {
     // For messages you receive, show the sender's username
     return message.senderId?.username || "Friend";
@@ -103,7 +103,6 @@ const ChannelMessage = ({ message }) => {
   const { 
     deleteMessage, 
     reactToMessage, 
-    pinMessage,
     selectedWorkspace,
   } = useChatStore();
 
@@ -192,35 +191,6 @@ const ChannelMessage = ({ message }) => {
     }
   };
 
-  // Handle pinning message
-  const handlePinMessage = async () => {
-    if (!authUser?._id) {
-      toast.error("You must be logged in to pin messages");
-      return;
-    }
-
-    // Try to determine workspace ID from various sources
-    let workspaceId = selectedWorkspace?._id || message.workspaceId || message.channelId;
-    
-    if (!workspaceId) {
-      toast.error("Cannot pin message: Missing workspace information");
-      return;
-    }
-
-    // Check if user is admin or owner
-    if (!isChannelAdminOrOwner()) {
-      toast.error("Only channel admins and owners can pin messages");
-      return;
-    }
-
-    try {
-      await pinMessage(message._id, workspaceId);
-    } catch (error) {
-      console.error("Error pinning message:", error);
-      toast.error("Failed to pin message: " + (error.message || "Unknown error"));
-    }
-  };
-
   // Check if user has reacted with a specific emoji
   const hasUserReacted = (reaction) => {
     return reaction.users?.some(user => {
@@ -248,17 +218,11 @@ const ChannelMessage = ({ message }) => {
       
       <div className="chat-header mb-1 flex items-center gap-2">
         <span className="font-bold">
-          {message.userId?.username || "Unknown User"}
+          {isCurrentUser ? "You" : message.userId?.username || "Unknown User"}
         </span>
         <time className="text-xs opacity-50">
           {formatMessageTime(message.createdAt)}
         </time>
-        
-        {message.isPinned && (
-          <span className="text-xs bg-warning/20 text-warning px-1.5 py-0.5 rounded">
-            Pinned
-          </span>
-        )}
       </div>
       
       <div className={`chat-bubble ${isCurrentUser ? "bg-primary text-primary-content" : ""}`}>
@@ -314,16 +278,6 @@ const ChannelMessage = ({ message }) => {
             </div>
           )}
         </div>
-        
-        {/* Pin/Unpin button - Only for admins/owners in workspace chats */}
-        {isChannelAdminOrOwner() && (
-          <button
-            className="btn btn-ghost btn-xs"
-            onClick={handlePinMessage}
-          >
-            {message.isPinned ? <PinOff size={14} /> : <Pin size={14} />}
-          </button>
-        )}
         
         {/* Delete button - only for own messages or admins */}
         {(isCurrentUser || isChannelAdminOrOwner()) && (

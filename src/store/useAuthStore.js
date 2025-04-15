@@ -2,7 +2,6 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { axiosInstance } from "../lib/axios.js";
 import toast from "react-hot-toast";
-// import { io } from "socket.io-client";
 
 export const useAuthStore = create(
   persist(
@@ -17,7 +16,6 @@ export const useAuthStore = create(
       isUpdatingProfile: false,
       isCheckingAuth: true,
       onlineUsers: [],
-      socket: null,
 
       getUsers: async (params = {}) => {
         set({ isLoading: true });

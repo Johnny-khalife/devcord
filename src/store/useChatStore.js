@@ -11,12 +11,10 @@ export const useChatStore = create((set, get) => ({
   isMessagesLoading: false,
   isDeletingMessage: false,
   isReacting: false,
-  isPinningMessage: false,
   isSearching: false,
   searchResults: [],
   searchQuery: "",
   searchPagination: null,
-  pinnedMessages: [],
   
   getMessages: async (channelId) => {
     if (!channelId) return;
@@ -26,22 +24,16 @@ export const useChatStore = create((set, get) => ({
       const res = await axiosInstance.get(`/messages/${channelId}`);
       const messagesData = res.data.data.messages || [];
       
-      // Process the messages to include isPinned information
+      // Process the messages
       const processedMessages = messagesData.map(message => {
         return {
-          ...message,
-          // Keep track of whether this message is pinned by the system/admin
-          isPinnedByCurrentUser: message.isPinned || false
+          ...message
         };
       });
       
-      // Get messages that are pinned by admins
-      const pinnedMessages = processedMessages.filter(message => message.isPinned);
-      
       set({ 
         messages: processedMessages,
-        directMessages: [],
-        pinnedMessages
+        directMessages: []
       });
     } catch (error) {
       toast.error(error.response?.data?.message || "Failed to load messages");
@@ -73,8 +65,7 @@ export const useChatStore = create((set, get) => ({
       console.log("directMessages", get().directMessages);
       set({ 
         directMessages: processedMessages,
-        messages: [],
-        pinnedMessages: []
+        messages: []
       });
     } catch (error) {
       toast.error(error.response?.data?.message || "Failed to load direct messages");
@@ -182,7 +173,7 @@ export const useChatStore = create((set, get) => ({
     } catch (error) {
       console.error("Error deleting message:", error);
       console.error("Error details:", error.response?.data);
-      toast.error(error.response?.data?.message || "Failed to delete messageeeeeee");
+      toast.error(error.response?.data?.message || "Failed to delete message");
       
       if (isDirect) {
         const { selectedFriend } = get();
@@ -316,62 +307,6 @@ export const useChatStore = create((set, get) => ({
       }
     } finally {
       set({ isReacting: false });
-    }
-  },
-  
-  pinMessage: async (messageId, channelId) => {
-    console.log("pinMessage called with:", { messageId, channelId });
-    
-    if (!messageId) {
-      console.error("Missing messageId in pinMessage");
-      toast.error("Message ID is required");
-      return;
-    }
-    
-    if (!channelId) {
-      console.error("Missing channelId in pinMessage");
-      toast.error("Channel ID is required to pin messages");
-      return;
-    }
-    
-    set({ isPinningMessage: true });
-    try {
-      console.log(`Sending pin request for message ${messageId} in channel ${channelId}`);
-      const response = await axiosInstance.patch(`/messages/${messageId}/pin`);
-      console.log("Pin response:", response.data);
-      
-      const { isPinned } = response.data.data;
-      
-      // Optimistic update for global pin status
-      const { messages } = get();
-      const updatedMessages = messages.map(message => 
-        message._id === messageId 
-          ? { ...message, isPinned, isPinnedByCurrentUser: isPinned } 
-          : message
-      );
-      
-      // Update all messages
-      set({ messages: updatedMessages });
-      
-      // Update pinnedMessages based on isPinned flag
-      const pinnedMessages = updatedMessages.filter(message => message.isPinned);
-      set({ pinnedMessages });
-      
-      if (isPinned) {
-        toast.success("Message pinned successfully");
-      } else {
-        toast.success("Message unpinned successfully");
-      }
-      
-    } catch (error) {
-      console.error("Error pinning message:", error);
-      console.error("Error details:", error.response?.data);
-      toast.error(error.response?.data?.message || "Failed to pin message");
-      
-      // Refresh messages on error
-      await get().getMessages(channelId);
-    } finally {
-      set({ isPinningMessage: false });
     }
   },
   
