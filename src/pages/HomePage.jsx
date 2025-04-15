@@ -313,7 +313,7 @@ const HomePage = () => {
               )}
               
               {activeNavItem === "users" && (
-                <div className={`${isMobile ? 'pointer-events-auto' : ''}`}>
+                <div className={`h-full ${isMobile ? 'pointer-events-auto' : ''}`}>
                   <UserFriends />
                 </div>
               )}
@@ -322,7 +322,7 @@ const HomePage = () => {
         </div>
         
         {/* Main content area - ChatBox or JobsView */}
-        <div className={`flex-1 overflow-hidden ${isMobile ? 'z-10' : ''}`}>
+        <div className={`flex-1 overflow-hidden ${isMobile ? 'z-20' : ''}`}>
           {activeNavItem === "jobs" ? (
             <JobsView />
           ) : (
