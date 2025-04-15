@@ -1,7 +1,7 @@
 // import React, { useEffect } from "react";
 import { useChatStore } from "../store/useChatStore";
 import { useEffect, useRef, useState } from "react";
-import { Loader2, X, ArrowLeft, MessageSquare } from "lucide-react";
+import { Loader2, X } from "lucide-react";
 import Message from "./Message";
 import MessageInput from "./MessageInput";
 import MessageSearch from "./MessageSearch";
@@ -14,233 +14,208 @@ import MessageSkeleton from "./skeletons/MessageSkeleton";
 // Common emoji reactions
 const COMMON_EMOJIS = ["👍", "❤️", "😂", "😮", "😢", "👏", "🔥", "🎉", "👎", "🤔"];
 
-// Modified NoChatSelected component with reopen functionality
-const CustomNoChatSelected = ({ lastFriend, onReopen }) => {
-  if (!lastFriend) {
-    return <NoChatSelected />;
-  }
-
-  return (
-    <div className="w-full flex flex-1 flex-col items-center justify-center p-16 bg-base-100/50">
-      <div className="max-w-md text-center space-y-6 pt-28">
-        {/* Icon Display */}
-        <div className="flex justify-center gap-4 mb-4">
-          <div className="relative">
-            <div
-              className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center
-             justify-center animate-bounce"
-            >
-              <MessageSquare className="w-10 h-10 text-primary" />
-            </div>
-          </div>
-        </div>
-
-        {/* Welcome Text */}
-        <h2 className="text-2xl font-bold">Chat Closed</h2>
-        <p className="text-base-content/60 mb-6">
-          You closed your conversation with {lastFriend.username}
-        </p>
-        
-        <button 
-          onClick={onReopen}
-          className="btn btn-primary"
-        >
-          <ArrowLeft className="w-4 h-4 mr-2" />
-          Reopen Chat
-        </button>
-      </div>
-    </div>
-  );
-};
-
 const ChatBox = ({ activeNavItem }) => {
   const messageEndRef = useRef(null);
   const { authUser } = useAuthStore();
   const [showChat, setShowChat] = useState(true);
-  const [lastClosedFriend, setLastClosedFriend] = useState(null);
-  const { 
-    messages, 
-    directMessages, 
-    loading, 
-    error, 
-    getMessages, 
-    getDirectMessages, 
-    selectedFriend
+  const {
+    messages,
+    directMessages,
+    loading,
+    error,
+    getMessages,
+    getDirectMessages,
+    selectedFriend,
+    setSelectedFriend,
   } = useChatStore();
   const { selectedWorkspace } = useWorkspaceStore();
 
-  // Handle closing the direct message chat
   const handleCloseChat = () => {
-    if (activeNavItem === "users") {
-      setLastClosedFriend(selectedFriend);
+    if (activeNavItem === "users" && selectedFriend) {
       setShowChat(false);
+      setSelectedFriend(null);
     }
   };
 
-  // Handle reopening the direct message chat
-  const handleReopenChat = () => {
-    setShowChat(true);
-  };
-
-  // Reset showChat when selectedFriend changes
   useEffect(() => {
     if (selectedFriend) {
       setShowChat(true);
     }
-  }, [selectedFriend]);
+  }, [selectedFriend, activeNavItem]);
 
-  console.log("what is the id of selectedworkspace", selectedWorkspace);
-
-  console.log("messages is gfdstbsdfsjkbs,ds", messages);
   useEffect(() => {
     if (activeNavItem === "workSpace" && selectedWorkspace?._id) {
       getMessages(selectedWorkspace._id);
-    } else if (activeNavItem === "users" && selectedFriend?.friendId) {
+    } else if (activeNavItem === "users" && selectedFriend?.friendId && showChat) {
       getDirectMessages(selectedFriend.friendId);
     }
   }, [
-    selectedWorkspace?._id, 
-    selectedFriend?.friendId, 
+    selectedWorkspace?._id,
+    selectedFriend?.friendId,
     activeNavItem,
     getMessages,
-    getDirectMessages
+    getDirectMessages,
+    showChat
   ]);
 
   useEffect(() => {
-    messageEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, directMessages]);
+    setTimeout(() => {
+      if (showChat && ((activeNavItem === 'users' && selectedFriend) || (activeNavItem === 'workSpace' && selectedWorkspace))) {
+         messageEndRef.current?.scrollIntoView({ behavior: "auto" });
+      }
+    }, 50);
+  }, [messages, directMessages, selectedFriend, selectedWorkspace, activeNavItem, showChat]);
 
-  // If chat is closed and in direct messages view, show NoChatSelected
-  if (!showChat && activeNavItem === "users") {
-    return <CustomNoChatSelected lastFriend={lastClosedFriend} onReopen={handleReopenChat} />;
-  }
+  const isWorkspaceSelected = activeNavItem === 'workSpace' && selectedWorkspace;
+  const isFriendChatVisible = activeNavItem === 'users' && selectedFriend && showChat;
 
-  // Determine which messages to display based on the active navigation
-  const messagesToDisplay = activeNavItem === "workSpace" ? messages : directMessages;
-  
-  // Sort messages by creation date
-  const sortedMessages = [...messagesToDisplay].sort((a, b) => {
+  const messagesToDisplaySource = activeNavItem === "workSpace" ? messages : directMessages;
+
+  const sortedMessages = [...(messagesToDisplaySource || [])].sort((a, b) => {
     return new Date(a.createdAt) - new Date(b.createdAt);
   });
 
-  // Generate the appropriate title based on active navigation
   const renderTitle = () => {
     if (activeNavItem === "workSpace") {
-      // Display channel name when in workspace view
-      if (selectedWorkspace?.channelName) {
-        return selectedWorkspace.channelName;
-      } else if (selectedWorkspace?.name) {
-        return selectedWorkspace.name;
-      } else if (selectedWorkspace?.workspaceName) {
-        return selectedWorkspace.workspaceName;
-      } else {
-        return "Select a workspace";
-      }
+      if (!selectedWorkspace) return "Select a workspace";
+      return selectedWorkspace.channelName || selectedWorkspace.name || selectedWorkspace.workspaceName || "Workspace";
     } else if (activeNavItem === "users") {
       return selectedFriend?.username || "Select a friend";
     }
     return "Chat";
   };
 
-  // Process direct messages for UI rendering
-  const processDirectMessages = (messages) => {
-    if (!messages || !Array.isArray(messages)) return [];
-    
-    return messages.map(message => {
-      const isSender = message.senderId === authUser?._id;
-      
-      // Format sender info consistently for both sent and received messages
-      const userId = isSender ? authUser : {
-        _id: message.senderId,
-        username: message.sender?.username || selectedFriend?.username || "Friend",
-        avatar: message.sender?.avatar || selectedFriend?.avatar
-      };
-      console.log("selcted friendsa", selectedFriend);
-      return {
-        ...message,
-        userId,
-        isSentByMe: isSender
-      };
-    });
+  const processDirectMessages = (processedMessages) => {
+     if (!processedMessages || !Array.isArray(processedMessages) || !authUser) return [];
+     return processedMessages.map((message) => {
+       const isSender = message.senderId === authUser._id || message.senderId?._id === authUser._id;
+       const userId = isSender
+         ? { _id: authUser._id, username: "You", avatar: authUser.avatar }
+         : {
+             _id: message.senderId?._id || message.senderId,
+             username:
+               message.sender?.username || selectedFriend?.username || "Friend",
+             avatar: message.sender?.avatar || selectedFriend?.avatar,
+           };
+       return {
+         ...message,
+         userId,
+         isSentByMe: isSender,
+       };
+     });
   };
 
-  // Final messages to render
-  const messagesForDisplay = activeNavItem === "workSpace" 
-    ? sortedMessages 
-    : processDirectMessages(sortedMessages);
+  const messagesForDisplay = (
+    activeNavItem === "workSpace"
+      ? sortedMessages
+      : processDirectMessages(sortedMessages)
+  ).map((msg, idx, arr) => {
+    const senderId = msg.userId?._id || msg.senderId?._id || msg.senderId;
+    let prevSenderId = null;
+    if (idx > 0 && arr[idx - 1]) {
+       const prevMsg = arr[idx - 1];
+       prevSenderId = prevMsg.userId?._id || prevMsg.senderId?._id || prevMsg.senderId;
+    }
+    return {
+      ...msg,
+      firstInGroup: !prevSenderId || senderId !== prevSenderId,
+    };
+  });
+
+  let mainContent;
+  const shouldShowChatContent = isFriendChatVisible || isWorkspaceSelected;
+
+  if ((activeNavItem === 'users' && !selectedFriend) || (activeNavItem === 'workSpace' && !selectedWorkspace)) {
+      mainContent = <NoChatSelected />;
+  } else if (loading) {
+      mainContent = (
+          <div className="flex h-full w-full items-center justify-center">
+            <Loader2 className="h-8 w-8 animate-spin text-base-content/50" />
+          </div>
+      );
+  } else if (error) {
+      mainContent = <div className="p-4 text-center text-error">{error}</div>;
+  } else if (messagesForDisplay.length === 0 && shouldShowChatContent) {
+      mainContent = (
+          <div className="p-4 text-center text-base-content/60">
+              No messages yet. Start the conversation!
+          </div>
+      );
+  } else if (shouldShowChatContent) {
+      mainContent = (
+          <>
+              {messagesForDisplay.map((message) => (
+                  <Message
+                      key={message._id}
+                      message={message}
+                      activeNavItem={activeNavItem}
+                      firstInGroup={message.firstInGroup}
+                  />
+              ))}
+              <div ref={messageEndRef} />
+          </>
+      );
+  } else {
+       mainContent = <NoChatSelected />;
+  }
+
+  const showInput = shouldShowChatContent;
 
   return (
-    <div className="h-screen p-4 flex flex-col border-l border-l-zinc-800">
-      {/* Fixed header */}
-      <div className="bg-base-200 p-4 border-b border-b-zinc-800 sticky top-0 z-10">
-        {activeNavItem === "users" && selectedFriend ? (
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="avatar">
-                <div className="w-8 h-8 rounded-full">
-                  <img 
-                    src={selectedFriend.avatar || "https://ui-avatars.com/api/?name=" + selectedFriend.username} 
-                    alt={selectedFriend.username}
+    <div className="h-screen flex flex-col bg-base-100 border-l border-base-300 overflow-hidden pt-16">
+      {/* Header Section (Not Sticky) */}
+      <div className="flex-shrink-0 bg-base-200 p-3 border-b border-base-300 shadow-sm">
+        <div className="flex items-center justify-between">
+          {/* Left side (Info/Title) */}
+          <div className="flex items-center gap-3 min-w-0">
+            {isFriendChatVisible ? (
+              <div className="avatar flex-shrink-0">
+                <div className="w-9 h-9 rounded-full ring-1 ring-base-300">
+                  <img
+                    src={
+                      selectedFriend?.avatar ||
+                      "https://ui-avatars.com/api/?name=" +
+                        (selectedFriend?.username || 'User')
+                    }
+                    alt={selectedFriend?.username || 'User'}
                   />
                 </div>
               </div>
-              <h2 className="text-xl font-bold">{selectedFriend.username}</h2>
-            </div>
-            <div className="flex items-center gap-2">
-              <DirectMessageSearch friendId={selectedFriend.friendId} />
-              <button
-                onClick={handleCloseChat}
-                className="p-2 bg-blue-500 hover:bg-blue-600 rounded-full flex items-center justify-center shadow-md"
-                style={{ 
-                  width: '36px', 
-                  height: '36px'
-                }}
-              >
-                <X size={18} color="white" strokeWidth={3} />
-              </button>
-            </div>
+            ) : null}
+            <h2 className="text-lg font-semibold truncate">{renderTitle()}</h2>
           </div>
-        ) : (
-          <div className="flex justify-between items-center">
-            <h2 className="text-xl font-bold">{renderTitle()}</h2>
-            <div className="flex items-center gap-2">
-              {/* Only show search in workspace view with a valid workspace */}
-              {activeNavItem === "workSpace" && selectedWorkspace?._id && (
-                <MessageSearch channelId={selectedWorkspace._id} />
-              )}
-            </div>
+          {/* Right side (Actions) */}
+          <div className="flex items-center gap-2 flex-shrink-0">
+            {isWorkspaceSelected && selectedWorkspace?._id && (
+              <MessageSearch channelId={selectedWorkspace._id} />
+            )}
+            {isFriendChatVisible && (
+                <>
+                  <DirectMessageSearch friendId={selectedFriend.friendId} />
+                  <button
+                    onClick={handleCloseChat}
+                    className="btn btn-ghost btn-sm btn-circle"
+                    aria-label="Close chat"
+                  >
+                    <X size={20} />
+                  </button>
+                </>
+            )}
           </div>
-        )}
+        </div>
       </div>
 
-      {/* Scrollable messages area */}
-      <div className="flex-1 overflow-y-auto p-4 pt-16 space-y-4">
-        {loading ? (
-          <div className="flex h-[200px] w-full items-center justify-center text-center">
-            <Loader2 className="h-8 w-8 animate-spin text-zinc-400" />
-          </div>
-        ) : error ? (
-          <div className="p-4 text-center text-red-500">{error}</div>
-        ) : messagesForDisplay.length === 0 ? (
-          <div className="p-4 text-center text-zinc-500">
-            No messages yet. Start the conversation!
-          </div>
-        ) : (
-          messagesForDisplay.map((message) => (
-            <Message 
-              key={message._id} 
-              message={message} 
-              activeNavItem={activeNavItem}
-            />
-          ))
-        )}
-        <div ref={messageEndRef} />
+      {/* Scrollable Messages Area or Placeholder */}
+      <div className="flex-1 overflow-y-auto px-4 py-4 space-y-1 bg-base-100">
+        {mainContent}
       </div>
 
-      {/* Fixed message input at bottom */}
-      <div className="sticky bottom-0 mt-5 bg-base-100 border-t border-zinc-800 z-10">
-        <MessageInput activeNavItem={activeNavItem} />
-      </div>
+      {/* Message Input Section (Sticky Bottom) - Render conditionally */}
+      {showInput && (
+        <div className="flex-shrink-0 p-3 bg-base-200 border-t border-base-300 sticky bottom-0 z-10">
+          <MessageInput activeNavItem={activeNavItem} />
+        </div>
+      )}
     </div>
   );
 };
