@@ -263,7 +263,7 @@ const ChannelMessage = ({ message, firstInGroup }) => {
                 </button>
 
                 {showEmojiMenu && (
-                  <div className="absolute top-full left-0 mt-2 p-2 bg-base-100 rounded-lg shadow-lg flex gap-1 flex-wrap w-48 z-10">
+                  <div className="absolute top-full left-0 mt-2 p-2 bg-base-100 rounded-lg shadow-lg flex gap-1 flex-wrap w-48 z-20 touch-auto">
                     {COMMON_EMOJIS.map((emoji) => (
                       <button
                         key={emoji}

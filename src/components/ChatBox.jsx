@@ -206,7 +206,7 @@ const ChatBox = ({ activeNavItem }) => {
       </div>
 
       {/* Scrollable Messages Area or Placeholder */}
-      <div className="flex-1 overflow-y-auto px-4 py-4 space-y-1 bg-base-100">
+      <div className="flex-1 overflow-y-auto px-4 py-4 space-y-1 bg-base-100 touch-auto">
         {mainContent}
       </div>
 

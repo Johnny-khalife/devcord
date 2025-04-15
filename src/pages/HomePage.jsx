@@ -287,7 +287,7 @@ const HomePage = () => {
       {/* Mid section - varies based on activeNavItem */}
       <div className="flex flex-1 relative overflow-hidden">
         {/* Secondary sidebar - either workspace or user friends */}
-        <div className={`${isMobile ? 'absolute inset-0 z-20' : 'relative'}`}>
+        <div className={`${isMobile ? 'absolute inset-0 z-20' : 'relative'} ${(activeNavItem === "workSpace" || activeNavItem === "users") && isMobile ? 'pointer-events-none' : ''}`}>
           {isLoading ? (
             <div className="flex-1 flex items-center justify-center h-full">
               <div className="loading loading-spinner loading-lg text-primary"></div>
@@ -295,30 +295,34 @@ const HomePage = () => {
           ) : (
             <>
               {activeNavItem === "workSpace" && (
-                <WorkSpace
-                  activeNavItem={activeNavItem}
-                  activeWorkspace={activeWorkspace}
-                  setActiveWorkspace={setActiveWorkspace}
-                  workspaces={workspaces}
-                  setWorkspaces={setWorkspaces}
-                  setShowWorkspaceMenu={setShowWorkspaceMenu}
-                  showWorkspaceMenu={showWorkspaceMenu}
-                  setActiveChannel={setActiveChannel}
-                  activeChannel={activeChannel}
-                  handleCreateWorkspace={handleCreateWorkspace}
-                  handleOpenSettingsForm={handleOpenSettingsForm}
-                />
+                <div className={`${isMobile ? 'pointer-events-auto' : ''}`}>
+                  <WorkSpace
+                    activeNavItem={activeNavItem}
+                    activeWorkspace={activeWorkspace}
+                    setActiveWorkspace={setActiveWorkspace}
+                    workspaces={workspaces}
+                    setWorkspaces={setWorkspaces}
+                    setShowWorkspaceMenu={setShowWorkspaceMenu}
+                    showWorkspaceMenu={showWorkspaceMenu}
+                    setActiveChannel={setActiveChannel}
+                    activeChannel={activeChannel}
+                    handleCreateWorkspace={handleCreateWorkspace}
+                    handleOpenSettingsForm={handleOpenSettingsForm}
+                  />
+                </div>
               )}
               
               {activeNavItem === "users" && (
-                <UserFriends />
+                <div className={`${isMobile ? 'pointer-events-auto' : ''}`}>
+                  <UserFriends />
+                </div>
               )}
             </>
           )}
         </div>
         
         {/* Main content area - ChatBox or JobsView */}
-        <div className="flex-1 overflow-hidden">
+        <div className={`flex-1 overflow-hidden ${isMobile ? 'z-10' : ''}`}>
           {activeNavItem === "jobs" ? (
             <JobsView />
           ) : (
