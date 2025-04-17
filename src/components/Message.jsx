@@ -425,7 +425,9 @@ const ChannelMessage = ({ message, firstInGroup }) => {
             {message.reactions.map((reaction, index) => (
               <button
                 key={`${reaction.emoji}-${index}`}
-                className={`btn btn-xs btn-ghost `}
+                className={`btn btn-xs ${
+                  hasUserReacted(reaction) ? "btn-accent" : "btn-ghost"
+                }`}
                 onClick={() => handleReaction(reaction.emoji)}
               >
                 {reaction.emoji} {reaction.users?.length || 0}

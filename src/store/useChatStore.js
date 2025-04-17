@@ -151,7 +151,12 @@ export const useChatStore = create((set, get) => ({
         response = await axiosInstance.delete(`/direct-messages/${messageId}`);
         
         set((state) => ({
-          directMessages: state.directMessages.filter((message) => message._id !== messageId)
+          directMessages: state.directMessages.filter((message) => message._id !== messageId),
+          // Also remove from search results to prevent "message not found" errors
+          directMessageSearchResults: state.directMessageSearchResults ? 
+            state.directMessageSearchResults.filter(
+              (message) => (message._id !== messageId && message.messageId !== messageId)
+            ) : []
         }));
       } else {
         if (!channelId) {
@@ -164,7 +169,12 @@ export const useChatStore = create((set, get) => ({
         response = await axiosInstance.delete(`/messages/${messageId}`);
         
         set((state) => ({
-          messages: state.messages.filter((message) => message._id !== messageId)
+          messages: state.messages.filter((message) => message._id !== messageId),
+          // Also remove from search results to prevent "message not found" errors
+          searchResults: state.searchResults ? 
+            state.searchResults.filter(
+              (message) => (message._id !== messageId && message.messageId !== messageId)
+            ) : []
         }));
       }
       
@@ -345,10 +355,21 @@ export const useChatStore = create((set, get) => ({
       if (response.data && response.data.data) {
         const { messages, pagination } = response.data.data;
         
-        console.log(`Found ${messages?.length || 0} search results`);
+        // Filter out messages that don't exist in current messages list
+        const { messages: currentMessages } = get();
+        const availableMessages = messages?.filter(searchMsg => 
+          currentMessages.some(currentMsg => 
+            currentMsg._id === searchMsg._id || currentMsg._id === searchMsg.messageId
+          )
+        ) || [];
+        
+        console.log(`Found ${availableMessages.length} valid search results out of ${messages?.length || 0}`);
         set({ 
-          searchResults: messages || [],
-          searchPagination: pagination || null
+          searchResults: availableMessages,
+          searchPagination: pagination ? {
+            ...pagination,
+            total: availableMessages.length
+          } : null
         });
       } else {
         console.error("Unexpected search response format:", response.data);
@@ -408,10 +429,21 @@ export const useChatStore = create((set, get) => ({
       if (response.data && response.data.data) {
         const { messages, pagination } = response.data.data;
         
-        console.log(`Found ${messages?.length || 0} direct message search results`);
+        // Filter out messages that don't exist in current direct messages list
+        const { directMessages } = get();
+        const availableMessages = messages?.filter(searchMsg => 
+          directMessages.some(currentMsg => 
+            currentMsg._id === searchMsg._id || currentMsg._id === searchMsg.messageId
+          )
+        ) || [];
+        
+        console.log(`Found ${availableMessages.length} valid direct message search results out of ${messages?.length || 0}`);
         set({ 
-          directMessageSearchResults: messages || [],
-          directMessageSearchPagination: pagination || null
+          directMessageSearchResults: availableMessages,
+          directMessageSearchPagination: pagination ? {
+            ...pagination,
+            total: availableMessages.length
+          } : null
         });
       } else {
         console.error("Unexpected direct message search response format:", response.data);

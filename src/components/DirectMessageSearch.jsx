@@ -16,7 +16,8 @@ const DirectMessageSearch = ({ friendId }) => {
     isSearching, 
     directMessageSearchResults, 
     directMessageSearchPagination,
-    directMessageSearchQuery
+    directMessageSearchQuery,
+    directMessages
   } = useChatStore();
 
   // Focus input when search is opened
@@ -76,6 +77,16 @@ const DirectMessageSearch = ({ friendId }) => {
   };
 
   const scrollToMessage = (messageId) => {
+    // First check if this message exists in current conversation
+    const messageExists = directMessages.some(msg => 
+      msg._id === messageId || msg.messageId === messageId
+    );
+    
+    if (!messageExists) {
+      toast.error("This message has been deleted or is not available in the current conversation");
+      return;
+    }
+    
     const messageElement = document.getElementById(`message-${messageId}`);
     if (messageElement) {
       messageElement.scrollIntoView({ behavior: "smooth", block: "center" });
