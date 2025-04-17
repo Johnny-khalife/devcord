@@ -1,7 +1,7 @@
 // import React, { useEffect } from "react";
 import { useChatStore } from "../store/useChatStore";
 import { useEffect, useRef, useState } from "react";
-import { Loader2, X,Hash,Lock } from "lucide-react";
+import { Loader2, X, Hash, Lock, MessageSquare } from "lucide-react";
 import Message from "./Message";
 import MessageInput from "./MessageInput";
 import MessageSearch from "./MessageSearch";
@@ -10,13 +10,14 @@ import NoChatSelected from "./NoChatSelected";
 import { useWorkspaceStore } from "../store/useWorkspaceStore";
 import { useAuthStore } from "../store/useAuthStore";
 import MessageSkeleton from "./skeletons/MessageSkeleton";
+import { markMessagesAsRead } from "../lib/socket";
 
 // Common emoji reactions
 const COMMON_EMOJIS = ["👍", "❤️", "😂", "😮", "😢", "👏", "🔥", "🎉", "👎", "🤔"];
 
 const ChatBox = ({ activeNavItem, isMobile }) => {
   const messageEndRef = useRef(null);
-  const { authUser } = useAuthStore();
+  const { authUser, socket } = useAuthStore();
   const [showChat, setShowChat] = useState(true);
   const {
     messages,
@@ -27,8 +28,12 @@ const ChatBox = ({ activeNavItem, isMobile }) => {
     getDirectMessages,
     selectedFriend,
     setSelectedFriend,
+    typingIndicators,
   } = useChatStore();
   const { selectedWorkspace } = useWorkspaceStore();
+  
+  // Check if socket is connected
+  const isSocketConnected = socket?.dm && socket.dm.connected;
 
   const handleCloseChat = () => {
     if (activeNavItem === "users" && selectedFriend) {
@@ -59,11 +64,17 @@ const ChatBox = ({ activeNavItem, isMobile }) => {
     }
   }, [isMobile, showChat, selectedFriend]);
 
+  // Load messages when channel or friend changes
   useEffect(() => {
     if (activeNavItem === "workSpace" && selectedWorkspace?._id) {
       getMessages(selectedWorkspace._id);
     } else if (activeNavItem === "users" && selectedFriend?.friendId && showChat) {
       getDirectMessages(selectedFriend.friendId);
+      
+      // Mark messages as read when we view a direct message conversation
+      if (selectedFriend?.friendId && isSocketConnected) {
+        markMessagesAsRead(selectedFriend.friendId);
+      }
     }
   }, [
     selectedWorkspace?._id,
@@ -71,7 +82,8 @@ const ChatBox = ({ activeNavItem, isMobile }) => {
     activeNavItem,
     getMessages,
     getDirectMessages,
-    showChat
+    showChat,
+    isSocketConnected
   ]);
 
   useEffect(() => {
@@ -105,7 +117,13 @@ const ChatBox = ({ activeNavItem, isMobile }) => {
   const sortedMessages = [...(messagesToDisplaySource || [])].sort((a, b) => {
     return new Date(a.createdAt) - new Date(b.createdAt);
   });
-console.log("selected workspace",selectedWorkspace)
+
+  // Check if the selected friend is typing
+  const isTyping = selectedFriend && 
+    typingIndicators && 
+    typingIndicators[selectedFriend.friendId] !== null && 
+    typingIndicators[selectedFriend.friendId] !== undefined;
+
   const renderTitle = () => {
     if (activeNavItem === "workSpace") {
       if (!selectedWorkspace) return "Select a workspace";
@@ -118,16 +136,43 @@ console.log("selected workspace",selectedWorkspace)
 
   const processDirectMessages = (processedMessages) => {
      if (!processedMessages || !Array.isArray(processedMessages) || !authUser) return [];
+     
+     console.log("Processing direct messages:", {
+       messagesCount: processedMessages.length,
+       authUserId: authUser._id,
+       selectedFriendId: selectedFriend?.friendId
+     });
+     
      return processedMessages.map((message) => {
-       const isSender = message.senderId === authUser._id || message.senderId?._id === authUser._id;
+       // Get the correct sender ID, handling different possible formats
+       const messageSenderId = 
+         message.senderId?._id || // If senderId is an object with _id
+         message.senderId ||      // If senderId is already the ID string
+         message.sender?.userId;  // If sender object contains userId
+       
+       // Determine if current user is the sender
+       const isSender = messageSenderId === authUser._id;
+       
+       console.log(`Message ${message._id || 'unknown'} sender check:`, {
+         messageSenderId,
+         authUserId: authUser._id,
+         isSender,
+         content: message.content || message.message
+       });
+       
+       // Set user info based on sender
        const userId = isSender
-         ? { _id: authUser._id, username: "You", avatar: authUser.avatar }
+         ? { 
+             _id: authUser._id, 
+             username: authUser.username || "You", 
+             avatar: authUser.avatar 
+           }
          : {
-             _id: message.senderId?._id || message.senderId,
-             username:
-               message.sender?.username || selectedFriend?.username || "Friend",
+             _id: messageSenderId,
+             username: message.sender?.username || selectedFriend?.username || "Friend",
              avatar: message.sender?.avatar || selectedFriend?.avatar,
            };
+           
        return {
          ...message,
          userId,
@@ -135,6 +180,7 @@ console.log("selected workspace",selectedWorkspace)
        };
      });
   };
+  console.log("dadsasd",selectedFriend)
 
   const messagesForDisplay = (
     activeNavItem === "workSpace"
@@ -152,7 +198,6 @@ console.log("selected workspace",selectedWorkspace)
       firstInGroup: !prevSenderId || senderId !== prevSenderId,
     };
   });
-
   let mainContent;
   const shouldShowChatContent = isFriendChatVisible || isWorkspaceSelected;
 
@@ -183,6 +228,18 @@ console.log("selected workspace",selectedWorkspace)
                       firstInGroup={message.firstInGroup}
                   />
               ))}
+              
+              {/* Typing indicator */}
+              {isTyping && activeNavItem === "users" && (
+                <div className="flex items-center gap-2 px-4 py-2 text-sm text-base-content/60 italic">
+                  <span> typing</span>
+                  <div className="flex space-x-1 mt-2">
+                    <div className="w-2 h-2 rounded-full bg-primary animate-bounce" style={{ animationDelay: "0ms" }}></div>
+                    <div className="w-2 h-2 rounded-full bg-primary animate-bounce" style={{ animationDelay: "200ms" }}></div>
+                    <div className="w-2 h-2 rounded-full bg-primary animate-bounce" style={{ animationDelay: "400ms" }}></div>
+                  </div>
+                </div>
+              )}
               <div ref={messageEndRef} />
           </>
       );
@@ -198,7 +255,8 @@ console.log("selected workspace",selectedWorkspace)
       <div className="flex-shrink-0 bg-base-200 p-3 border-b border-base-300 shadow-sm">
         <div className="flex items-center justify-between">
           {/* Left side (Info/Title) */}
-          <div className="flex items-center gap-3 min-w-0 ">
+           {/* Left side (Info/Title) */}
+           <div className="flex items-center gap-3 min-w-0 ">
             {isFriendChatVisible ? (
               <div className="avatar flex-shrink-0">
                 <div className="w-9 h-9 rounded-full ring-1 ring-base-300">
@@ -215,41 +273,34 @@ console.log("selected workspace",selectedWorkspace)
             ) : !selectedWorkspace.isPrivate ? <Hash/>:<Lock/>}
             <h2 className="text-lg font-semibold truncate">{renderTitle()}</h2>
           </div>
+
           {/* Right side (Actions) */}
-          <div className="flex items-center gap-2 flex-shrink-0">
-            {isWorkspaceSelected && selectedWorkspace?._id && (
-              <MessageSearch channelId={selectedWorkspace._id} />
-            )}
-            {isFriendChatVisible && (
-                <>
-                  <DirectMessageSearch friendId={selectedFriend.friendId} />
-                  <button
-                    onClick={handleCloseChat}
-                    className="btn btn-ghost btn-sm btn-circle"
-                    aria-label="Close chat"
-                  >
-                    <X size={20} />
-                  </button>
-                </>
-            )}
+          <div className="flex gap-2">
+            {activeNavItem === "workSpace" ? (
+              <MessageSearch />
+            ) : activeNavItem === "users" && selectedFriend ? (
+              <>
+                <DirectMessageSearch />
+                <button
+                  onClick={handleCloseChat}
+                  className="btn btn-sm btn-circle btn-ghost"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </>
+            ) : null}
           </div>
         </div>
       </div>
 
-      {/* Scrollable Messages Area or Placeholder */}
-      <div 
-        className={`
-          flex-1 overflow-y-auto px-4 py-4 space-y-1 bg-base-100 
-          ${isMobile ? "h-[calc(100vh-10rem)] mobile-scroll mobile-scrollable" : "touch-auto"}
-        `}
-        style={isMobile ? { WebkitOverflowScrolling: 'touch' } : {}}
-      >
+      {/* Messages Area (Scrollable) */}
+      <div className={`flex-1 overflow-y-auto mobile-scroll px-4 py-4 ${isMobile ? "pb-20" : ""}`}>
         {mainContent}
       </div>
 
-      {/* Message Input Section (Sticky Bottom) - Render conditionally */}
+      {/* Input Area (Fixed at Bottom) */}
       {showInput && (
-        <div className={`flex-shrink-0 p-3 bg-base-200 border-t border-base-300 sticky bottom-0 z-10 ${isMobile ? 'pb-16' : ''}`}>
+        <div className={`flex-shrink-0 border-t border-base-300 ${isMobile? "pb-16":""}`}>
           <MessageInput activeNavItem={activeNavItem} />
         </div>
       )}

@@ -3,18 +3,27 @@ import { useChatStore } from "../store/useChatStore";
 import { Image, Send, X } from "lucide-react";
 import toast from "react-hot-toast";
 import { useWorkspaceStore } from "../store/useWorkspaceStore";
+import { useAuthStore } from "../store/useAuthStore";
+import { sendDirectMessage, sendTypingIndicator } from "../lib/socket";
 
 const MessageInput = ({ activeNavItem }) => {
   const [text, setText] = useState("");
   const [imagePreview, setImagePreview] = useState(null);
+  const [isTyping, setIsTyping] = useState(false);
+  const typingTimeoutRef = useRef(null);
   const fileInputRef = useRef(null);
   const inputRef = useRef(null);
-  const { sendMessage, sendDirectMessage, selectedFriend } = useChatStore();
+  
+  const { sendMessage, sendDirectMessage: sendDirectMessageAPI, selectedFriend } = useChatStore();
   const { selectedWorkspace } = useWorkspaceStore();
+  const { authUser, socket } = useAuthStore();
   
   // Store previous selectedFriend ID to detect changes
   const prevFriendIdRef = useRef(selectedFriend?.friendId);
   const prevWorkspaceIdRef = useRef(selectedWorkspace?._id);
+  
+  // Check if socket is connected
+  const isSocketConnected = socket?.dm && socket.dm.connected;
   
   // Clear input when selected friend or workspace changes
   useEffect(() => {
@@ -29,11 +38,17 @@ const MessageInput = ({ activeNavItem }) => {
       setImagePreview(null);
       if (fileInputRef.current) fileInputRef.current.value = "";
       
+      // Stop typing indicator if active
+      if (prevFriendIdRef.current && isTyping && isSocketConnected) {
+        sendTypingIndicator(prevFriendIdRef.current, false);
+        setIsTyping(false);
+      }
+      
       // Update refs with current values
       prevFriendIdRef.current = currentFriendId;
       prevWorkspaceIdRef.current = currentWorkspaceId;
     }
-  }, [selectedFriend?.friendId, selectedWorkspace?._id]);
+  }, [selectedFriend?.friendId, selectedWorkspace?._id, isTyping, isSocketConnected]);
 
   // Focus the input field when component mounts
   useEffect(() => {
@@ -41,6 +56,48 @@ const MessageInput = ({ activeNavItem }) => {
       inputRef.current.focus();
     }
   }, []);
+
+  // Handle typing indicator
+  const handleTyping = (e) => {
+    const { value } = e.target;
+    setText(value);
+    
+    // Only send typing indicators for direct messages when socket is connected
+    if (activeNavItem === "users" && selectedFriend?.friendId && isSocketConnected) {
+      // Set typing state
+      if (!isTyping && value.trim()) {
+        setIsTyping(true);
+        sendTypingIndicator(selectedFriend.friendId, true);
+      }
+      
+      // Clear previous timeout
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+      }
+      
+      // Set new timeout to stop typing indicator
+      typingTimeoutRef.current = setTimeout(() => {
+        if (isTyping) {
+          setIsTyping(false);
+          sendTypingIndicator(selectedFriend.friendId, false);
+        }
+      }, 2000);
+    }
+  };
+  
+  // Clear typing timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+      }
+      
+      // Ensure typing indicator is set to false when component unmounts
+      if (selectedFriend?.friendId && isTyping && isSocketConnected) {
+        sendTypingIndicator(selectedFriend.friendId, false);
+      }
+    };
+  }, [selectedFriend?.friendId, isTyping, isSocketConnected]);
 
   const handleImageChange = (e) => {
     const file = e.target.files[0];
@@ -75,15 +132,40 @@ const MessageInput = ({ activeNavItem }) => {
         };
         await sendMessage(messageData, selectedWorkspace._id);
       } else if (activeNavItem === "users" && selectedFriend?.friendId) {
-        // Send direct message - simplified to avoid code message complexity
+        // First, log debugging information
+        console.log("Sending direct message:");
+        console.log("- To friend:", selectedFriend.friendId, selectedFriend.username);
+        console.log("- Message content:", text.trim());
+        console.log("- Socket connected:", isSocketConnected);
+        console.log("- Socket object:", socket);
+        
+        // Always use the API first to ensure message persistence
+        console.log("Sending via API...");
         const messageData = {
           message: text.trim(),
-          // Always set isCode to false and language to null
           isCode: false,
           language: "text",
           image: imagePreview,
         };
-        await sendDirectMessage(messageData, selectedFriend.friendId);
+        
+        // Wait for API message to be sent and stored
+        await sendDirectMessageAPI(messageData, selectedFriend.friendId);
+        console.log("API message sent successfully");
+        
+        // Then use the socket for real-time delivery
+        if (isSocketConnected) {
+          console.log("Sending via socket...");
+          const success = sendDirectMessage(selectedFriend.friendId, text.trim());
+          console.log("Socket message sent result:", success);
+        } else {
+          console.warn("Socket not connected, message sent only via API");
+        }
+        
+        // Stop typing indicator
+        if (isTyping && isSocketConnected) {
+          setIsTyping(false);
+          sendTypingIndicator(selectedFriend.friendId, false);
+        }
       } else {
         toast.error("Cannot send message - no chat selected");
         return;
@@ -102,6 +184,11 @@ const MessageInput = ({ activeNavItem }) => {
       }, 0);
     } catch (error) {
       console.error("Failed to send message:", error);
+      console.error("Error details:", error.message);
+      if (error.response) {
+        console.error("Server responded with:", error.response.data);
+      }
+      toast.error("Failed to send message. Please try again.");
     }
   };
 
@@ -143,7 +230,7 @@ const MessageInput = ({ activeNavItem }) => {
             className="w-full input input-bordered rounded-lg input-sm sm:input-md"
             placeholder="Type a message..."
             value={text}
-            onChange={(e) => setText(e.target.value)}
+            onChange={handleTyping}
             onKeyDown={handleKeyPress}
             ref={inputRef}
           />

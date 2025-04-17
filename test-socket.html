@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Direct Message Socket Test</title>
+  <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    #messages {
+      height: 300px;
+      border: 1px solid #ccc;
+      margin-bottom: 10px;
+      padding: 10px;
+      overflow-y: auto;
+    }
+    #user-form, #message-form {
+      margin-bottom: 20px;
+    }
+    .message {
+      margin-bottom: 5px;
+      padding: 5px;
+      border-radius: 5px;
+    }
+    .received {
+      background-color: #e5e5e5;
+    }
+    .sent {
+      background-color: #d1f2eb;
+      text-align: right;
+    }
+    button {
+      padding: 5px 10px;
+    }
+    label {
+      display: block;
+      margin-bottom: 5px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Direct Message Socket.IO Test</h1>
+
+  <div id="user-form">
+    <label for="token">JWT Token:</label>
+    <input type="text" id="token" placeholder="Paste your JWT token here" style="width: 400px;">
+    <button id="connect">Connect</button>
+    <button id="disconnect" disabled>Disconnect</button>
+  </div>
+
+  <div id="status">Status: Disconnected</div>
+
+  <div id="message-form" style="display: none;">
+    <label for="receiver">Receiver ID:</label>
+    <input type="text" id="receiver" placeholder="Enter receiver's user ID">
+    
+    <label for="message">Message:</label>
+    <input type="text" id="message" placeholder="Type your message here">
+    
+    <button id="send" disabled>Send Message</button>
+    <button id="typing-on">Start Typing</button>
+    <button id="typing-off">Stop Typing</button>
+    <button id="mark-read">Mark as Read</button>
+  </div>
+
+  <div id="messages"></div>
+
+  <script>
+    // DOM Elements
+    const tokenInput = document.getElementById('token');
+    const connectBtn = document.getElementById('connect');
+    const disconnectBtn = document.getElementById('disconnect');
+    const messageForm = document.getElementById('message-form');
+    const receiverInput = document.getElementById('receiver');
+    const messageInput = document.getElementById('message');
+    const sendBtn = document.getElementById('send');
+    const typingOnBtn = document.getElementById('typing-on');
+    const typingOffBtn = document.getElementById('typing-off');
+    const markReadBtn = document.getElementById('mark-read');
+    const messagesDiv = document.getElementById('messages');
+    const statusDiv = document.getElementById('status');
+
+    // Socket.IO instance
+    let socket;
+
+    // Connect to socket
+    connectBtn.addEventListener('click', () => {
+      const token = tokenInput.value.trim();
+      if (!token) {
+        alert('Please enter a valid JWT token');
+        return;
+      }
+
+      try {
+        // Connect to DM namespace with token in cookie
+        socket = io('http://localhost:3001/dm', {
+          withCredentials: true,
+        });
+
+        // Connection events
+        socket.on('connect', () => {
+          statusDiv.textContent = 'Status: Connected';
+          messageForm.style.display = 'block';
+          connectBtn.disabled = true;
+          disconnectBtn.disabled = false;
+          sendBtn.disabled = false;
+          
+          addMessage('System', 'Connected to server');
+        });
+
+        socket.on('connect_error', (error) => {
+          statusDiv.textContent = `Status: Connection Error - ${error.message}`;
+          addMessage('System', `Connection error: ${error.message}`);
+        });
+
+        // Message events
+        socket.on('receiveDirectMessage', (data) => {
+          addMessage(data.sender.username, data.message, 'received');
+        });
+
+        socket.on('typingIndicator', (data) => {
+          const typingMessage = `${data.sender.username} is ${data.isTyping ? 'typing...' : 'stopped typing'}`;
+          statusDiv.textContent = `Status: ${typingMessage}`;
+        });
+
+        socket.on('messagesRead', (data) => {
+          addMessage('System', `Messages read by user ID: ${data.receiverId} at ${new Date(data.readAt).toLocaleTimeString()}`);
+        });
+
+        socket.on('disconnect', () => {
+          statusDiv.textContent = 'Status: Disconnected';
+          addMessage('System', 'Disconnected from server');
+          reset();
+        });
+      } catch (error) {
+        console.error('Connection error:', error);
+        addMessage('System', `Error: ${error.message}`);
+      }
+    });
+
+    // Disconnect from socket
+    disconnectBtn.addEventListener('click', () => {
+      if (socket) {
+        socket.disconnect();
+        reset();
+      }
+    });
+
+    // Send message
+    sendBtn.addEventListener('click', () => {
+      const receiverId = receiverInput.value.trim();
+      const message = messageInput.value.trim();
+      
+      if (!receiverId || !message) {
+        alert('Please enter both receiver ID and message');
+        return;
+      }
+
+      socket.emit('sendMessage', {
+        receiverId,
+        message
+      });
+
+      addMessage('You', message, 'sent');
+      messageInput.value = '';
+    });
+
+    // Start typing
+    typingOnBtn.addEventListener('click', () => {
+      const receiverId = receiverInput.value.trim();
+      if (!receiverId) {
+        alert('Please enter receiver ID');
+        return;
+      }
+      
+      socket.emit('typing', {
+        receiverId,
+        isTyping: true
+      });
+      
+      statusDiv.textContent = 'Status: You are typing...';
+    });
+
+    // Stop typing
+    typingOffBtn.addEventListener('click', () => {
+      const receiverId = receiverInput.value.trim();
+      if (!receiverId) {
+        alert('Please enter receiver ID');
+        return;
+      }
+      
+      socket.emit('typing', {
+        receiverId,
+        isTyping: false
+      });
+      
+      statusDiv.textContent = 'Status: Connected';
+    });
+
+    // Mark messages as read
+    markReadBtn.addEventListener('click', () => {
+      const senderId = receiverInput.value.trim();
+      if (!senderId) {
+        alert('Please enter sender ID (same as receiver for testing)');
+        return;
+      }
+      
+      socket.emit('markAsRead', { senderId });
+      addMessage('System', `Marked messages from ${senderId} as read`);
+    });
+
+    // Helper to add message to the UI
+    function addMessage(sender, content, type = '') {
+      const messageEl = document.createElement('div');
+      messageEl.className = `message ${type}`;
+      messageEl.textContent = `${sender}: ${content}`;
+      messagesDiv.appendChild(messageEl);
+      messagesDiv.scrollTop = messagesDiv.scrollHeight;
+    }
+
+    // Reset UI on disconnect
+    function reset() {
+      connectBtn.disabled = false;
+      disconnectBtn.disabled = true;
+      sendBtn.disabled = true;
+      messageForm.style.display = 'none';
+      statusDiv.textContent = 'Status: Disconnected';
+    }
+  </script>
+</body>
+</html> 

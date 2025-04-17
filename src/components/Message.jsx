@@ -8,16 +8,19 @@ import MessageSkeleton from "./skeletons/MessageSkeleton";
 
 // Direct message component for friend chats
 const DirectMessage = ({ message, firstInGroup }) => {
-  const { authUser } = useAuthStore();
-  const { deleteMessage,isMessagesLoading } = useChatStore();
+  const { deleteMessage, isMessagesLoading } = useChatStore();
   const [imageViewer, setImageViewer] = useState(false);
 
-  // Check if current user is the sender
-  const isCurrentUser =
-    message.senderId === authUser?._id ||
-    message.senderId?._id === authUser?._id ||
-    message.senderId === authUser?.id ||
-    message.senderId?._id === authUser?.id;
+  // Use the isSentByMe property set in useChatStore processing
+  // This ensures proper consistency with how messages are processed
+  const isCurrentUser = message.isSentByMe === true;
+  
+  console.log("DirectMessage rendering:", {
+    messageId: message._id,
+    isCurrentUser,
+    isSentByMe: message.isSentByMe,
+    content: message.content
+  });
 
   // Handle delete direct message
   const handleDeleteMessage = async () => {
@@ -43,13 +46,13 @@ const DirectMessage = ({ message, firstInGroup }) => {
   return (
     <div
       id={`message-${message._id}`}
-      className="group flex items-start gap-2 px-4 py-1 hover:bg-base-200/50 transition-colors flex-row"
+      className={`group flex items-start gap-2 px-4 py-1 hover:bg-base-200/50 transition-colors ${
+        isCurrentUser ? "flex-row-reverse justify-start" : "flex-row"
+      }`}
     >
-      <div
-        className={`flex flex-col max-w-[75%] ${
-          isCurrentUser ? "ml-auto" : ""
-        }`}
-      >
+     
+
+      <div className={`flex flex-col max-w-[75%] `}>
         {/* Timestamp for messages */}
         {firstInGroup && (
           <div
@@ -57,6 +60,7 @@ const DirectMessage = ({ message, firstInGroup }) => {
               isCurrentUser ? "justify-end" : ""
             }`}
           >
+          
             <time className="text-xs text-base-content/50">
               {formatMessageTime(message.createdAt)}
             </time>
@@ -68,7 +72,7 @@ const DirectMessage = ({ message, firstInGroup }) => {
           {/* Content Bubble */}
           {message.content && (
             <div 
-              className={`rounded-2xl px-4 py-2 text-sm ${
+              className={`rounded-2xl px-4 py-2 text-sm break-words w-full ${
                 isCurrentUser
                   ? `bg-primary text-primary-content ${
                       firstInGroup ? "rounded-tr-none" : ""
@@ -441,6 +445,15 @@ const ChannelMessage = ({ message, firstInGroup }) => {
 };
 
 const Message = ({ message, activeNavItem, firstInGroup }) => {
+  // Log message details to debug
+  console.log("Message component rendering:", {
+    id: message._id,
+    content: message.content,
+    sender: message.sender?.username || message.userId?.username,
+    isSentByMe: message.isSentByMe,
+    activeNavItem
+  });
+  
   return activeNavItem === "workSpace" ? (
     <ChannelMessage message={message} firstInGroup={firstInGroup} />
   ) : (

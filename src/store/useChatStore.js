@@ -15,6 +15,7 @@ export const useChatStore = create((set, get) => ({
   searchResults: [],
   searchQuery: "",
   searchPagination: null,
+  typingIndicators: {}, // Track which users are typing
   
   getMessages: async (channelId) => {
     if (!channelId) return;
@@ -478,5 +479,139 @@ export const useChatStore = create((set, get) => ({
     });
   },
   
-  setSelectedFriend: (selectedFriend) => set({ selectedFriend }),
+  setSelectedFriend: (friend) => {
+    set({ selectedFriend: friend });
+  },
+  
+  // Add a direct message from socket or API
+  addDirectMessage: (messageData) => {
+    console.log("Adding direct message to store:", messageData);
+    
+    if (!messageData) {
+      console.error("Invalid message data received");
+      return;
+    }
+    
+    // Get the current direct messages and auth info
+    const { directMessages, selectedFriend } = get();
+    const authUser = window.authUser || JSON.parse(localStorage.getItem('auth-store'))?.state?.authUser;
+    
+    if (!authUser) {
+      console.error("Cannot add message: No authenticated user found");
+      return;
+    }
+    
+    // Get the sender ID from the message
+    const senderId = messageData.sender?.userId || messageData.senderId;
+    const isFromCurrentUser = senderId === authUser._id;
+    
+    console.log("Message sender check:", { 
+      senderId, 
+      currentUserId: authUser._id, 
+      isFromCurrentUser,
+      selectedFriendId: selectedFriend?.friendId
+    });
+    
+    // Only add messages that are related to the current chat
+    const isRelevantToCurrentChat = selectedFriend && (
+      senderId === selectedFriend.friendId || // Message from selected friend
+      (isFromCurrentUser && messageData.receiverId === selectedFriend.friendId) // Message from current user to selected friend
+    );
+    
+    if (!isRelevantToCurrentChat && selectedFriend) {
+      console.log("Message not relevant to current chat, skipping");
+      return;
+    }
+    
+    // Create a standardized message object
+    const newMessage = {
+      _id: messageData._id || messageData.id || `temp-${Date.now()}`,
+      content: messageData.message || messageData.content,
+      sender: isFromCurrentUser ? {
+        userId: authUser._id,
+        username: authUser.username,
+        avatar: authUser.avatar
+      } : messageData.sender,
+      senderId: senderId,
+      receiverId: isFromCurrentUser ? messageData.receiverId || selectedFriend?.friendId : authUser._id,
+      createdAt: messageData.timestamp || messageData.createdAt || new Date().toISOString(),
+      updatedAt: messageData.updatedAt || new Date().toISOString(),
+      isCode: messageData.isCode || false,
+      language: messageData.language || "text",
+      isSentByMe: isFromCurrentUser
+    };
+    
+    // Check if the message already exists in the chat store
+    const messageExists = directMessages.some(msg => 
+      (msg._id && msg._id === newMessage._id) || 
+      (msg.content === newMessage.content && 
+       msg.senderId === newMessage.senderId && 
+       Math.abs(new Date(msg.createdAt) - new Date(newMessage.createdAt)) < 1000)
+    );
+    
+    if (messageExists) {
+      console.log("Message already exists in store, skipping", newMessage);
+      return;
+    }
+    
+    console.log("Adding new message to direct messages:", newMessage);
+    
+    // Add the message to the store
+    set({
+      directMessages: [...directMessages, newMessage]
+    });
+  },
+  
+  // Method to handle typing indicators
+  setTypingIndicator: (data) => {
+    const { senderId, isTyping } = data;
+    
+    set((state) => ({
+      typingIndicators: {
+        ...state.typingIndicators,
+        [senderId]: isTyping ? Date.now() : null
+      }
+    }));
+    
+    // Clear typing indicator after a delay
+    if (isTyping) {
+      setTimeout(() => {
+        set((state) => {
+          const typingTime = state.typingIndicators[senderId];
+          // Only clear if it hasn't been updated in the last 3 seconds
+          if (typingTime && Date.now() - typingTime > 3000) {
+            return {
+              typingIndicators: {
+                ...state.typingIndicators,
+                [senderId]: null
+              }
+            };
+          }
+          return state;
+        });
+      }, 3500);
+    }
+  },
+  
+  // Method to update read status
+  updateReadStatus: (data) => {
+    const { directMessages } = get();
+    
+    // Update the read status of messages
+    const updatedMessages = directMessages.map(message => {
+      if (
+        message.senderId === data.senderId && 
+        message.receiverId === data.receiverId &&
+        !message.readAt
+      ) {
+        return {
+          ...message,
+          readAt: data.readAt
+        };
+      }
+      return message;
+    });
+    
+    set({ directMessages: updatedMessages });
+  },
 }));
