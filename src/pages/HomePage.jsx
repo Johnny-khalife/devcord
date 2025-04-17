@@ -336,6 +336,7 @@ const HomePage = () => {
                   activeWorkspace={activeWorkspace}
                   activeChannel={activeChannel}
                   selectedWorkspace={selectedWorkspace}
+                  isMobile={isMobile}
                 />
               )}
             </>

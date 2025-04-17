@@ -6,15 +6,12 @@ import {
   Menu,
   Newspaper,
 } from "lucide-react";
-import { useWorkspaceStore } from "../store/useWorkspaceStore";
 import { useChatStore } from "../store/useChatStore";
 import { useState, useEffect } from "react";
 
 const Sidebar = ({ activeNavItem, setActiveNavItem }) => {
-  const { selectedWorkspace } = useWorkspaceStore();
   const { setSelectedFriend } = useChatStore();
   const [isMobile, setIsMobile] = useState(false);
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
   
   // Check if we're on a mobile device
   useEffect(() => {
@@ -36,40 +33,19 @@ const Sidebar = ({ activeNavItem, setActiveNavItem }) => {
     // Reset the selected friend when switching to workspace view
     setSelectedFriend(null);
     setActiveNavItem("workSpace");
-    if (isMobile) setIsMenuOpen(false);
   };
   
   const userChatPage = () => {
     setActiveNavItem("users");
     // Don't reset selectedFriend here, let it be handled by the UserFriends component
-    if (isMobile) setIsMenuOpen(false);
   };
 
   const jobsPage = () => {
     setSelectedFriend(null);
     setActiveNavItem("jobs");
-    if (isMobile) setIsMenuOpen(false);
   };
 
-  const toggleMenu = () => {
-    setIsMenuOpen(!isMenuOpen);
-  };
-
-  // If on mobile and menu is closed, only show toggle button
-  if (isMobile && !isMenuOpen) {
-    return (
-      <div className="fixed bottom-4 left-4 z-50">
-        <button 
-          onClick={toggleMenu} 
-          className="p-3 bg-primary rounded-full shadow-lg"
-        >
-          <Menu className="w-6 h-6 text-primary-content" />
-        </button>
-      </div>
-    );
-  }
-
-  // Full sidebar for desktop or mobile with open menu
+  // Always show the navigation bar
   return (
     <div className={`${isMobile ? 'fixed bottom-0 left-0 w-full z-40 flex items-center justify-around p-2 bg-base-300 shadow-lg' : 'w-16 bg-base-300 h-full flex flex-col items-center py-4'}`}>
       {/* App logo - only show on desktop */}
@@ -121,16 +97,6 @@ const Sidebar = ({ activeNavItem, setActiveNavItem }) => {
             }`}
           />
         </button>
-        
-        {/* Close menu button - only on mobile */}
-        {isMobile && (
-          <button
-            className="p-2 flex items-center justify-center"
-            onClick={toggleMenu}
-          >
-            <Menu className="w-5 h-5" />
-          </button>
-        )}
       </div>
     </div>
   );

@@ -14,7 +14,7 @@ import MessageSkeleton from "./skeletons/MessageSkeleton";
 // Common emoji reactions
 const COMMON_EMOJIS = ["👍", "❤️", "😂", "😮", "😢", "👏", "🔥", "🎉", "👎", "🤔"];
 
-const ChatBox = ({ activeNavItem }) => {
+const ChatBox = ({ activeNavItem, isMobile }) => {
   const messageEndRef = useRef(null);
   const { authUser } = useAuthStore();
   const [showChat, setShowChat] = useState(true);
@@ -43,6 +43,22 @@ const ChatBox = ({ activeNavItem }) => {
     }
   }, [selectedFriend, activeNavItem]);
 
+  // Add this new useEffect to handle mobile scrolling
+  useEffect(() => {
+    if (isMobile && showChat && selectedFriend) {
+      // Ensure the scrollable area is accessible on mobile
+      const chatArea = document.querySelector('.mobile-scroll');
+      if (chatArea) {
+        // Force layout recalculation
+        chatArea.style.display = 'none';
+        setTimeout(() => {
+          chatArea.style.display = 'block';
+          messageEndRef.current?.scrollIntoView({ behavior: "auto" });
+        }, 50);
+      }
+    }
+  }, [isMobile, showChat, selectedFriend]);
+
   useEffect(() => {
     if (activeNavItem === "workSpace" && selectedWorkspace?._id) {
       getMessages(selectedWorkspace._id);
@@ -57,6 +73,21 @@ const ChatBox = ({ activeNavItem }) => {
     getDirectMessages,
     showChat
   ]);
+
+  useEffect(() => {
+    const handleResize = () => {
+      if (showChat && ((activeNavItem === 'users' && selectedFriend) || (activeNavItem === 'workSpace' && selectedWorkspace))) {
+        setTimeout(() => {
+          messageEndRef.current?.scrollIntoView({ behavior: "auto" });
+        }, 100);
+      }
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => {
+      window.removeEventListener('resize', handleResize);
+    };
+  }, [selectedFriend, selectedWorkspace, activeNavItem, showChat]);
 
   useEffect(() => {
     setTimeout(() => {
@@ -162,7 +193,7 @@ const ChatBox = ({ activeNavItem }) => {
   const showInput = shouldShowChatContent;
 
   return (
-    <div className="h-screen flex flex-col bg-base-100 border-l border-base-300 overflow-hidden pt-16">
+    <div className={`h-screen flex flex-col bg-base-100 border-l border-base-300 overflow-hidden pt-16 ${isMobile ? "fixed inset-0 max-h-screen" : ""}`}>
       {/* Header Section (Not Sticky) */}
       <div className="flex-shrink-0 bg-base-200 p-3 border-b border-base-300 shadow-sm">
         <div className="flex items-center justify-between">
@@ -206,15 +237,32 @@ const ChatBox = ({ activeNavItem }) => {
       </div>
 
       {/* Scrollable Messages Area or Placeholder */}
-      <div className="flex-1 overflow-y-auto px-4 py-4 space-y-1 bg-base-100 touch-auto">
+      <div 
+        className={`
+          flex-1 overflow-y-auto px-4 py-4 space-y-1 bg-base-100 
+          ${isMobile ? "h-[calc(100vh-10rem)] mobile-scroll mobile-scrollable" : "touch-auto"}
+        `}
+        style={isMobile ? { WebkitOverflowScrolling: 'touch' } : {}}
+      >
         {mainContent}
       </div>
 
       {/* Message Input Section (Sticky Bottom) - Render conditionally */}
       {showInput && (
-        <div className="flex-shrink-0 p-3 bg-base-200 border-t border-base-300 sticky bottom-0 z-10">
+        <div className={`flex-shrink-0 p-3 bg-base-200 border-t border-base-300 sticky bottom-0 z-10 ${isMobile ? 'pb-16' : ''}`}>
           <MessageInput activeNavItem={activeNavItem} />
         </div>
+      )}
+
+      {/* Add mobile scroll style */}
+      {isMobile && (
+        <style jsx="true">{`
+          .mobile-scroll {
+            -webkit-overflow-scrolling: touch;
+            overscroll-behavior: contain;
+            height: calc(100vh - 10rem); /* Account for header and input */
+          }
+        `}</style>
       )}
     </div>
   );

@@ -1,3 +1,24 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Add global styles for better mobile scrolling */
+@layer base {
+  html, body {
+    height: 100%;
+    overflow: hidden;
+    position: relative;
+  }
+
+  /* Improve touch scrolling on mobile */
+  .overflow-y-auto, .overflow-x-auto, .overflow-auto {
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  /* Custom class for mobile scrollable areas */
+  .mobile-scrollable {
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+    touch-action: pan-y;
+  }
+}
