@@ -864,23 +864,9 @@ const WorkSpace = ({
     );
   }
 
-  // Mobile view toggle for workspace sidebar
-  const MobileWorkspaceToggle = () => {
-    if (!isMobile) return null;
-    
-    return (
-      <button 
-        onClick={toggleWorkspaceSidebar}
-        className="fixed top-20 left-4 z-40 p-2 bg-primary text-primary-content rounded-md shadow-md"
-      >
-        {isWorkspaceSidebarOpen ? <ChevronDown /> : <Hash />}
-      </button>
-    );
-  };
-
   return (
     <>
-      <MobileWorkspaceToggle />
+     
       <div
         className={`
         ${isMobile ? "fixed left-0 top-16 bottom-0 z-30" : "w-72 h-[calc(100vh-4rem)] sticky top-16"} 
@@ -896,7 +882,7 @@ const WorkSpace = ({
         <div className="p-4 border-b border-base-300 flex-shrink-0">
           {/* Title and Create Workspace */}
           <div className="flex justify-between items-center mb-4">
-            <h2 className={`font-bold text-lg ${isMobile ? "pl-14" : ""}`}>
+            <h2 className="font-bold text-lg ">
               {activeNavItem === "workspaces"
                 ? "Workspaces"
                 : activeNavItem === "workSpace"

@@ -1,7 +1,7 @@
 // import React, { useEffect } from "react";
 import { useChatStore } from "../store/useChatStore";
 import { useEffect, useRef, useState } from "react";
-import { Loader2, X } from "lucide-react";
+import { Loader2, X,Hash } from "lucide-react";
 import Message from "./Message";
 import MessageInput from "./MessageInput";
 import MessageSearch from "./MessageSearch";
@@ -198,7 +198,7 @@ const ChatBox = ({ activeNavItem, isMobile }) => {
       <div className="flex-shrink-0 bg-base-200 p-3 border-b border-base-300 shadow-sm">
         <div className="flex items-center justify-between">
           {/* Left side (Info/Title) */}
-          <div className={`flex items-center gap-3 min-w-0 ${isMobile ? "pl-16" : ""}`}>
+          <div className="flex items-center gap-3 min-w-0 ">
             {isFriendChatVisible ? (
               <div className="avatar flex-shrink-0">
                 <div className="w-9 h-9 rounded-full ring-1 ring-base-300">
@@ -212,7 +212,7 @@ const ChatBox = ({ activeNavItem, isMobile }) => {
                   />
                 </div>
               </div>
-            ) : null}
+            ) : <Hash/>}
             <h2 className="text-lg font-semibold truncate">{renderTitle()}</h2>
           </div>
           {/* Right side (Actions) */}

@@ -8,6 +8,7 @@ const MessageInput = ({ activeNavItem }) => {
   const [text, setText] = useState("");
   const [imagePreview, setImagePreview] = useState(null);
   const fileInputRef = useRef(null);
+  const inputRef = useRef(null);
   const { sendMessage, sendDirectMessage, selectedFriend } = useChatStore();
   const { selectedWorkspace } = useWorkspaceStore();
   
@@ -33,6 +34,13 @@ const MessageInput = ({ activeNavItem }) => {
       prevWorkspaceIdRef.current = currentWorkspaceId;
     }
   }, [selectedFriend?.friendId, selectedWorkspace?._id]);
+
+  // Focus the input field when component mounts
+  useEffect(() => {
+    if (inputRef.current) {
+      inputRef.current.focus();
+    }
+  }, []);
 
   const handleImageChange = (e) => {
     const file = e.target.files[0];
@@ -85,8 +93,24 @@ const MessageInput = ({ activeNavItem }) => {
       setText("");
       setImagePreview(null);
       if (fileInputRef.current) fileInputRef.current.value = "";
+      
+      // Focus the input field after sending the message
+      setTimeout(() => {
+        if (inputRef.current) {
+          inputRef.current.focus();
+        }
+      }, 0);
     } catch (error) {
       console.error("Failed to send message:", error);
+    }
+  };
+
+  // Handle key press in the input field
+  const handleKeyPress = (e) => {
+    // Send message on Enter press, but not on Shift+Enter (which allows for new lines)
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSendMessage(e);
     }
   };
 
@@ -120,6 +144,8 @@ const MessageInput = ({ activeNavItem }) => {
             placeholder="Type a message..."
             value={text}
             onChange={(e) => setText(e.target.value)}
+            onKeyDown={handleKeyPress}
+            ref={inputRef}
           />
           <input
             type="file"

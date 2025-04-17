@@ -196,20 +196,6 @@ const UserFriends = () => {
   // Loading state
   const isLoadingData = authLoading || friendLoading;
 
-  // Mobile toggle button for user friends sidebar
-  const MobileUserFriendsToggle = () => {
-    if (!isMobile) return null;
-
-    return (
-      <button
-        onClick={toggleUserFriendsSidebar}
-        className="fixed top-20 left-4 z-40 p-2 bg-primary text-primary-content rounded-md shadow-md"
-      >
-        {isUserFriendsSidebarOpen ? <X /> : <Users />}
-      </button>
-    );
-  };
-
   // Empty state if no friends and no friend requests
   if (
     friends.length === 0 &&
@@ -219,7 +205,7 @@ const UserFriends = () => {
   ) {
     return (
       <>
-        <MobileUserFriendsToggle />
+       
         <div
           className={`
           ${isMobile ? "fixed left-0 top-16 bottom-0 z-30" : "w-72"} 
@@ -265,7 +251,7 @@ const UserFriends = () => {
 
   return (
     <>
-      <MobileUserFriendsToggle />
+      
       <div
         className={`
         ${isMobile ? "fixed left-0 top-16 bottom-0 z-30" : "w-72"} 
@@ -281,7 +267,7 @@ const UserFriends = () => {
         {/* Header with title and search - fixed at top */}
         <div className="p-4 border-b border-base-300">
           <div className="flex justify-between items-center mb-4">
-            <h2 className={`font-bold text-lg ${isMobile ? "pl-14" : ""}`}>Friends</h2>
+            <h2 className="font-bold text-lg" >Friends</h2>
             <div className="flex items-center relative gap-2">
               <div className="relative">
                 <button

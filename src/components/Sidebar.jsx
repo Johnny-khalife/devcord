@@ -30,19 +30,34 @@ const Sidebar = ({ activeNavItem, setActiveNavItem }) => {
   }, []);
   
   const workSpacePage = () => {
-    // Reset the selected friend when switching to workspace view
-    setSelectedFriend(null);
-    setActiveNavItem("workSpace");
+    if (isMobile && activeNavItem === "workSpace") {
+      // If already on workspace page, toggle the workspace sidebar
+      window.dispatchEvent(new CustomEvent('toggle-workspace-sidebar'));
+    } else {
+      // Reset the selected friend when switching to workspace view
+      setSelectedFriend(null);
+      setActiveNavItem("workSpace");
+    }
   };
   
   const userChatPage = () => {
-    setActiveNavItem("users");
-    // Don't reset selectedFriend here, let it be handled by the UserFriends component
+    if (isMobile && activeNavItem === "users") {
+      // If already on users page, toggle the user friends sidebar
+      window.dispatchEvent(new CustomEvent('toggle-user-friends-sidebar'));
+    } else {
+      setActiveNavItem("users");
+      // Don't reset selectedFriend here, let it be handled by the UserFriends component
+    }
   };
 
   const jobsPage = () => {
-    setSelectedFriend(null);
-    setActiveNavItem("jobs");
+    if (isMobile && activeNavItem === "jobs") {
+      // If already on jobs page, toggle any relevant sidebar
+      // Add jobs toggle event if needed
+    } else {
+      setSelectedFriend(null);
+      setActiveNavItem("jobs");
+    }
   };
 
   // Always show the navigation bar
