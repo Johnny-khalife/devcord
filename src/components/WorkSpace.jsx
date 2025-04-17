@@ -896,7 +896,7 @@ const WorkSpace = ({
         <div className="p-4 border-b border-base-300 flex-shrink-0">
           {/* Title and Create Workspace */}
           <div className="flex justify-between items-center mb-4">
-            <h2 className="font-bold text-lg">
+            <h2 className={`font-bold text-lg ${isMobile ? "pl-14" : ""}`}>
               {activeNavItem === "workspaces"
                 ? "Workspaces"
                 : activeNavItem === "workSpace"

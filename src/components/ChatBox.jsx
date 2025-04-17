@@ -198,7 +198,7 @@ const ChatBox = ({ activeNavItem, isMobile }) => {
       <div className="flex-shrink-0 bg-base-200 p-3 border-b border-base-300 shadow-sm">
         <div className="flex items-center justify-between">
           {/* Left side (Info/Title) */}
-          <div className="flex items-center gap-3 min-w-0">
+          <div className={`flex items-center gap-3 min-w-0 ${isMobile ? "pl-16" : ""}`}>
             {isFriendChatVisible ? (
               <div className="avatar flex-shrink-0">
                 <div className="w-9 h-9 rounded-full ring-1 ring-base-300">

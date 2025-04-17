@@ -281,7 +281,7 @@ const UserFriends = () => {
         {/* Header with title and search - fixed at top */}
         <div className="p-4 border-b border-base-300">
           <div className="flex justify-between items-center mb-4">
-            <h2 className="font-bold text-lg">Friends</h2>
+            <h2 className={`font-bold text-lg ${isMobile ? "pl-14" : ""}`}>Friends</h2>
             <div className="flex items-center relative gap-2">
               <div className="relative">
                 <button
