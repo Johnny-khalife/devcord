@@ -1,6 +1,18 @@
 import { useState, useRef, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { UserPlus, Users, MessageSquare, X, Menu, MoreVertical, ShieldAlert, ShieldCheck, User, AlertCircle, Ban } from "lucide-react";
+import {
+  UserPlus,
+  Users,
+  MessageSquare,
+  X,
+  Menu,
+  MoreVertical,
+  ShieldAlert,
+  ShieldCheck,
+  User,
+  AlertCircle,
+  Ban,
+} from "lucide-react";
 import { useAuthStore } from "../store/useAuthStore";
 import { useFriendStore } from "../store/useFriendsStore";
 import { useChatStore } from "../store/useChatStore";
@@ -18,11 +30,12 @@ const UserFriends = () => {
   const [userToBlock, setUserToBlock] = useState(null);
   const { setSelectedFriend } = useChatStore();
   const navigate = useNavigate();
-  
+
   // Responsive state
   const [isMobile, setIsMobile] = useState(false);
-  const [isUserFriendsSidebarOpen, setIsUserFriendsSidebarOpen] = useState(true);
-  
+  const [isUserFriendsSidebarOpen, setIsUserFriendsSidebarOpen] =
+    useState(true);
+
   // Check screen size
   useEffect(() => {
     const checkIfMobile = () => {
@@ -30,37 +43,37 @@ const UserFriends = () => {
       setIsMobile(mobile);
       setIsUserFriendsSidebarOpen(!mobile); // Close sidebar by default on mobile
     };
-    
+
     // Initial check
     checkIfMobile();
-    
+
     // Add listener
-    window.addEventListener('resize', checkIfMobile);
-    
+    window.addEventListener("resize", checkIfMobile);
+
     // Listen for custom toggle event from ChatHeader
     const handleToggleSidebar = () => {
-      setIsUserFriendsSidebarOpen(prev => !prev);
+      setIsUserFriendsSidebarOpen((prev) => !prev);
     };
-    
-    window.addEventListener('toggle-user-friends-sidebar', handleToggleSidebar);
-    
+
+    window.addEventListener("toggle-user-friends-sidebar", handleToggleSidebar);
+
     // Cleanup
     return () => {
-      window.removeEventListener('resize', checkIfMobile);
-      window.removeEventListener('toggle-user-friends-sidebar', handleToggleSidebar);
+      window.removeEventListener("resize", checkIfMobile);
+      window.removeEventListener(
+        "toggle-user-friends-sidebar",
+        handleToggleSidebar
+      );
     };
   }, []);
-  
+
   // Toggle sidebar
   const toggleUserFriendsSidebar = () => {
     setIsUserFriendsSidebarOpen(!isUserFriendsSidebarOpen);
   };
-  
+
   // Get auth store functions and state
-  const {
-    isLoading: authLoading,
-    onlineUsers,
-  } = useAuthStore();
+  const { isLoading: authLoading, onlineUsers } = useAuthStore();
 
   // Get friend store functions and state
   const {
@@ -83,7 +96,10 @@ const UserFriends = () => {
   // Close friend actions dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
-      if (friendActionsRef.current && !friendActionsRef.current.contains(event.target)) {
+      if (
+        friendActionsRef.current &&
+        !friendActionsRef.current.contains(event.target)
+      ) {
         setShowFriendActions(null);
       }
     };
@@ -103,12 +119,11 @@ const UserFriends = () => {
     };
 
     loadData();
-    
+
     // Reset selectedFriend when the component mounts
     // This ensures that when switching back to the Friends view, no friend is pre-selected
     setSelectedFriend(null);
     setActiveFriend(null);
-    
   }, [getFriendsList, getFriendRequests, getBlockedUsers, setSelectedFriend]);
 
   // Handler functions
@@ -133,7 +148,7 @@ const UserFriends = () => {
     setShowBlockModal(true);
     setShowFriendActions(null);
   };
-  
+
   const confirmBlock = async () => {
     if (userToBlock) {
       await blockUser(userToBlock.id);
@@ -141,7 +156,7 @@ const UserFriends = () => {
       setUserToBlock(null);
     }
   };
-  
+
   const cancelBlock = () => {
     setShowBlockModal(false);
     setUserToBlock(null);
@@ -184,9 +199,9 @@ const UserFriends = () => {
   // Mobile toggle button for user friends sidebar
   const MobileUserFriendsToggle = () => {
     if (!isMobile) return null;
-    
+
     return (
-      <button 
+      <button
         onClick={toggleUserFriendsSidebar}
         className="fixed top-20 left-4 z-40 p-2 bg-primary text-primary-content rounded-md shadow-md"
       >
@@ -196,16 +211,27 @@ const UserFriends = () => {
   };
 
   // Empty state if no friends and no friend requests
-  if (friends.length === 0 && friendRequests.length === 0 && blockedUsers.length === 0 && !isLoadingData) {
+  if (
+    friends.length === 0 &&
+    friendRequests.length === 0 &&
+    blockedUsers.length === 0 &&
+    !isLoadingData
+  ) {
     return (
       <>
         <MobileUserFriendsToggle />
-        <div className={`
-          ${isMobile ? 'fixed left-0 top-16 bottom-0 z-30' : 'w-72'} 
-          ${isMobile && !isUserFriendsSidebarOpen ? 'translate-x-[-100%]' : 'translate-x-0'}
+        <div
+          className={`
+          ${isMobile ? "fixed left-0 top-16 bottom-0 z-30" : "w-72"} 
+          ${
+            isMobile && !isUserFriendsSidebarOpen
+              ? "translate-x-[-100%]"
+              : "translate-x-0"
+          }
           bg-base-200 h-full border-r border-base-300 flex flex-col items-center justify-center p-4
           transition-transform duration-300 ease-in-out
-        `}>
+        `}
+        >
           <div className="text-center mb-4">
             <Users className="w-12 h-12 mx-auto mb-2 opacity-50" />
             <h3 className="font-medium text-lg">No Friends Yet</h3>
@@ -227,10 +253,10 @@ const UserFriends = () => {
             </button>
           </div>
         </div>
-        
+
         {/* Friend search portal */}
-        <SearchFriendsPortal 
-          isOpen={showFriendSearchPortal} 
+        <SearchFriendsPortal
+          isOpen={showFriendSearchPortal}
           onClose={() => setShowFriendSearchPortal(false)}
         />
       </>
@@ -240,12 +266,18 @@ const UserFriends = () => {
   return (
     <>
       <MobileUserFriendsToggle />
-      <div className={`
-        ${isMobile ? 'fixed left-0 top-16 bottom-0 z-30' : 'w-72'} 
-        ${isMobile && !isUserFriendsSidebarOpen ? 'translate-x-[-100%]' : 'translate-x-0'}
+      <div
+        className={`
+        ${isMobile ? "fixed left-0 top-16 bottom-0 z-30" : "w-72"} 
+        ${
+          isMobile && !isUserFriendsSidebarOpen
+            ? "translate-x-[-100%]"
+            : "translate-x-0"
+        }
         bg-base-200 h-full border-r border-base-300 flex flex-col
         transition-transform duration-300 ease-in-out
-      `}>
+      `}
+      >
         {/* Header with title and search - fixed at top */}
         <div className="p-4 border-b border-base-300">
           <div className="flex justify-between items-center mb-4">
@@ -267,7 +299,7 @@ const UserFriends = () => {
                   )}
                 </button>
               </div>
-              
+
               {/* Blocked Users Button */}
               <div className="relative">
                 <button
@@ -348,7 +380,7 @@ const UserFriends = () => {
                         />
                       </div>
                       <span className="text-sm">{friend.username}</span>
-                      
+
                       <div>
                         {onlineUsers.includes(friend.friendId) && (
                           <span
@@ -365,9 +397,9 @@ const UserFriends = () => {
                       >
                         <MoreVertical size={16} />
                       </button>
-                      
+
                       {showFriendActions === friend.friendId && (
-                        <div 
+                        <div
                           className="absolute right-0 mt-1 w-40 bg-base-100 shadow-lg rounded-md z-50 py-1"
                           ref={friendActionsRef}
                         >
@@ -387,12 +419,19 @@ const UserFriends = () => {
                           </button>
                           <button
                             className="w-full px-3 py-2 text-sm text-left hover:bg-base-200 flex items-center gap-2 text-red-500"
-                            onClick={() => handleBlockFriend(friend.friendId, friend.username)}
+                            onClick={() =>
+                              handleBlockFriend(
+                                friend.friendId,
+                                friend.username
+                              )
+                            }
                           >
                             <ShieldAlert size={14} />
                             <div>
                               <span>Block User</span>
-                              <p className="text-xs text-gray-500">Prevents all interaction</p>
+                              <p className="text-xs text-gray-500">
+                                Prevents all interaction
+                              </p>
                             </div>
                           </button>
                         </div>
@@ -401,39 +440,17 @@ const UserFriends = () => {
                   </div>
                 ))}
               </div>
-
-              {/* Direct Messages section */}
-              {friends.length > 0 && (
-                <div className="space-y-1 mt-4 border-t border-base-300 pt-4 pb-4">
-                  <div className="px-2 py-1 text-xs font-semibold text-base-content/70">
-                    DIRECT MESSAGES
-                  </div>
-                  {friends.map((friend) => (
-                    <Link
-                      key={`dm-${friend.friendId}`}
-                      to={`/direct-messages/${friend.friendId}`}
-                      className="flex items-center gap-2 px-2 py-2 rounded-md hover:bg-base-300"
-                    >
-                      <div className="w-6 h-6 rounded-full bg-base-300 flex items-center justify-center">
-                        {friend.username.charAt(0).toUpperCase()}
-                      </div>
-                      <span className="text-sm">{friend.username}</span>
-                      <MessageSquare className="ml-auto w-4 h-4 text-base-content/50" />
-                    </Link>
-                  ))}
-                </div>
-              )}
             </div>
           </div>
         )}
       </div>
 
       {/* Friend search portal */}
-      <SearchFriendsPortal 
-        isOpen={showFriendSearchPortal} 
+      <SearchFriendsPortal
+        isOpen={showFriendSearchPortal}
         onClose={() => setShowFriendSearchPortal(false)}
       />
-      
+
       {/* Block User Modal */}
       {showBlockModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
@@ -442,29 +459,35 @@ const UserFriends = () => {
               <div className="p-2 bg-red-100 rounded-full">
                 <AlertCircle size={20} className="text-red-600" />
               </div>
-              <h3 className="text-lg font-semibold">Block {userToBlock?.username}</h3>
+              <h3 className="text-lg font-semibold">
+                Block {userToBlock?.username}
+              </h3>
             </div>
-            
+
             <div className="p-6">
               <p className="mb-4 text-sm text-base-content/80">
                 Blocking this user will:
               </p>
-              
+
               <ul className="mb-6 space-y-2 text-sm text-base-content/70 pl-5">
                 <li className="list-disc">Prevent them from messaging you</li>
-                <li className="list-disc">Remove them from your friends list</li>
-                <li className="list-disc">Cancel any pending friend requests</li>
+                <li className="list-disc">
+                  Remove them from your friends list
+                </li>
+                <li className="list-disc">
+                  Cancel any pending friend requests
+                </li>
                 <li className="list-disc">Hide your activity from them</li>
               </ul>
-              
+
               <div className="flex justify-end gap-3">
-                <button 
+                <button
                   onClick={cancelBlock}
                   className="px-4 py-2 rounded-md bg-base-200 hover:bg-base-300 text-sm font-medium"
                 >
                   Cancel
                 </button>
-                <button 
+                <button
                   onClick={confirmBlock}
                   className="px-4 py-2 rounded-md bg-red-600 hover:bg-red-700 text-white text-sm font-medium"
                 >
@@ -475,7 +498,7 @@ const UserFriends = () => {
           </div>
         </div>
       )}
-      
+
       {/* Blocked Users Modal */}
       {showBlockedUsersModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
@@ -487,31 +510,40 @@ const UserFriends = () => {
                 </div>
                 <h3 className="text-lg font-semibold">Blocked Users</h3>
               </div>
-              <button 
+              <button
                 onClick={() => setShowBlockedUsersModal(false)}
                 className="p-1 hover:bg-base-200 rounded-full"
               >
                 <X size={20} />
               </button>
             </div>
-            
+
             <div className="p-6">
               {blockedUsers.length === 0 ? (
                 <div className="text-center py-8">
-                  <Ban size={40} className="mx-auto text-base-content/30 mb-3" />
-                  <p className="text-base-content/70">You haven't blocked any users</p>
+                  <Ban
+                    size={40}
+                    className="mx-auto text-base-content/30 mb-3"
+                  />
+                  <p className="text-base-content/70">
+                    You haven't blocked any users
+                  </p>
                 </div>
               ) : (
                 <>
                   <div className="bg-base-300/30 rounded-md p-3 mb-4">
                     <p className="text-xs text-base-content/70">
-                      Blocked users cannot message you, see your activity, or add you as a friend
+                      Blocked users cannot message you, see your activity, or
+                      add you as a friend
                     </p>
                   </div>
-                  
+
                   <div className="space-y-2 max-h-80 overflow-y-auto">
                     {blockedUsers.map((user) => (
-                      <div key={user.id} className="flex items-center bg-red-500/5 rounded-md border-l-2 border-red-500">
+                      <div
+                        key={user.id}
+                        className="flex items-center bg-red-500/5 rounded-md border-l-2 border-red-500"
+                      >
                         <div className="flex items-center gap-2 px-3 py-3 rounded-md flex-grow">
                           <div className="flex items-center justify-center relative">
                             <img
@@ -524,15 +556,21 @@ const UserFriends = () => {
                             </div>
                           </div>
                           <div>
-                            <span className="text-sm font-medium text-base-content/70 line-through">{user.username}</span>
+                            <span className="text-sm font-medium text-base-content/70 line-through">
+                              {user.username}
+                            </span>
                             {user.blockedAt && (
                               <p className="text-xs text-base-content/50">
-                                Blocked on {new Date(user.blockedAt).toLocaleDateString()}
+                                Blocked on{" "}
+                                {new Date(user.blockedAt).toLocaleDateString()}
                               </p>
                             )}
                           </div>
                         </div>
-                        <div className="tooltip tooltip-left" data-tip="Unblock this user">
+                        <div
+                          className="tooltip tooltip-left"
+                          data-tip="Unblock this user"
+                        >
                           <button
                             className="w-10 h-10 flex items-center justify-center hover:bg-base-300 rounded-full text-green-500 mr-2"
                             onClick={() => handleUnblockUser(user.id)}
