@@ -2,13 +2,15 @@ import { useState } from "react";
 import { useAuthStore } from "../store/useAuthStore";
 import { useChatStore } from "../store/useChatStore";
 import { formatMessageTime } from "../lib/utils";
-import { Trash2, SmilePlus, MoreVertical } from "lucide-react";
+import { Trash2, SmilePlus, MoreVertical, Maximize, Download } from "lucide-react";
 import toast from "react-hot-toast";
+import MessageSkeleton from "./skeletons/MessageSkeleton";
 
 // Direct message component for friend chats
 const DirectMessage = ({ message, firstInGroup }) => {
   const { authUser } = useAuthStore();
-  const { deleteMessage } = useChatStore();
+  const { deleteMessage,isMessagesLoading } = useChatStore();
+  const [imageViewer, setImageViewer] = useState(false);
 
   // Check if current user is the sender
   const isCurrentUser =
@@ -33,6 +35,10 @@ const DirectMessage = ({ message, firstInGroup }) => {
       );
     }
   };
+  
+  if (isMessagesLoading) {
+    return <MessageSkeleton/>
+  }
 
   return (
     <div
@@ -57,19 +63,57 @@ const DirectMessage = ({ message, firstInGroup }) => {
           </div>
         )}
 
-        {/* Bubble */}
-        <div className="relative group">
-          <div
-            className={`rounded-2xl px-4 py-2 text-sm ${
-              isCurrentUser
-                ? `bg-primary text-primary-content ${
-                    firstInGroup ? "rounded-tr-none" : ""
-                  }`
-                : `bg-base-300 ${firstInGroup ? "rounded-tl-none" : ""}`
-            }`}
-          >
-            {message.content}
-          </div>
+        {/* Combined message container for text and/or image */}
+        <div className={`relative group flex flex-col ${message.content && message.image ? "gap-[1px]" : ""}`}>
+          {/* Content Bubble */}
+          {message.content && (
+            <div 
+              className={`rounded-2xl px-4 py-2 text-sm ${
+                isCurrentUser
+                  ? `bg-primary text-primary-content ${
+                      firstInGroup ? "rounded-tr-none" : ""
+                    } ${message.image ? "rounded-b-none" : ""}`
+                  : `bg-base-300 ${firstInGroup ? "rounded-tl-none" : ""} ${message.image ? "rounded-b-none" : ""}`
+              }`}
+            >
+              {message.content}
+            </div>
+          )}
+
+          {/* Image (connected to text bubble if both exist) */}
+          {message.image && (
+            <div 
+              className={`relative group/image ${!message.content ? "mt-0" : ""}`}
+              style={{ marginTop: message.content ? "-1px" : "0" }}
+            >
+              <div 
+                className={`overflow-hidden shadow-md border-x border-b ${
+                  message.content 
+                    ? isCurrentUser 
+                      ? "border-primary/70 bg-primary/5 rounded-b-lg" 
+                      : "border-base-300/70 bg-base-300/5 rounded-b-lg" 
+                    : "border-t rounded-lg border-base-200 bg-transparent"
+                }`}
+              >
+                <img
+                  src={message.image}
+                  alt="Message attachment"
+                  className={`w-full max-h-64 object-cover hover:scale-[1.02] transition-transform cursor-pointer ${
+                    message.content ? "rounded-b-lg" : "rounded-lg"
+                  }`}
+                  onClick={() => setImageViewer(true)}
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent opacity-0 group-hover/image:opacity-100 transition-opacity flex items-end justify-between p-2">
+                  <button 
+                    className="btn btn-circle btn-xs bg-black/50 text-white hover:bg-black/70 border-none"
+                    onClick={() => setImageViewer(true)}
+                  >
+                    <Maximize size={12} />
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
 
           {isCurrentUser && (
             <div className="absolute right-0 top-0 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -82,6 +126,28 @@ const DirectMessage = ({ message, firstInGroup }) => {
             </div>
           )}
         </div>
+        
+        {/* Full screen image viewer */}
+        {imageViewer && message.image && (
+          <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4" onClick={() => setImageViewer(false)}>
+            <div className="relative max-w-4xl max-h-[90vh]">
+              <img 
+                src={message.image} 
+                alt="Message attachment" 
+                className="max-h-[90vh] max-w-full object-contain rounded-md" 
+              />
+              <button 
+                className="absolute top-2 right-2 btn btn-circle btn-sm bg-black/50 text-white hover:bg-black/70 border-none"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setImageViewer(false);
+                }}
+              >
+                ✕
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -90,6 +156,7 @@ const DirectMessage = ({ message, firstInGroup }) => {
 // Channel message component
 const ChannelMessage = ({ message, firstInGroup }) => {
   const [showEmojiMenu, setShowEmojiMenu] = useState(false);
+  const [imageViewer, setImageViewer] = useState(false);
   const { authUser } = useAuthStore();
   const { deleteMessage, reactToMessage, selectedWorkspace } = useChatStore();
 
@@ -231,25 +298,66 @@ const ChannelMessage = ({ message, firstInGroup }) => {
           </div>
         )}
 
-        <div className="relative group">
-          <div
-            className={`rounded-2xl px-4 py-2 text-sm ${
-              isCurrentUser
-                ? `bg-primary text-primary-content ${
-                    firstInGroup ? "rounded-tr-none" : ""
-                  }`
-                : `bg-base-300 ${firstInGroup ? "rounded-tl-none" : ""}`
-            }`}
-          >
-            {message.content}
-            {message.image && (
-              <img
-                src={message.image}
-                alt="Message attachment"
-                className="mt-2 rounded-lg max-h-64 object-contain"
-              />
-            )}
-          </div>
+        {/* Combined message container for text and/or image */}
+        <div className={`relative group flex flex-col ${message.content && message.image ? "gap-[1px]" : ""}`}>
+          {/* Content Bubble */}
+          {message.content && (
+            <div 
+              className={`rounded-2xl px-4 py-2 text-sm ${
+                isCurrentUser
+                  ? `bg-primary text-primary-content ${
+                      firstInGroup ? "rounded-tr-none" : ""
+                    } ${message.image ? "rounded-b-none" : ""}`
+                  : `bg-base-300 ${firstInGroup ? "rounded-tl-none" : ""} ${message.image ? "rounded-b-none" : ""}`
+              }`}
+            >
+              {message.content}
+            </div>
+          )}
+
+          {/* Image (connected to text bubble if both exist) */}
+          {message.image && (
+            <div 
+              className={`relative group/image ${!message.content ? "mt-0" : ""}`}
+              style={{ marginTop: message.content ? "-1px" : "0" }}
+            >
+              <div 
+                className={`overflow-hidden shadow-md border-x border-b ${
+                  message.content 
+                    ? isCurrentUser 
+                      ? "border-primary/70 bg-primary/5 rounded-b-lg" 
+                      : "border-base-300/70 bg-base-300/5 rounded-b-lg" 
+                    : "border-t rounded-lg border-base-200 bg-transparent"
+                }`}
+              >
+                <img
+                  src={message.image}
+                  alt="Message attachment"
+                  className={`w-full max-h-64 object-cover hover:scale-[1.02] transition-transform cursor-pointer ${
+                    message.content ? "rounded-b-lg" : "rounded-lg"
+                  }`}
+                  onClick={() => setImageViewer(true)}
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent opacity-0 group-hover/image:opacity-100 transition-opacity flex items-end justify-between p-2">
+                  <button 
+                    className="btn btn-circle btn-xs bg-black/50 text-white hover:bg-black/70 border-none"
+                    onClick={() => setImageViewer(true)}
+                  >
+                    <Maximize size={12} />
+                  </button>
+                  <a 
+                    href={message.image} 
+                    download 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="btn btn-circle btn-xs bg-black/50 text-white hover:bg-black/70 border-none"
+                  >
+                    <Download size={12} />
+                  </a>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Message actions */}
           <div className="absolute right-0 top-0 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
@@ -289,15 +397,35 @@ const ChannelMessage = ({ message, firstInGroup }) => {
           </div>
         </div>
 
+        {/* Full screen image viewer */}
+        {imageViewer && message.image && (
+          <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4" onClick={() => setImageViewer(false)}>
+            <div className="relative max-w-4xl max-h-[90vh]">
+              <img 
+                src={message.image} 
+                alt="Message attachment" 
+                className="max-h-[90vh] max-w-full object-contain rounded-md" 
+              />
+              <button 
+                className="absolute top-2 right-2 btn btn-circle btn-sm bg-black/50 text-white hover:bg-black/70 border-none"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setImageViewer(false);
+                }}
+              >
+                ✕
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Reactions display */}
         {message.reactions && message.reactions.length > 0 && (
           <div className="flex gap-1 mt-1 flex-wrap">
             {message.reactions.map((reaction, index) => (
               <button
                 key={`${reaction.emoji}-${index}`}
-                className={`btn btn-xs ${
-                  hasUserReacted(reaction) ? "btn-accent" : "btn-ghost"
-                }`}
+                className={`btn btn-xs btn-ghost `}
                 onClick={() => handleReaction(reaction.emoji)}
               >
                 {reaction.emoji} {reaction.users?.length || 0}
