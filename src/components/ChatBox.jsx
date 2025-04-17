@@ -1,7 +1,7 @@
 // import React, { useEffect } from "react";
 import { useChatStore } from "../store/useChatStore";
 import { useEffect, useRef, useState } from "react";
-import { Loader2, X,Hash } from "lucide-react";
+import { Loader2, X,Hash,Lock } from "lucide-react";
 import Message from "./Message";
 import MessageInput from "./MessageInput";
 import MessageSearch from "./MessageSearch";
@@ -105,7 +105,7 @@ const ChatBox = ({ activeNavItem, isMobile }) => {
   const sortedMessages = [...(messagesToDisplaySource || [])].sort((a, b) => {
     return new Date(a.createdAt) - new Date(b.createdAt);
   });
-
+console.log("selected workspace",selectedWorkspace)
   const renderTitle = () => {
     if (activeNavItem === "workSpace") {
       if (!selectedWorkspace) return "Select a workspace";
@@ -212,7 +212,7 @@ const ChatBox = ({ activeNavItem, isMobile }) => {
                   />
                 </div>
               </div>
-            ) : <Hash/>}
+            ) : !selectedWorkspace.isPrivate ? <Hash/>:<Lock/>}
             <h2 className="text-lg font-semibold truncate">{renderTitle()}</h2>
           </div>
           {/* Right side (Actions) */}
