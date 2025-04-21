@@ -63,7 +63,7 @@ export const useChatStore = create((set, get) => ({
          
         };
       });
-      console.log("directMessages", get().directMessages);
+      console.log("directMessages", messagesData);
       set({ 
         directMessages: processedMessages,
         messages: []
@@ -102,15 +102,16 @@ export const useChatStore = create((set, get) => ({
     }
     
     try {
+     
       // Simplify to avoid language validation issues
       const requestData = {
         content: messageData.message,
         // Always set these values explicitly
         isCode: false,
-        language: "text"
+        language: "text",
+        image:messageData.image
       };
       
-      console.log("Sending direct message with data:", requestData);
       
       // Use the direct messages route
       const response = await axiosInstance.post(
@@ -119,6 +120,7 @@ export const useChatStore = create((set, get) => ({
       );
       
       const newMessage = response.data.data;
+      console.log("Sending direct message with data:", newMessage);
 
       // Fetch all messages again to ensure consistent data structure
       await get().getDirectMessages(friendId);
@@ -527,6 +529,7 @@ export const useChatStore = create((set, get) => ({
     const newMessage = {
       _id: messageData._id || messageData.id || `temp-${Date.now()}`,
       content: messageData.message || messageData.content,
+      image:messageData.image,
       sender: isFromCurrentUser ? {
         userId: authUser._id,
         username: authUser.username,
@@ -559,6 +562,27 @@ export const useChatStore = create((set, get) => ({
     // Add the message to the store
     set({
       directMessages: [...directMessages, newMessage]
+    });
+  },
+  
+  // Remove a direct message from the store
+  removeDirectMessage: (messageId) => {
+    console.log("Marking direct message as deleted:", messageId);
+    const { directMessages } = get();
+    
+    // Update the message to be marked as deleted instead of removing it
+    const updatedMessages = directMessages.map(msg => {
+      if (msg._id === messageId) {
+        return {
+          ...msg,
+          isDeleted: true
+        };
+      }
+      return msg;
+    });
+    
+    set({
+      directMessages: updatedMessages
     });
   },
   

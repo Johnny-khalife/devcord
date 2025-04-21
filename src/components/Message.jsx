@@ -19,7 +19,9 @@ const DirectMessage = ({ message, firstInGroup }) => {
     messageId: message._id,
     isCurrentUser,
     isSentByMe: message.isSentByMe,
-    content: message.content
+    content: message.content,
+    image:message.image,
+    isDeleted: message.isDeleted
   });
 
   // Handle delete direct message
@@ -41,6 +43,23 @@ const DirectMessage = ({ message, firstInGroup }) => {
   
   if (isMessagesLoading) {
     return <MessageSkeleton/>
+  }
+
+  if (message.isDeleted) {
+    return (
+      <div
+        id={`message-${message._id}`}
+        className={`group flex items-start gap-2 px-4 py-1 hover:bg-base-200/50 transition-colors ${
+          isCurrentUser ? "flex-row-reverse justify-start" : "flex-row"
+        }`}
+      >
+        <div className="flex items-center gap-2">
+          <div className="text-sm text-gray-500 italic">
+            Message deleted
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return (

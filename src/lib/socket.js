@@ -150,7 +150,7 @@ const setupDMSocketListeners = () => {
 
   // Message events
   dmSocket.on('receiveDirectMessage', (data) => {
-    console.log('📨 Received direct message:', data);
+    console.log('📨 Received direct message:', data.image);
     try {
       if (chatStore) {
         // Add necessary info to the message before adding to store
@@ -191,6 +191,14 @@ const setupDMSocketListeners = () => {
     console.log('👁️ Messages read:', data);
     if (chatStore) {
       chatStore.updateReadStatus(data);
+    }
+  });
+
+  // Handle deleted direct messages
+  dmSocket.on('directMessageDeleted', (data) => {
+    console.log('🗑️ Direct message deleted:', data);
+    if (chatStore) {
+      chatStore.removeDirectMessage(data.messageId);
     }
   });
 };
