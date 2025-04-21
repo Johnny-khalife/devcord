@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useAuthStore } from "../store/useAuthStore";
 import { useChatStore } from "../store/useChatStore";
-import { formatMessageTime } from "../lib/utils";
+import { formatMessageTime, convertUrlsToLinks } from "../lib/utils.jsx";
 import { Trash2, SmilePlus, MoreVertical, Maximize, Download } from "lucide-react";
 import toast from "react-hot-toast";
 import MessageSkeleton from "./skeletons/MessageSkeleton";
@@ -99,7 +99,9 @@ const DirectMessage = ({ message, firstInGroup }) => {
                   : `bg-base-300 ${firstInGroup ? "rounded-tl-none" : ""} ${message.image ? "rounded-b-none" : ""}`
               }`}
             >
-              {message.content}
+              <div className="whitespace-pre-wrap break-words">
+                {convertUrlsToLinks(message.content)}
+              </div>
             </div>
           )}
 
@@ -326,7 +328,7 @@ const ChannelMessage = ({ message, firstInGroup }) => {
           {/* Content Bubble */}
           {message.content && (
             <div 
-              className={`rounded-2xl px-4 py-2 text-sm ${
+              className={`rounded-2xl px-4 py-2 text-sm break-words w-full ${
                 isCurrentUser
                   ? `bg-primary text-primary-content ${
                       firstInGroup ? "rounded-tr-none" : ""
@@ -334,7 +336,9 @@ const ChannelMessage = ({ message, firstInGroup }) => {
                   : `bg-base-300 ${firstInGroup ? "rounded-tl-none" : ""} ${message.image ? "rounded-b-none" : ""}`
               }`}
             >
-              {message.content}
+              <div className="whitespace-pre-wrap break-words">
+                {convertUrlsToLinks(message.content)}
+              </div>
             </div>
           )}
 
