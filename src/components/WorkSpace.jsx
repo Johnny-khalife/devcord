@@ -334,7 +334,25 @@ const WorkSpace = ({
   // Fetch channels for the active workspace
   useEffect(() => {
     const loadWorkspaceChannels = async () => {
-      if (!activeWorkspace) return;
+      if (!activeWorkspace) {
+        // Reset channel and workspace state if no active workspace
+        setActiveChannel(null);
+        setSelectedWorkspace(null);
+        return;
+      }
+
+      // Check if user has access to this workspace
+      const hasAccess = workspaces.some(ws => 
+        ws.id === activeWorkspace && (ws.isOwned || ws.isInvited || ws.role === "member" || ws.role === "admin")
+      );
+
+      if (!hasAccess) {
+        // Reset state if user doesn't have access
+        setActiveWorkspace(null);
+        setActiveChannel(null);
+        setSelectedWorkspace(null);
+        return;
+      }
 
       setIsChannelsLoading(true);
       try {
@@ -376,12 +394,7 @@ const WorkSpace = ({
     };
 
     loadWorkspaceChannels();
-  }, [
-    activeWorkspace,
-    fetchWorkspaceChannels,
-    activeChannel,
-    setSelectedWorkspace,
-  ]);
+  }, [activeWorkspace, fetchWorkspaceChannels, activeChannel, setSelectedWorkspace, workspaces]);
 
   useEffect(() => {
     console.log("Current user:", currentUser);
@@ -557,8 +570,8 @@ const WorkSpace = ({
 
     if (channels.length === 0) {
       return (
-        <div className="text-center py-8 px-3">
-          <Hash className="w-12 h-12 mx-auto mb-3 text-primary/50" />
+        <div className="text-center py-8 px-3 ">
+          <Hash className="w-12 h-16 mx-auto mb-3 text-primary/50" />
           <h3 className="font-medium mb-1">No Channels</h3>
           <p className="text-sm text-base-content/70 mb-4">
             {isWorkspaceOwner()
@@ -841,21 +854,28 @@ const WorkSpace = ({
   const isAlreadyFriend = (memberId) => {
     return friends.some((friend) => friend.friendId === memberId);
   };
+  
 
   if (workspaces.length === 0) {
     return (
       <div
-        className={`${
-          isMobile ? "w-full" : "w-72"
-        } bg-base-200 h-full border-r border-base-300 flex flex-col items-center justify-center p-4`}
+        className={`
+          ${isMobile ? "fixed left-0 top-16 bottom-0 z-30" : "w-72"} 
+          ${isMobile && !isWorkspaceSidebarOpen ? "translate-x-[-100%]" : "translate-x-0"}
+          bg-base-200 h-screen border-r border-base-300 flex flex-col items-center justify-center p-4
+          transition-transform duration-300 ease-in-out
+        `}
       >
-        <div className="text-center mb-4">
+        <div className="text-center mb-4 w-60 ">
           <Briefcase className="w-12 h-12 mx-auto mb-2 opacity-50" />
-          <h3 className="font-medium text-lg">No Workspaces</h3>
+          <h3 className="font-medium text-lg ">No Workspaces</h3>
           <p className="text-sm opacity-70 mb-4">
-            Create your first workspace to get started
+            Create your first workspace
           </p>
-          <button className="btn btn-primary" onClick={handleCreateWorkspace}>
+          <button
+            className="btn btn-primary"
+            onClick={handleCreateWorkspace}
+          >
             <Plus className="w-4 h-4 mr-2" />
             Create Workspace
           </button>
@@ -869,7 +889,7 @@ const WorkSpace = ({
      
       <div
         className={`
-        ${isMobile ? "fixed left-0 top-16 bottom-0 z-30" : "w-72 h-[calc(100vh-4rem)] sticky top-16"} 
+        ${isMobile ? "fixed left-0 top-16 bottom-0 z-30 w-56" : "w-72 h-[calc(100vh-4rem)] sticky top-16"} 
         ${
           isMobile && !isWorkspaceSidebarOpen
             ? "translate-x-[-100%]"

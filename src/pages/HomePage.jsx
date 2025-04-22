@@ -195,6 +195,23 @@ const HomePage = () => {
     }
   }, [activeNavItem, setSelectedFriend]);
 
+  // Add this useEffect to handle workspace access
+  useEffect(() => {
+    // Reset workspace and channel state when switching to workspace view
+    if (activeNavItem === "workSpace") {
+      // Check if current active workspace is accessible
+      const hasAccess = workspaces.some(ws => 
+        ws?.id === activeWorkspace && (ws.isOwned || ws.isInvited || ws.role === "member" || ws.role === "admin")
+      );
+
+      if (!hasAccess) {
+        setActiveWorkspace(null);
+        setActiveChannel(null);
+        setSelectedWorkspace(null);
+      }
+    }
+  }, [activeNavItem, workspaces, activeWorkspace, setSelectedWorkspace]);
+
   const handleCreateWorkspace = () => {
     setNewWorkspaceName('');
     setShowCreateWorkspaceModal(true);
@@ -328,7 +345,9 @@ const HomePage = () => {
           ) : (
             <>
               {((activeNavItem === "users" && !selectedFriend) || 
-                (activeNavItem === "workSpace" && !selectedWorkspace)) ? (
+                (activeNavItem === "workSpace" && (!selectedWorkspace || !workspaces.some(ws => 
+                  ws?.id === activeWorkspace && (ws.isOwned || ws.isInvited || ws.role === "member" || ws.role === "admin")
+                )))) ? (
                 <NoChatSelected />
               ) : (
                 <ChatBox 

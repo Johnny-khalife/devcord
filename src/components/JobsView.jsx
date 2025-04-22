@@ -56,7 +56,7 @@ const JobsView = () => {
   }
 
   return (
-    <div className="flex flex-col h-full bg-base-100">
+    <div className="flex flex-col h-full bg-base-100 pb-12">
       {/* Header */}
       <div className="p-4 border-b border-base-300 bg-base-100 sticky top-0 z-10">
         <h2 className="text-xl font-bold mb-1">LinkedIn Jobs</h2>

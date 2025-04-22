@@ -218,7 +218,7 @@ const UserFriends = () => {
           transition-transform duration-300 ease-in-out
         `}
         >
-          <div className="text-center mb-4">
+          <div className="text-center mb-4 w-60">
             <Users className="w-12 h-12 mx-auto mb-2 opacity-50" />
             <h3 className="font-medium text-lg">No Friends Yet</h3>
             <p className="text-sm opacity-70 mb-4">
@@ -254,7 +254,7 @@ const UserFriends = () => {
       
       <div
         className={`
-        ${isMobile ? "fixed left-0 top-16 bottom-0 z-30" : "w-72"} 
+        ${isMobile ? "fixed left-0 top-16 bottom-0 z-30 w-56" : "w-72"} 
         ${
           isMobile && !isUserFriendsSidebarOpen
             ? "translate-x-[-100%]"
