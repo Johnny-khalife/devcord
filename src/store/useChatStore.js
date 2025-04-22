@@ -81,17 +81,59 @@ export const useChatStore = create((set, get) => ({
       return;
     }
     
+    // Generate a temporary ID for optimistic update
+    const tempId = `temp-${Date.now()}`;
+    
+    // Get the current user ID
+    const authUser = JSON.parse(localStorage.getItem('auth-store'))?.state?.authUser;
+    
+    // Create an optimistic message
+    const optimisticMessage = {
+      _id: tempId,
+      content: messageData.content,
+      image: messageData.image,
+      createdAt: new Date().toISOString(),
+      isSentByMe: true,
+      isPending: true, // Flag to indicate this is a pending message
+      userId: authUser?._id || 'current-user', // Add user ID to ensure proper positioning
+      sender: {
+        userId: authUser?._id || 'current-user',
+        username: authUser?.username || 'You',
+        avatar: authUser?.avatar
+      }
+    };
+    
+    // Add the optimistic message to the UI immediately
+    set((state) => ({
+      messages: [...state.messages, optimisticMessage]
+    }));
+    
     try {
+      // Disable the send button for this message
+      const sendButton = document.querySelector(`[data-message-id="${tempId}"] button[type="submit"]`);
+      if (sendButton) {
+        sendButton.disabled = true;
+      }
+      
       const response = await axiosInstance.post(`/messages/${channelId}`, messageData);
       const newMessage = response.data.data;
-
-      // Fetch all messages again to ensure consistent data structure
-      await get().getMessages(channelId);
+      
+      // Replace the optimistic message with the real one
+      set((state) => ({
+        messages: state.messages.map(msg => 
+          msg._id === tempId ? { ...newMessage, isSentByMe: true } : msg
+        )
+      }));
       
       return newMessage;
     } catch (error) {
       console.log(error.message);
       toast.error(error.response?.data?.message || "Failed to send message");
+      
+      // Remove the failed optimistic message
+      set((state) => ({
+        messages: state.messages.filter(msg => msg._id !== tempId)
+      }));
     }
   },
 
@@ -101,19 +143,47 @@ export const useChatStore = create((set, get) => ({
       return;
     }
     
+    // Generate a temporary ID for optimistic update
+    const tempId = `temp-${Date.now()}`;
+    
+    // Get the current user ID
+    const authUser = JSON.parse(localStorage.getItem('auth-store'))?.state?.authUser;
+    
+    // Create an optimistic message
+    const optimisticMessage = {
+      _id: tempId,
+      content: messageData.message,
+      image: messageData.image,
+      createdAt: new Date().toISOString(),
+      isSentByMe: true,
+      isPending: true, // Flag to indicate this is a pending message
+      senderId: authUser?._id || 'current-user', // Add user ID to ensure proper positioning
+      sender: {
+        userId: authUser?._id || 'current-user',
+        username: authUser?.username || 'You',
+        avatar: authUser?.avatar
+      }
+    };
+    
+    // Add the optimistic message to the UI immediately
+    set((state) => ({
+      directMessages: [...state.directMessages, optimisticMessage]
+    }));
+    
     try {
-     
-      // Simplify to avoid language validation issues
+      // Disable the send button for this message
+      const sendButton = document.querySelector(`[data-message-id="${tempId}"] button[type="submit"]`);
+      if (sendButton) {
+        sendButton.disabled = true;
+      }
+      
       const requestData = {
         content: messageData.message,
-        // Always set these values explicitly
         isCode: false,
         language: "text",
-        image:messageData.image
+        image: messageData.image
       };
       
-      
-      // Use the direct messages route
       const response = await axiosInstance.post(
         `/direct-messages/friend/${friendId}`, 
         requestData
@@ -122,8 +192,12 @@ export const useChatStore = create((set, get) => ({
       const newMessage = response.data.data;
       console.log("Sending direct message with data:", newMessage);
 
-      // Fetch all messages again to ensure consistent data structure
-      await get().getDirectMessages(friendId);
+      // Replace the optimistic message with the real one
+      set((state) => ({
+        directMessages: state.directMessages.map(msg => 
+          msg._id === tempId ? { ...newMessage, isSentByMe: true } : msg
+        )
+      }));
       
       return newMessage;
     } catch (error) {
@@ -133,6 +207,11 @@ export const useChatStore = create((set, get) => ({
       } else {
         toast.error("Failed to send direct message");
       }
+      
+      // Remove the failed optimistic message
+      set((state) => ({
+        directMessages: state.directMessages.filter(msg => msg._id !== tempId)
+      }));
     }
   },
 

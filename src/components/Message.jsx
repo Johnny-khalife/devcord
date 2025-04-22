@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, memo } from "react";
 import { useAuthStore } from "../store/useAuthStore";
 import { useChatStore } from "../store/useChatStore";
 import { formatMessageTime, convertUrlsToLinks } from "../lib/utils.jsx";
@@ -8,11 +8,10 @@ import MessageSkeleton from "./skeletons/MessageSkeleton";
 
 // Direct message component for friend chats
 const DirectMessage = ({ message, firstInGroup }) => {
-  const { deleteMessage, isMessagesLoading } = useChatStore();
+  const { deleteMessage } = useChatStore();
   const [imageViewer, setImageViewer] = useState(false);
 
   // Use the isSentByMe property set in useChatStore processing
-  // This ensures proper consistency with how messages are processed
   const isCurrentUser = message.isSentByMe === true;
   
   console.log("DirectMessage rendering:", {
@@ -41,10 +40,6 @@ const DirectMessage = ({ message, firstInGroup }) => {
     }
   };
   
-  if (isMessagesLoading) {
-    return <MessageSkeleton/>
-  }
-
   if (message.isDeleted) {
     return (
       <div
@@ -98,10 +93,16 @@ const DirectMessage = ({ message, firstInGroup }) => {
                     } ${message.image ? "rounded-b-none" : ""}`
                   : `bg-base-300 ${firstInGroup ? "rounded-tl-none" : ""} ${message.image ? "rounded-b-none" : ""}`
               }`}
+              data-message-id={message._id}
             >
               <div className="whitespace-pre-wrap break-words">
                 {convertUrlsToLinks(message.content)}
               </div>
+              {message.isPending && (
+                <div className="absolute -bottom-1 right-1">
+                  <div className="w-1 h-1 border-1 border-white border-t-transparent rounded-full animate-spin opacity-50"></div>
+                </div>
+              )}
             </div>
           )}
 
@@ -335,10 +336,16 @@ const ChannelMessage = ({ message, firstInGroup }) => {
                     } ${message.image ? "rounded-b-none" : ""}`
                   : `bg-base-300 ${firstInGroup ? "rounded-tl-none" : ""} ${message.image ? "rounded-b-none" : ""}`
               }`}
+              data-message-id={message._id}
             >
               <div className="whitespace-pre-wrap break-words">
                 {convertUrlsToLinks(message.content)}
               </div>
+              {message.isPending && (
+                <div className="absolute -bottom-1 right-1">
+                  <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin opacity-50"></div>
+                </div>
+              )}
             </div>
           )}
 
@@ -467,6 +474,7 @@ const ChannelMessage = ({ message, firstInGroup }) => {
   );
 };
 
+// Main Message component
 const Message = ({ message, activeNavItem, firstInGroup }) => {
   // Log message details to debug
   console.log("Message component rendering:", {
@@ -484,4 +492,9 @@ const Message = ({ message, activeNavItem, firstInGroup }) => {
   );
 };
 
-export default Message;
+// Memoize the components
+const MemoizedDirectMessage = memo(DirectMessage);
+const MemoizedChannelMessage = memo(ChannelMessage);
+const MemoizedMessage = memo(Message);
+
+export default MemoizedMessage;
