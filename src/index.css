@@ -22,3 +22,46 @@
     touch-action: pan-y;
   }
 }
+
+/* Custom scrollbar styles */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #4c4f57;
+  border-radius: 3px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #6366f1;
+}
+
+/* Transition styles */
+.sidebar-transition {
+  transition: width 0.2s ease-in-out;
+}
+
+/* Drag handle styles */
+.drag-handle {
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  cursor: col-resize;
+  background: transparent;
+  transition: background-color 0.2s;
+}
+
+.drag-handle:hover {
+  background-color: rgba(99, 102, 241, 0.2);
+}
+
+.drag-handle:active {
+  background-color: rgba(99, 102, 241, 0.4);
+}

@@ -886,20 +886,9 @@ const WorkSpace = ({
 
   return (
     <>
-     
-      <div
-        className={`
-        ${isMobile ? "fixed left-0 top-16 bottom-0 z-30 w-56" : "w-72 h-[calc(100vh-4rem)] sticky top-16"} 
-        ${
-          isMobile && !isWorkspaceSidebarOpen
-            ? "translate-x-[-100%]"
-            : "translate-x-0"
-        } 
-        bg-base-200 border-r border-base-300 flex flex-col transition-transform duration-300 ease-in-out overflow-hidden
-      `}
-      >
-        {/* Header section - modernized */}
-        <div className="p-4 border-b border-base-300 flex-shrink-0">
+      <div className="h-full flex flex-col bg-base-200">
+        {/* Workspace header */}
+        <div className="p-4 border-b border-base-300">
           {/* Title and Create Workspace */}
           <div className="flex justify-between items-center mb-4">
             <h2 className="font-bold text-lg ">
@@ -954,7 +943,7 @@ const WorkSpace = ({
           )}
         </div>
 
-        {/* Scrollable content area */}
+        {/* Workspace content */}
         <div className="flex-1 overflow-y-auto custom-scrollbar">
           {/* Workspace section */}
           {activeNavItem === "workSpace" && (
@@ -1098,86 +1087,66 @@ const WorkSpace = ({
             </div>
           )}
         </div>
-
-        {/* Use portals for modals */}
-        <WorkspaceMembersPortal
-          isOpen={showMembersModal}
-          onClose={() => {
-            setShowMembersModal(false);
-            setSelectedMembers([]);
-          }}
-          workspaceMembers={workspaceMembers}
-          isLoading={isWorkspaceMembersLoading}
-          currentUser={authUser}
-          isAlreadyFriend={isAlreadyFriend}
-          removeFriend={removeFriend}
-          handleSendFriendRequest={handleSendFriendRequest}
-          isSendingFriendRequest={isSendingFriendRequest}
-          handleRemoveMember={handleRemoveMember}
-          isWorkspaceOwner={isWorkspaceOwner()}
-          hasAdminPrivileges={hasAdminPrivileges}
-          selectedMembers={selectedMembers}
-          setSelectedMembers={setSelectedMembers}
-          isPromotingAdmin={isPromotingAdmin}
-          handleToggleAdminRole={handleToggleAdminRole}
-          workspaces={workspaces}
-          activeWorkspace={activeWorkspace}
-        />
-
-        <RemoveMemberPortal
-          isOpen={memberToRemove !== null}
-          onClose={() => setMemberToRemove(null)}
-          memberToRemove={memberToRemove}
-          isRemovingMember={isRemovingMember}
-          confirmRemoveMember={confirmRemoveMember}
-        />
-        
-        <InviteFriendsPortal
-          isOpen={showInviteMenu}
-          onClose={() => setShowInviteMenu(false)}
-          friends={friends}
-          selectedFriends={selectedFriends}
-          toggleFriendSelection={toggleFriendSelection}
-          sendInvites={sendInvites}
-          isLoading={isInviteLoading}
-          workspaceName={getActiveWorkspace()?.name}
-          workspaceMembers={workspaceMembers}
-        />
-
-        <ChannelCreationModal
-          isOpen={showChannelUserSelector}
-          onClose={resetChannelCreation}
-          channelName={channelName}
-          setChannelName={setChannelName}
-          isPrivateChannel={isPrivateChannel}
-          setIsPrivateChannel={setIsPrivateChannel}
-          selectedChannelUsers={selectedChannelUsers}
-          workspaceMembers={workspaceMembers}
-          isWorkspaceMembersLoading={isWorkspaceMembersLoading}
-          toggleUserSelection={toggleUserSelection}
-          handleCreateChannel={handleCreateChannel}
-        />
       </div>
 
-      {/* Add global styles for animations and scrollbars */}
-      <style jsx="true">{`
-        .custom-scrollbar::-webkit-scrollbar {
-          width: 6px;
-        }
-        
-        .custom-scrollbar::-webkit-scrollbar-track {
-          background: transparent;
-        }
-        
-        .custom-scrollbar::-webkit-scrollbar-thumb {
-          background: #4c4f57;
-          border-radius: 3px;
-        }
-        
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-          background: #6366f1;
-        }
-      `}</style>
+      {/* Use portals for modals */}
+      <WorkspaceMembersPortal
+        isOpen={showMembersModal}
+        onClose={() => {
+          setShowMembersModal(false);
+          setSelectedMembers([]);
+        }}
+        workspaceMembers={workspaceMembers}
+        isLoading={isWorkspaceMembersLoading}
+        currentUser={authUser}
+        isAlreadyFriend={isAlreadyFriend}
+        removeFriend={removeFriend}
+        handleSendFriendRequest={handleSendFriendRequest}
+        isSendingFriendRequest={isSendingFriendRequest}
+        handleRemoveMember={handleRemoveMember}
+        isWorkspaceOwner={isWorkspaceOwner()}
+        hasAdminPrivileges={hasAdminPrivileges}
+        selectedMembers={selectedMembers}
+        setSelectedMembers={setSelectedMembers}
+        isPromotingAdmin={isPromotingAdmin}
+        handleToggleAdminRole={handleToggleAdminRole}
+        workspaces={workspaces}
+        activeWorkspace={activeWorkspace}
+      />
+
+      <RemoveMemberPortal
+        isOpen={memberToRemove !== null}
+        onClose={() => setMemberToRemove(null)}
+        memberToRemove={memberToRemove}
+        isRemovingMember={isRemovingMember}
+        confirmRemoveMember={confirmRemoveMember}
+      />
+      
+      <InviteFriendsPortal
+        isOpen={showInviteMenu}
+        onClose={() => setShowInviteMenu(false)}
+        friends={friends}
+        selectedFriends={selectedFriends}
+        toggleFriendSelection={toggleFriendSelection}
+        sendInvites={sendInvites}
+        isLoading={isInviteLoading}
+        workspaceName={getActiveWorkspace()?.name}
+        workspaceMembers={workspaceMembers}
+      />
+
+      <ChannelCreationModal
+        isOpen={showChannelUserSelector}
+        onClose={resetChannelCreation}
+        channelName={channelName}
+        setChannelName={setChannelName}
+        isPrivateChannel={isPrivateChannel}
+        setIsPrivateChannel={setIsPrivateChannel}
+        selectedChannelUsers={selectedChannelUsers}
+        workspaceMembers={workspaceMembers}
+        isWorkspaceMembersLoading={isWorkspaceMembersLoading}
+        toggleUserSelection={toggleUserSelection}
+        handleCreateChannel={handleCreateChannel}
+      />
     </>
   );
 };

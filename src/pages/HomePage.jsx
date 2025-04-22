@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useLocation } from "react-router-dom";
 import ChatBox from "../components/ChatBox";
 import Sidebar from "../components/Sidebar";
@@ -17,11 +17,19 @@ const HomePage = () => {
   const location = useLocation();
   // State for mobile view
   const [isMobile, setIsMobile] = useState(false);
+  // State for dynamic width
+  const [sidebarWidth, setSidebarWidth] = useState(240); // Default width 240px
+  const [isDragging, setIsDragging] = useState(false);
+  const sidebarRef = useRef(null);
+  // State for sidebar visibility
+  const [isUserFriendsSidebarOpen, setIsUserFriendsSidebarOpen] = useState(true);
   
   // Check if mobile view
   useEffect(() => {
     const checkIfMobile = () => {
-      setIsMobile(window.innerWidth < 768);
+      const mobile = window.innerWidth < 768;
+      setIsMobile(mobile);
+      setIsUserFriendsSidebarOpen(!mobile); // Close sidebar by default on mobile
     };
     
     // Initial check
@@ -33,6 +41,33 @@ const HomePage = () => {
     // Cleanup
     return () => window.removeEventListener('resize', checkIfMobile);
   }, []);
+
+  // Handle drag functionality
+  useEffect(() => {
+    const handleMouseMove = (e) => {
+      if (!isDragging || isMobile) return;
+      
+      const newWidth = e.clientX;
+      // Limit width between 180px and 400px
+      if (newWidth >= 180 && newWidth <= 350) {
+        setSidebarWidth(newWidth);
+      }
+    };
+
+    const handleMouseUp = () => {
+      setIsDragging(false);
+    };
+
+    if (isDragging) {
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+    }
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isDragging, isMobile]);
 
   // Handle openSearchPortal state from location
   useEffect(() => {
@@ -304,39 +339,56 @@ const HomePage = () => {
       {/* Mid section - varies based on activeNavItem */}
       <div className="flex flex-1 relative overflow-hidden">
         {/* Secondary sidebar - either workspace or user friends */}
-        <div className={`${isMobile ? 'absolute inset-0 -z-5' : 'relative'} ${(activeNavItem === "workSpace" || activeNavItem === "users") && isMobile ? 'pointer-events-none' : ''}`}>
-          {isLoading ? (
-            <div className="flex-1 flex items-center justify-center h-full">
-              <div className="loading loading-spinner loading-lg text-primary"></div>
-            </div>
-          ) : (
-            <>
-              {activeNavItem === "workSpace" && (
-                <div className={`${isMobile ? 'pointer-events-auto' : ''}`}>
-                  <WorkSpace
-                    activeNavItem={activeNavItem}
-                    activeWorkspace={activeWorkspace}
-                    setActiveWorkspace={setActiveWorkspace}
-                    workspaces={workspaces}
-                    setWorkspaces={setWorkspaces}
-                    setShowWorkspaceMenu={setShowWorkspaceMenu}
-                    showWorkspaceMenu={showWorkspaceMenu}
-                    setActiveChannel={setActiveChannel}
-                    activeChannel={activeChannel}
-                    handleCreateWorkspace={handleCreateWorkspace}
-                    handleOpenSettingsForm={handleOpenSettingsForm}
-                  />
-                </div>
-              )}
-              
-              {activeNavItem === "users" && (
-                <div className={`h-full ${isMobile ? 'pointer-events-auto' : ''}`}>
-                  <UserFriends />
-                </div>
-              )}
-            </>
-          )}
-        </div>
+        {(activeNavItem === "workSpace" || activeNavItem === "users") && (
+          <div 
+            ref={sidebarRef}
+            style={{ width: isMobile ? 'auto' : `${sidebarWidth}px` }}
+            className={`${isMobile ? 'absolute inset-0 -z-5' : 'relative'} ${(activeNavItem === "workSpace" || activeNavItem === "users") && isMobile ? 'pointer-events-none' : ''}`}
+          >
+            {isLoading ? (
+              <div className="flex-1 flex items-center justify-center h-full">
+                <div className="loading loading-spinner loading-lg text-primary"></div>
+              </div>
+            ) : (
+              <>
+                {activeNavItem === "workSpace" && (
+                  <div className={`${isMobile ? 'pointer-events-auto' : 'h-full'}`}>
+                    <WorkSpace
+                      activeNavItem={activeNavItem}
+                      activeWorkspace={activeWorkspace}
+                      setActiveWorkspace={setActiveWorkspace}
+                      workspaces={workspaces}
+                      setWorkspaces={setWorkspaces}
+                      setShowWorkspaceMenu={setShowWorkspaceMenu}
+                      showWorkspaceMenu={showWorkspaceMenu}
+                      setActiveChannel={setActiveChannel}
+                      activeChannel={activeChannel}
+                      handleCreateWorkspace={handleCreateWorkspace}
+                      handleOpenSettingsForm={handleOpenSettingsForm}
+                    />
+                  </div>
+                )}
+                
+                {activeNavItem === "users" && (
+                  <div className={`h-full ${isMobile ? 'pointer-events-auto' : ''}`}>
+                    <UserFriends 
+                      isUserFriendsSidebarOpen={isUserFriendsSidebarOpen}
+                      setIsUserFriendsSidebarOpen={setIsUserFriendsSidebarOpen}
+                    />
+                  </div>
+                )}
+              </>
+            )}
+            
+            {/* Drag handle */}
+            {!isMobile && (activeNavItem === "workSpace" || activeNavItem === "users") && (
+              <div
+                className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary/20 active:bg-primary/40 transition-colors"
+                onMouseDown={() => setIsDragging(true)}
+              />
+            )}
+          </div>
+        )}
         
         {/* Main content area - ChatBox or JobsView */}
         <div className={`flex-1 overflow-hidden ${isMobile ? 'z-5' : ''}`}>
