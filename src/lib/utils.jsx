@@ -13,7 +13,7 @@ export function formatMessageTime(date) {
  * @param {string} text - The text containing URLs
  * @returns {JSX.Element} - React element with clickable links
  */
-export function convertUrlsToLinks(text) {
+export function convertUrlsToLinks(text,isCurrentUser) {
   if (!text) return null;
 
   // URL regex pattern
@@ -33,7 +33,7 @@ export function convertUrlsToLinks(text) {
               href={url}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-cyan-500 hover:text-cyan-600 hover:underline"
+              className={`${!isCurrentUser ? "text-cyan-500 hover:text-cyan-600 hover:underline" : "text-black hover:text-cyan-600 hover:underline"}`}
               onClick={(e) => {
                 e.stopPropagation();
                 window.open(url, '_blank');

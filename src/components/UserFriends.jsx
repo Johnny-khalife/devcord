@@ -208,7 +208,7 @@ const UserFriends = () => {
        
         <div
           className={`
-          ${isMobile ? "fixed left-0 top-16 bottom-0 z-30" : "w-72"} 
+          ${isMobile ? "fixed left-0 top-16 bottom-0 z-30 w-56" : ""} 
           ${
             isMobile && !isUserFriendsSidebarOpen
               ? "translate-x-[-100%]"
@@ -254,14 +254,13 @@ const UserFriends = () => {
       
       <div
         className={`
-        ${isMobile ? "fixed left-0 top-16 bottom-0 z-30 w-56" : "w-72"} 
+        ${isMobile ? "fixed left-0 top-16 bottom-0 z-30 w-56" : "h-[calc(100vh-4rem)] sticky top-16"} 
         ${
           isMobile && !isUserFriendsSidebarOpen
             ? "translate-x-[-100%]"
             : "translate-x-0"
-        }
-        bg-base-200 h-full border-r border-base-300 flex flex-col
-        transition-transform duration-300 ease-in-out
+        } 
+        bg-base-200 border-r border-base-300 flex flex-col transition-transform duration-300 ease-in-out overflow-hidden
       `}
       >
         {/* Header with title and search - fixed at top */}

@@ -96,7 +96,7 @@ const DirectMessage = ({ message, firstInGroup }) => {
               data-message-id={message._id}
             >
               <div className="whitespace-pre-wrap break-words">
-                {convertUrlsToLinks(message.content)}
+                {convertUrlsToLinks(message.content,isCurrentUser)}
               </div>
               {message.isPending && (
                 <div className="absolute -bottom-1 right-1">

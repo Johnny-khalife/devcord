@@ -889,7 +889,7 @@ const WorkSpace = ({
      
       <div
         className={`
-        ${isMobile ? "fixed left-0 top-16 bottom-0 z-30 w-56" : "w-72 h-[calc(100vh-4rem)] sticky top-16"} 
+        ${isMobile ? "fixed left-0 top-16 bottom-0 z-30 w-56" : "h-[calc(100vh-4rem)] sticky top-16"} 
         ${
           isMobile && !isWorkspaceSidebarOpen
             ? "translate-x-[-100%]"
