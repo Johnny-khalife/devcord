@@ -68,7 +68,7 @@ const DirectMessage = ({ message, firstInGroup }) => {
 
       <div className={`flex flex-col max-w-[75%] `}>
         {/* Timestamp for messages */}
-        {firstInGroup && (
+        {message.showTimestamp && (
           <div
             className={`flex items-center gap-2 mb-1 ${
               isCurrentUser ? "justify-end" : ""
@@ -307,7 +307,7 @@ const ChannelMessage = ({ message, firstInGroup }) => {
           isCurrentUser ? "ml-auto" : ""
         }`}
       >
-        {firstInGroup && (
+        {message.showTimestamp && (
           <div
             className={`flex items-center gap-2 mb-1 ${
               isCurrentUser ? "justify-end" : ""

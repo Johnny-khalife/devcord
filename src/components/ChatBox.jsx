@@ -189,13 +189,27 @@ const ChatBox = ({ activeNavItem, isMobile }) => {
   ).map((msg, idx, arr) => {
     const senderId = msg.userId?._id || msg.senderId?._id || msg.senderId;
     let prevSenderId = null;
+    let prevMessageTime = null;
+    
     if (idx > 0 && arr[idx - 1]) {
        const prevMsg = arr[idx - 1];
        prevSenderId = prevMsg.userId?._id || prevMsg.senderId?._id || prevMsg.senderId;
+       prevMessageTime = new Date(prevMsg.createdAt || prevMsg.timestamp);
     }
+    
+    // Calculate time difference between current and previous message in minutes
+    const currentMessageTime = new Date(msg.createdAt || msg.timestamp);
+    const timeDiffMinutes = prevMessageTime 
+      ? (currentMessageTime - prevMessageTime) / (1000 * 60) 
+      : 0;
+    
+    // Show timestamp if first in group by sender OR if more than 5 minutes since last message
+    const showTimestamp = !prevSenderId || senderId !== prevSenderId || timeDiffMinutes >= 5;
+    
     return {
       ...msg,
       firstInGroup: !prevSenderId || senderId !== prevSenderId,
+      showTimestamp: showTimestamp
     };
   });
   let mainContent;
