@@ -1,13 +1,44 @@
 import React from 'react';
 
 export function formatMessageTime(date) {
-    return new Date(date).toLocaleTimeString("en-US", {
-      hour: "2-digit",
-      minute: "2-digit",
-      hour12: false,
-    });
-  }
+    const messageDate = new Date(date);
+    const now = new Date();
+    const diff = now - messageDate;
+    const hoursDiff = diff / (1000 * 60 * 60);
+    const yearDiff= now.getFullYear()-messageDate.getFullYear();
 
+    // Check if message is from within last 24 hours
+    if (hoursDiff < 24) {
+      // If message is from last 24 hours, just show the time
+      return messageDate.toLocaleTimeString("en-US", {
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: false,
+      });
+      
+      // If message is older than 24 hours, show date and time
+    } else {
+      if(yearDiff==0){
+        return messageDate.toLocaleString("en-US", {
+          month: "short",
+          day: "numeric",
+          hour: "2-digit",
+          minute: "2-digit",
+          hour12: false,
+        });
+      }
+      else{
+        return messageDate.toLocaleString("en-US", {
+          year:"numeric",
+          month: "short",
+          day: "numeric",
+          hour: "2-digit",
+          minute: "2-digit",
+          hour12: false,
+        });
+    }
+  }
+}
 /**
  * Converts URLs in text to clickable links
  * @param {string} text - The text containing URLs
