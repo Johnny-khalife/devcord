@@ -19,7 +19,7 @@ import { useChatStore } from "../store/useChatStore";
 import SidebarSkeleton from "./skeletons/SidebarSkeleton";
 import SearchFriendsPortal from "./SearchFriendsPortal";
 
-const UserFriends = () => {
+const UserFriends = ({ isUserFriendsSidebarOpen, setIsUserFriendsSidebarOpen }) => {
   // State management
   const [activeFriend, setActiveFriend] = useState(null);
   const [showFriendSearchPortal, setShowFriendSearchPortal] = useState(false);
@@ -33,8 +33,6 @@ const UserFriends = () => {
 
   // Responsive state
   const [isMobile, setIsMobile] = useState(false);
-  const [isUserFriendsSidebarOpen, setIsUserFriendsSidebarOpen] =
-    useState(true);
 
   // Check screen size
   useEffect(() => {
@@ -65,12 +63,7 @@ const UserFriends = () => {
         handleToggleSidebar
       );
     };
-  }, []);
-
-  // Toggle sidebar
-  const toggleUserFriendsSidebar = () => {
-    setIsUserFriendsSidebarOpen(!isUserFriendsSidebarOpen);
-  };
+  }, [setIsUserFriendsSidebarOpen]);
 
   // Get auth store functions and state
   const { isLoading: authLoading, onlineUsers } = useAuthStore();
@@ -254,6 +247,7 @@ const UserFriends = () => {
       
       <div
         className={`
+
         ${isMobile ? "fixed left-0 top-16 bottom-0 z-30 w-56" : "h-[calc(100vh-4rem)] sticky top-16"} 
         ${
           isMobile && !isUserFriendsSidebarOpen
