@@ -33,7 +33,7 @@ export function convertUrlsToLinks(text,isCurrentUser) {
               href={url}
               target="_blank"
               rel="noopener noreferrer"
-              className={`${!isCurrentUser ? "text-cyan-500 hover:text-cyan-600 hover:underline" : "text-black hover:text-cyan-600 hover:underline"}`}
+              className={`${!isCurrentUser ? "text-info hover:opacity-80 hover:underline" : "text-[#1f2937] hover:opacity-90 hover:underline"}`}
               onClick={(e) => {
                 e.stopPropagation();
                 window.open(url, '_blank');

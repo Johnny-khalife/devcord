@@ -305,7 +305,7 @@ const HomePage = () => {
       <div className="flex flex-1 relative overflow-hidden">
         {/* Secondary sidebar - either workspace or user friends */}
         {(activeNavItem === "workSpace" || activeNavItem === "users") && (
-          <div className={`${isMobile ? 'absolute inset-0 -z-5' : 'relative min-w-[240px] max-w-[320px] w-[240px] resize-x overflow-hidden'} ${(activeNavItem === "workSpace" || activeNavItem === "users") && isMobile ? 'pointer-events-none' : ''}`}>
+          <div className={`${isMobile ? 'absolute inset-0 -z-5' : 'relative min-w-[200px] max-w-[320px] w-[240px] resize-x overflow-hidden'} ${(activeNavItem === "workSpace" || activeNavItem === "users") && isMobile ? 'pointer-events-none' : ''}`}>
             {isLoading ? (
               <div className="flex-1 flex items-center justify-center h-full">
                 <div className="loading loading-spinner loading-lg text-primary"></div>
