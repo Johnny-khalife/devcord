@@ -16,6 +16,7 @@ export const useChatStore = create((set, get) => ({
   searchQuery: "",
   searchPagination: null,
   typingIndicators: {}, // Track which users are typing
+  isSendingMessage: false,
   
   getMessages: async (channelId) => {
     if (!channelId) return;
@@ -143,6 +144,9 @@ export const useChatStore = create((set, get) => ({
       return;
     }
     
+    // Set sending state to prevent multiple submissions
+    set({ isSendingMessage: true });
+    
     // Generate a temporary ID for optimistic update
     const tempId = `temp-${Date.now()}`;
     
@@ -172,7 +176,7 @@ export const useChatStore = create((set, get) => ({
     
     try {
       // Disable the send button for this message
-      const sendButton = document.querySelector(`[data-message-id="${tempId}"] button[type="submit"]`);
+      const sendButton = document.querySelector(`button[type="submit"]`);
       if (sendButton) {
         sendButton.disabled = true;
       }
@@ -192,10 +196,14 @@ export const useChatStore = create((set, get) => ({
       const newMessage = response.data.data;
       console.log("Sending direct message with data:", newMessage);
 
-      // Replace the optimistic message with the real one
+      // Replace the optimistic message with the real one, ensuring correct structure
       set((state) => ({
         directMessages: state.directMessages.map(msg => 
-          msg._id === tempId ? { ...newMessage, isSentByMe: true } : msg
+          msg._id === tempId ? { 
+            ...newMessage,
+            _id: newMessage.messageId || newMessage._id, // Ensure messageId is properly mapped to _id
+            isSentByMe: true 
+          } : msg
         )
       }));
       
@@ -212,6 +220,13 @@ export const useChatStore = create((set, get) => ({
       set((state) => ({
         directMessages: state.directMessages.filter(msg => msg._id !== tempId)
       }));
+    } finally {
+      // Enable the send button again
+      const sendButton = document.querySelector(`button[type="submit"]`);
+      if (sendButton) {
+        sendButton.disabled = false;
+      }
+      set({ isSendingMessage: false });
     }
   },
 
@@ -220,7 +235,7 @@ export const useChatStore = create((set, get) => ({
     
     if (!messageId) {
       console.error("Missing messageId in deleteMessage");
-      toast.error("Message ID is required");
+      toast.error("Message ID is requiredddd");
       return;
     }
     
@@ -606,7 +621,7 @@ export const useChatStore = create((set, get) => ({
     
     // Create a standardized message object
     const newMessage = {
-      _id: messageData._id || messageData.id || `temp-${Date.now()}`,
+      _id: messageData.messageId || messageData._id || messageData.id || `temp-${Date.now()}`,
       content: messageData.message || messageData.content,
       image:messageData.image,
       sender: isFromCurrentUser ? {

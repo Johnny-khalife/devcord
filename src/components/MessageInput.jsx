@@ -14,7 +14,12 @@ const MessageInput = ({ activeNavItem }) => {
   const fileInputRef = useRef(null);
   const inputRef = useRef(null);
   
-  const { sendMessage, sendDirectMessage: sendDirectMessageAPI, selectedFriend } = useChatStore();
+  const { 
+    sendMessage, 
+    sendDirectMessage: sendDirectMessageAPI, 
+    selectedFriend,
+    isSendingMessage 
+  } = useChatStore();
   const { selectedWorkspace } = useWorkspaceStore();
   const { authUser, socket } = useAuthStore();
   
@@ -100,9 +105,24 @@ const MessageInput = ({ activeNavItem }) => {
   }, [selectedFriend?.friendId, isTyping, isSocketConnected]);
 
   const handleImageChange = (e) => {
+    // Don't allow changing the image while a message is being sent
+    if (isSendingMessage) {
+      toast.error("Please wait until current message is sent");
+      return;
+    }
+    
     const file = e.target.files[0];
+    if (!file) return;
+    
     if (!file.type.startsWith("image/")) {
       toast.error("Please select an image file");
+      return;
+    }
+    
+    // Check file size (limit to 10MB)
+    const MAX_SIZE = 10 * 1024 * 1024; // 10MB in bytes
+    if (file.size > MAX_SIZE) {
+      toast.error("Image is too large. Please select an image under 10MB");
       return;
     }
 
@@ -121,6 +141,12 @@ const MessageInput = ({ activeNavItem }) => {
   const handleSendMessage = async (e) => {
     e.preventDefault();
     if (!text.trim() && !imagePreview) return;
+    
+    // Prevent multiple submissions
+    if (isSendingMessage) {
+      console.log("Message already being sent, preventing duplicate submission");
+      return;
+    }
 
     try {
       // Determine if this is a channel message or direct message
@@ -136,6 +162,7 @@ const MessageInput = ({ activeNavItem }) => {
         console.log("Sending direct message:");
         console.log("- To friend:", selectedFriend.friendId, selectedFriend.username);
         console.log("- Message content:", text.trim());
+        console.log("- Has image:", !!imagePreview);
         console.log("- Socket connected:", isSocketConnected);
         console.log("- Socket object:", socket);
         
@@ -152,11 +179,13 @@ const MessageInput = ({ activeNavItem }) => {
         await sendDirectMessageAPI(messageData, selectedFriend.friendId);
         console.log("API message sent successfully");
         
-        // Then use the socket for real-time delivery
-        if (isSocketConnected) {
+        // Then use the socket for real-time delivery (only for text messages)
+        if (isSocketConnected && text.trim()) {
           console.log("Sending via socket...");
           const success = sendDirectMessage(selectedFriend.friendId, text.trim());
           console.log("Socket message sent result:", success);
+        } else if (!text.trim()) {
+          console.log("Skipping socket for image-only message");
         } else {
           console.warn("Socket not connected, message sent only via API");
         }
@@ -253,10 +282,10 @@ const MessageInput = ({ activeNavItem }) => {
         </div>
         <button
           type="submit"
-          className="btn btn-sm btn-circle"
-          disabled={!text.trim() && !imagePreview}
+          className={`btn btn-sm btn-circle ${isSendingMessage ? 'btn-disabled loading' : ''}`}
+          disabled={!text.trim() && !imagePreview || isSendingMessage}
         >
-          <Send size={22} />
+          {isSendingMessage ? null : <Send size={22} />}
         </button>
       </form>
     </div>
