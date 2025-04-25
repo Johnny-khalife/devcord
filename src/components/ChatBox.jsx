@@ -29,6 +29,7 @@ const ChatBox = ({ activeNavItem, isMobile }) => {
     selectedFriend,
     setSelectedFriend,
     typingIndicators,
+    isMessagesLoading
   } = useChatStore();
   const { selectedWorkspace } = useWorkspaceStore();
   
@@ -223,6 +224,8 @@ const ChatBox = ({ activeNavItem, isMobile }) => {
             <Loader2 className="h-8 w-8 animate-spin text-base-content/50" />
           </div>
       );
+  } else if (isMessagesLoading) {
+      mainContent = <MessageSkeleton />;
   } else if (error) {
       mainContent = <div className="p-4 text-center text-error">{error}</div>;
   } else if (messagesForDisplay.length === 0 && shouldShowChatContent) {
