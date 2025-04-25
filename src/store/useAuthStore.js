@@ -166,8 +166,9 @@ export const useAuthStore = create(
           disconnectSockets();
           
           // Clear token from localStorage and global references
-          localStorage.removeItem('auth_token');
+          localStorage.clear();
           window.authUser = null;
+          sessionStorage.clear();
           
           set({ 
             socket: null,

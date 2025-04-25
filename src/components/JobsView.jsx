@@ -9,7 +9,7 @@ const JobsView = () => {
   const [selectedCategory, setSelectedCategory] = useState("");
   const [selectedLevel, setSelectedLevel] = useState("");
   const [filteredJobs, setFilteredJobs] = useState([]);
-
+  const [isMobile, setIsMobile] = useState(false);
   // Get unique categories and levels from jobs
   const categories = [...new Set(jobsData.jobs.map(job => job.category))];
   const levels = [...new Set(jobsData.jobs.map(job => job.level))];
@@ -19,7 +19,16 @@ const JobsView = () => {
     setJobs(jobsData.jobs);
     setFilteredJobs(jobsData.jobs);
     setLoading(false);
+    
+    const checkIfMobile = () => {
+      const mobile = window.innerWidth < 768;
+      setIsMobile(mobile);
+    
+    };
+    
+    checkIfMobile();
   }, []);
+
 
   // Filter jobs based on search term, category, and level
   useEffect(() => {
@@ -56,7 +65,7 @@ const JobsView = () => {
   }
 
   return (
-    <div className="flex flex-col h-full bg-base-100 pb-12">
+    <div className={`${isMobile?" flex flex-col h-full bg-base-100 pb-16": "flex flex-col h-full bg-base-100 "}`}>
       {/* Header */}
       <div className="p-4 border-b border-base-300 bg-base-100 sticky top-0 z-10">
         <h2 className="text-xl font-bold mb-1">Recent Jobs</h2>
