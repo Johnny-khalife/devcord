@@ -311,13 +311,13 @@ const ChatBox = ({ activeNavItem, isMobile }) => {
       </div>
 
       {/* Messages Area (Scrollable) */}
-      <div className={`flex-1 overflow-y-auto mobile-scroll px-4 py-4 ${isMobile ? "pb-20" : ""}`}>
+      <div className={`flex-1 overflow-y-auto mobile-scroll px-4 py-4 ${isMobile ? "pb-32" : ""}`}>
         {mainContent}
       </div>
 
       {/* Input Area (Fixed at Bottom) */}
       {showInput && (
-        <div className={`flex-shrink-0 border-t border-base-300 ${isMobile? "fixed bottom-16 right-0 left-0":""}`}>
+        <div className={`flex-shrink-0 border-t border-base-300 ${isMobile? "fixed bottom-12 right-0 left-0 bg-base-100":""}`}>
           <MessageInput activeNavItem={activeNavItem} />
         </div>
       )}
