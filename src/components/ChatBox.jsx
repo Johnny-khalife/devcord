@@ -317,7 +317,7 @@ const ChatBox = ({ activeNavItem, isMobile }) => {
 
       {/* Input Area (Fixed at Bottom) */}
       {showInput && (
-        <div className={`flex-shrink-0 border-t border-base-300 ${isMobile? "pb-16":""}`}>
+        <div className={`flex-shrink-0 border-t border-base-300 ${isMobile? "fixed bottom-16 right-0 left-0":""}`}>
           <MessageInput activeNavItem={activeNavItem} />
         </div>
       )}
