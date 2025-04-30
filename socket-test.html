@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Dev-Chat Socket Test</title>
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .container {
+            display: flex;
+            gap: 20px;
+        }
+        .section {
+            flex: 1;
+            border: 1px solid #ccc;
+            padding: 15px;
+            border-radius: 5px;
+        }
+        .log-container {
+            height: 300px;
+            overflow-y: auto;
+            border: 1px solid #eee;
+            padding: 10px;
+            margin-bottom: 10px;
+            background-color: #f9f9f9;
+        }
+        input, button, select {
+            margin: 5px 0;
+            padding: 8px;
+        }
+        input, select {
+            width: 100%;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+            width: 100%;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        .success {
+            color: green;
+        }
+        .error {
+            color: red;
+        }
+        .info {
+            color: blue;
+        }
+    </style>
+</head>
+<body>
+    <h1>Dev-Chat Socket Test</h1>
+    
+    <div class="container">
+        <div class="section">
+            <h2>Direct Messages</h2>
+            <div id="dm-log" class="log-container"></div>
+            <div>
+                <input type="text" id="dm-user-id" placeholder="Receiver User ID">
+                <input type="text" id="dm-message" placeholder="Message">
+                <button id="dm-send">Send DM</button>
+                <button id="dm-typing-true">Start Typing</button>
+                <button id="dm-typing-false">Stop Typing</button>
+            </div>
+        </div>
+        
+        <div class="section">
+            <h2>Channels</h2>
+            <div id="channel-log" class="log-container"></div>
+            <div>
+                <input type="text" id="channel-id" placeholder="Channel ID">
+                <input type="text" id="channel-message" placeholder="Message">
+                <button id="channel-join">Join Channel</button>
+                <button id="channel-leave">Leave Channel</button>
+                <button id="channel-send">Send Message</button>
+                <button id="channel-typing-true">Start Typing</button>
+                <button id="channel-typing-false">Stop Typing</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="section">
+        <h2>Connection</h2>
+        <input type="text" id="auth-token" placeholder="JWT Token">
+        <button id="connect">Connect</button>
+        <button id="disconnect">Disconnect</button>
+    </div>
+
+    <script>
+        // Elements
+        const dmLog = document.getElementById('dm-log');
+        const channelLog = document.getElementById('channel-log');
+        const authTokenInput = document.getElementById('auth-token');
+        
+        // Socket instances
+        let dmSocket = null;
+        let channelSocket = null;
+
+        // Helper function to log messages
+        function logMessage(container, message, type = '') {
+            const messageElement = document.createElement('div');
+            messageElement.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            messageElement.className = type;
+            container.appendChild(messageElement);
+            container.scrollTop = container.scrollHeight;
+        }
+
+        // Connect to sockets
+        document.getElementById('connect').addEventListener('click', () => {
+            const token = authTokenInput.value.trim();
+            if (!token) {
+                alert('Please enter a JWT token');
+                return;
+            }
+
+            // Set the JWT cookie
+            document.cookie = `jwt=${token}; path=/`;
+
+            // Socket connection options
+            const socketOptions = {
+                withCredentials: true,
+                auth: {
+                    token: token
+                },
+                reconnection: true
+            };
+
+            try {
+                // Create DM socket connection
+                dmSocket = io('http://localhost:3001/dm', socketOptions);
+                
+                // Create channel socket connection
+                channelSocket = io('http://localhost:3001/channels', socketOptions);
+
+                // Set up DM socket event listeners
+                setupDMSocketListeners();
+                
+                // Set up channel socket event listeners
+                setupChannelSocketListeners();
+
+                logMessage(dmLog, 'Attempting to connect to DM socket...', 'info');
+                logMessage(channelLog, 'Attempting to connect to channel socket...', 'info');
+            } catch (error) {
+                logMessage(dmLog, `Error connecting to DM socket: ${error.message}`, 'error');
+                logMessage(channelLog, `Error connecting to channel socket: ${error.message}`, 'error');
+            }
+        });
+
+        // Disconnect from sockets
+        document.getElementById('disconnect').addEventListener('click', () => {
+            if (dmSocket) {
+                dmSocket.disconnect();
+                dmSocket = null;
+                logMessage(dmLog, 'Disconnected from DM socket', 'info');
+            }
+            
+            if (channelSocket) {
+                channelSocket.disconnect();
+                channelSocket = null;
+                logMessage(channelLog, 'Disconnected from channel socket', 'info');
+            }
+        });
+
+        // Set up DM socket event listeners
+        function setupDMSocketListeners() {
+            if (!dmSocket) return;
+
+            dmSocket.on('connect', () => {
+                logMessage(dmLog, 'Connected to DM socket', 'success');
+            });
+
+            dmSocket.on('connect_error', (error) => {
+                logMessage(dmLog, `DM socket connection error: ${error.message}`, 'error');
+            });
+
+            dmSocket.on('disconnect', (reason) => {
+                logMessage(dmLog, `Disconnected from DM socket: ${reason}`, 'info');
+            });
+
+            dmSocket.on('error', (error) => {
+                logMessage(dmLog, `Socket error: ${error}`, 'error');
+            });
+
+            dmSocket.on('receiveDirectMessage', (data) => {
+                logMessage(dmLog, `Received direct message: ${JSON.stringify(data)}`, 'success');
+            });
+
+            dmSocket.on('typingIndicator', (data) => {
+                logMessage(dmLog, `Typing indicator: ${JSON.stringify(data)}`, 'info');
+            });
+
+            dmSocket.on('messagesRead', (data) => {
+                logMessage(dmLog, `Messages read: ${JSON.stringify(data)}`, 'info');
+            });
+        }
+
+        // Set up channel socket event listeners
+        function setupChannelSocketListeners() {
+            if (!channelSocket) return;
+
+            channelSocket.on('connect', () => {
+                logMessage(channelLog, 'Connected to channel socket', 'success');
+            });
+
+            channelSocket.on('connect_error', (error) => {
+                logMessage(channelLog, `Channel socket connection error: ${error.message}`, 'error');
+            });
+
+            channelSocket.on('disconnect', (reason) => {
+                logMessage(channelLog, `Disconnected from channel socket: ${reason}`, 'info');
+            });
+
+            channelSocket.on('channel:message', (message) => {
+                logMessage(channelLog, `Received channel message: ${JSON.stringify(message)}`, 'success');
+            });
+
+            channelSocket.on('messageDeleted', (data) => {
+                logMessage(channelLog, `Channel message deleted: ${JSON.stringify(data)}`, 'info');
+            });
+
+            channelSocket.on('messageEdited', (data) => {
+                logMessage(channelLog, `Channel message edited: ${JSON.stringify(data)}`, 'info');
+            });
+
+            channelSocket.on('channel:typing', (data) => {
+                logMessage(channelLog, `Channel typing indicator: ${JSON.stringify(data)}`, 'info');
+            });
+        }
+
+        // Send DM
+        document.getElementById('dm-send').addEventListener('click', () => {
+            if (!dmSocket || !dmSocket.connected) {
+                logMessage(dmLog, 'Socket not connected', 'error');
+                return;
+            }
+
+            const receiverId = document.getElementById('dm-user-id').value.trim();
+            const message = document.getElementById('dm-message').value.trim();
+            
+            if (!receiverId || !message) {
+                logMessage(dmLog, 'Please enter both receiver ID and message', 'error');
+                return;
+            }
+
+            try {
+                dmSocket.emit('sendMessage', { receiverId, message }, (response) => {
+                    if (response && response.success) {
+                        logMessage(dmLog, 'Message sent successfully', 'success');
+                    } else {
+                        logMessage(dmLog, `Failed to send message: ${JSON.stringify(response)}`, 'error');
+                    }
+                });
+                logMessage(dmLog, `Sent message to ${receiverId}: ${message}`, 'info');
+            } catch (error) {
+                logMessage(dmLog, `Error sending message: ${error.message}`, 'error');
+            }
+        });
+
+        // Send channel message
+        document.getElementById('channel-send').addEventListener('click', () => {
+            if (!channelSocket || !channelSocket.connected) {
+                logMessage(channelLog, 'Channel socket not connected', 'error');
+                return;
+            }
+
+            const channelId = document.getElementById('channel-id').value.trim();
+            const message = document.getElementById('channel-message').value.trim();
+            
+            if (!channelId || !message) {
+                logMessage(channelLog, 'Please enter both channel ID and message', 'error');
+                return;
+            }
+
+            try {
+                const timestamp = new Date().toISOString();
+                channelSocket.emit('sendMessage', {
+                    channelId,
+                    message,
+                    timestamp
+                });
+                logMessage(channelLog, `Sent message to channel ${channelId}: ${message}`, 'info');
+            } catch (error) {
+                logMessage(channelLog, `Error sending channel message: ${error.message}`, 'error');
+            }
+        });
+
+        // Join channel
+        document.getElementById('channel-join').addEventListener('click', () => {
+            if (!channelSocket || !channelSocket.connected) {
+                logMessage(channelLog, 'Channel socket not connected', 'error');
+                return;
+            }
+
+            const channelId = document.getElementById('channel-id').value.trim();
+            
+            if (!channelId) {
+                logMessage(channelLog, 'Please enter a channel ID', 'error');
+                return;
+            }
+
+            try {
+                channelSocket.emit('joinChannel', { channelId });
+                logMessage(channelLog, `Joined channel: ${channelId}`, 'success');
+            } catch (error) {
+                logMessage(channelLog, `Error joining channel: ${error.message}`, 'error');
+            }
+        });
+
+        // Leave channel
+        document.getElementById('channel-leave').addEventListener('click', () => {
+            if (!channelSocket || !channelSocket.connected) {
+                logMessage(channelLog, 'Channel socket not connected', 'error');
+                return;
+            }
+
+            const channelId = document.getElementById('channel-id').value.trim();
+            
+            if (!channelId) {
+                logMessage(channelLog, 'Please enter a channel ID', 'error');
+                return;
+            }
+
+            try {
+                channelSocket.emit('leaveChannel', { channelId });
+                logMessage(channelLog, `Left channel: ${channelId}`, 'success');
+            } catch (error) {
+                logMessage(channelLog, `Error leaving channel: ${error.message}`, 'error');
+            }
+        });
+
+        // DM typing indicators
+        document.getElementById('dm-typing-true').addEventListener('click', () => {
+            sendTypingIndicator(true);
+        });
+
+        document.getElementById('dm-typing-false').addEventListener('click', () => {
+            sendTypingIndicator(false);
+        });
+
+        function sendTypingIndicator(isTyping) {
+            if (!dmSocket || !dmSocket.connected) {
+                logMessage(dmLog, 'Socket not connected', 'error');
+                return;
+            }
+
+            const receiverId = document.getElementById('dm-user-id').value.trim();
+            
+            if (!receiverId) {
+                logMessage(dmLog, 'Please enter a receiver ID', 'error');
+                return;
+            }
+
+            try {
+                dmSocket.emit('typing', { receiverId, isTyping });
+                logMessage(dmLog, `Sent typing indicator (${isTyping}) to ${receiverId}`, 'info');
+            } catch (error) {
+                logMessage(dmLog, `Error sending typing indicator: ${error.message}`, 'error');
+            }
+        }
+
+        // Channel typing indicators
+        document.getElementById('channel-typing-true').addEventListener('click', () => {
+            sendChannelTypingIndicator(true);
+        });
+
+        document.getElementById('channel-typing-false').addEventListener('click', () => {
+            sendChannelTypingIndicator(false);
+        });
+
+        function sendChannelTypingIndicator(isTyping) {
+            if (!channelSocket || !channelSocket.connected) {
+                logMessage(channelLog, 'Channel socket not connected', 'error');
+                return;
+            }
+
+            const channelId = document.getElementById('channel-id').value.trim();
+            
+            if (!channelId) {
+                logMessage(channelLog, 'Please enter a channel ID', 'error');
+                return;
+            }
+
+            try {
+                channelSocket.emit('typing', { channelId, isTyping });
+                logMessage(channelLog, `Sent channel typing indicator (${isTyping}) for channel ${channelId}`, 'info');
+            } catch (error) {
+                logMessage(channelLog, `Error sending channel typing indicator: ${error.message}`, 'error');
+            }
+        }
+    </script>
+</body>
+</html> 
+ 

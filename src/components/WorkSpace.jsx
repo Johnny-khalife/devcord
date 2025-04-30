@@ -369,13 +369,21 @@ const WorkSpace = ({
           );
           
           if (currentChannel) {
-            // Set the current channel as selected
+            // Set the current channel as selected with both channel and workspace IDs
             setActiveChannel(currentChannel._id);
-            setSelectedWorkspace(currentChannel);
+            setSelectedWorkspace({
+              ...currentChannel,
+              channelId: currentChannel._id,
+              workspaceId: activeWorkspace
+            });
           } else {
-            // Set the first channel as active
+            // Set the first channel as active with both channel and workspace IDs
             setActiveChannel(defaultChannel._id);
-            setSelectedWorkspace(defaultChannel);
+            setSelectedWorkspace({
+              ...defaultChannel,
+              channelId: defaultChannel._id,
+              workspaceId: activeWorkspace
+            });
           }
         } else {
           // If there are no channels, clear the active channel and selected workspace
@@ -451,9 +459,22 @@ const WorkSpace = ({
 
 // In WorkSpace.jsx, update the selectedWorkspaceWhenClick function
   const handleChannelClick = (channel) => {
+    console.log("Channel clicked:", channel);
     setActiveChannel(channel._id);
-    setSelectedWorkspace(channel);
-};
+    
+    // Create a properly structured selectedWorkspace object with all necessary IDs
+    const enrichedChannel = {
+      ...channel,
+      channelId: channel._id,
+      workspaceId: activeWorkspace,
+      // Add these for backward compatibility
+      id: channel._id, 
+      _id: channel._id
+    };
+    
+    console.log("Setting enriched channel as selected workspace:", enrichedChannel);
+    setSelectedWorkspace(enrichedChannel);
+  };
 
   // Create a new channel
   const handleCreateChannel = async () => {

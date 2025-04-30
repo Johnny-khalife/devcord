@@ -18,7 +18,7 @@ import { Loader } from "lucide-react";
 import { Toaster } from "react-hot-toast";
 
 const App = () => {
-  const { authUser, checkAuth, isCheckingAuth, onlineUsers, socket } = useAuthStore();
+  const { authUser, checkAuth, isCheckingAuth, socket } = useAuthStore();
   const { theme } = useThemeStore();
   
   // Check authentication on app load and initialize socket connection if authenticated
@@ -26,34 +26,53 @@ const App = () => {
     checkAuth();
   }, [checkAuth]);
 
-  // Monitor socket connection status
+  // Monitor socket connection status for both DM and Channel sockets
   useEffect(() => {
+    // Set up event handlers
+    const onConnect = (socketType) => () => {
+      console.log(`${socketType} socket connected!`);
+    };
+    
+    const onDisconnect = (socketType) => (reason) => {
+      console.log(`${socketType} socket disconnected:`, reason);
+    };
+    
+    const onError = (socketType) => (error) => {
+      console.error(`${socketType} socket error:`, error);
+    };
+    
+    // DM socket event listeners
     if (socket?.dm) {
-      console.log("Socket connection status:", socket.dm.connected ? "Connected" : "Disconnected");
+      console.log("DM Socket status:", socket.dm.connected ? "Connected" : "Disconnected");
       
-      // Add connection event listeners
-      const onConnect = () => {
-        console.log("Socket connected!");
-      };
-      
-      const onDisconnect = (reason) => {
-        console.log("Socket disconnected:", reason);
-      };
-      
-      const onError = (error) => {
-        console.error("Socket error:", error);
-      };
-      
-      socket.dm.on("connect", onConnect);
-      socket.dm.on("disconnect", onDisconnect);
-      socket.dm.on("error", onError);
-      
-      return () => {
-        socket.dm.off("connect", onConnect);
-        socket.dm.off("disconnect", onDisconnect);
-        socket.dm.off("error", onError);
-      };
+      socket.dm.on("connect", onConnect("DM"));
+      socket.dm.on("disconnect", onDisconnect("DM"));
+      socket.dm.on("error", onError("DM"));
     }
+    
+    // Channel socket event listeners
+    if (socket?.channels) {
+      console.log("Channel Socket status:", socket.channels.connected ? "Connected" : "Disconnected");
+      
+      socket.channels.on("connect", onConnect("Channel"));
+      socket.channels.on("disconnect", onDisconnect("Channel"));
+      socket.channels.on("error", onError("Channel"));
+    }
+    
+    // Clean up all listeners
+    return () => {
+      if (socket?.dm) {
+        socket.dm.off("connect", onConnect("DM"));
+        socket.dm.off("disconnect", onDisconnect("DM"));
+        socket.dm.off("error", onError("DM"));
+      }
+      
+      if (socket?.channels) {
+        socket.channels.off("connect", onConnect("Channel"));
+        socket.channels.off("disconnect", onDisconnect("Channel"));
+        socket.channels.off("error", onError("Channel"));
+      }
+    };
   }, [socket]);
 
   // Show loading state while checking authentication

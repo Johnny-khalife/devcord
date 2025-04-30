@@ -10,16 +10,22 @@ import MessageSkeleton from "./skeletons/MessageSkeleton";
 const DirectMessage = ({ message, firstInGroup }) => {
   const { deleteMessage } = useChatStore();
   const [imageViewer, setImageViewer] = useState(false);
+  const { authUser } = useAuthStore();
 
   // Use the isSentByMe property set in useChatStore processing
-  const isCurrentUser = message.isSentByMe === true;
+  // If isSentByMe is not explicitly set, check if the message is from the current user
+  const isSentByMe = message.isSentByMe === true;
+  const senderId = message.senderId || message.sender?.userId;
+  const isCurrentUser = isSentByMe || (authUser && senderId === authUser._id);
   
   console.log("DirectMessage rendering:", {
     messageId: message._id,
     isCurrentUser,
     isSentByMe: message.isSentByMe,
+    senderId,
+    authUserId: authUser?._id,
     content: message.content,
-    image:message.image,
+    image: message.image,
     isDeleted: message.isDeleted
   });
 
@@ -201,8 +207,59 @@ const ChannelMessage = ({ message, firstInGroup }) => {
   ];
 
   // Check if current user is the sender
-  const isCurrentUser =
-    message.userId?._id === authUser?._id || message.userId === authUser?._id;
+  // First use isSentByMe if explicitly set, otherwise compare IDs
+  let isCurrentUser = message.isSentByMe === true;
+  
+  if (!isCurrentUser) {
+    // Extract user ID, which might be nested
+    const messageUserId = message.userId?._id || message.userId;
+    const messageSenderId = message.senderId?._id || message.senderId;
+    
+    // Check all possible ID locations
+    isCurrentUser = 
+      (messageUserId && messageUserId === authUser?._id) ||
+      (messageSenderId && messageSenderId === authUser?._id);
+  }
+  
+  // Get sender information (username and avatar)
+  const getSenderInfo = () => {
+    if (isCurrentUser) {
+      return {
+        username: "You",
+        avatar: authUser?.avatar || "https://ui-avatars.com/api/?name=You&background=random"
+      };
+    }
+    
+    // Try to get sender info from various possible locations
+    const username = message.sender?.username || 
+                    (message.userId?.username) ||
+                    (typeof message.userId === 'object' ? message.userId.username : null) ||
+                    (typeof message.senderId === 'object' ? message.senderId.username : null);
+                    
+    const avatar = message.sender?.avatar || 
+                  (message.userId?.avatar) ||
+                  (typeof message.userId === 'object' ? message.userId.avatar : null) ||
+                  (typeof message.senderId === 'object' ? message.senderId.avatar : null) ||
+                  "https://ui-avatars.com/api/?name=User&background=random";
+    
+    return {
+      username: username || "Unknown User",
+      avatar: avatar
+    };
+  };
+  
+  const senderInfo = getSenderInfo();
+  
+  console.log("ChannelMessage rendering:", {
+    messageId: message._id,
+    userId: message.userId,
+    senderId: message.senderId,
+    sender: message.sender,
+    authUserId: authUser?._id,
+    isCurrentUser,
+    senderInfo,
+    content: message.content
+  });
 
   // Check if user is admin or owner of the workspace
   const isChannelAdminOrOwner = () => {
@@ -291,11 +348,8 @@ const ChannelMessage = ({ message, firstInGroup }) => {
         <div className="avatar mt-1">
           <div className="w-8 h-8 rounded-full ring-1 ring-base-300">
             <img
-              src={
-                message.userId?.avatar ||
-                "https://ui-avatars.com/api/?name=User&background=random"
-              }
-              alt={message.userId?.username || "User"}
+              src={senderInfo.avatar}
+              alt={senderInfo.username}
               className="object-cover"
             />
           </div>
@@ -314,9 +368,7 @@ const ChannelMessage = ({ message, firstInGroup }) => {
             }`}
           >
             <span className="text-sm font-semibold">
-              {isCurrentUser
-                ? "You"
-                : message.userId?.username || "Unknown User"}
+              {senderInfo.username}
             </span>
             <time className="text-xs text-base-content/50">
               {formatMessageTime(message.createdAt)}
@@ -476,19 +528,50 @@ const ChannelMessage = ({ message, firstInGroup }) => {
 
 // Main Message component
 const Message = ({ message, activeNavItem, firstInGroup }) => {
+  // Get auth user to determine if message is sent by current user
+  const { authUser } = useAuthStore();
+  
+  // Get senderId - could be an object or string depending on message source
+  let senderId = message.senderId;
+  if (senderId && typeof senderId === 'object' && senderId._id) {
+    senderId = senderId._id;
+  } else if (message.sender?.userId) {
+    senderId = message.sender.userId;
+  } else if (message.userId) {
+    senderId = message.userId;
+  }
+  
+  // Get username
+  const senderName = message.sender?.username || 
+                     (message.senderId && typeof message.senderId === 'object' ? message.senderId.username : null) ||
+                     message.userId?.username;
+  
   // Log message details to debug
   console.log("Message component rendering:", {
     id: message._id,
-    content: message.content,
-    sender: message.sender?.username || message.userId?.username,
+    content: message.content || message.message,
+    sender: senderName,
+    senderId,
+    authUserId: authUser?._id,
     isSentByMe: message.isSentByMe,
     activeNavItem
   });
   
+  // If message is optimistic and lacks proper ID structure, use default values
+  const processedMessage = {
+    ...message,
+    _id: message._id || `temp-${Date.now()}`,
+    content: message.content || message.message || "",
+    // Set isSentByMe flag if it's not already set
+    isSentByMe: message.isSentByMe !== undefined 
+      ? message.isSentByMe 
+      : (senderId && authUser && senderId === authUser._id)
+  };
+  
   return activeNavItem === "workSpace" ? (
-    <ChannelMessage message={message} firstInGroup={firstInGroup} />
+    <ChannelMessage message={processedMessage} firstInGroup={firstInGroup} />
   ) : (
-    <DirectMessage message={message} firstInGroup={firstInGroup} />
+    <DirectMessage message={processedMessage} firstInGroup={firstInGroup} />
   );
 };
 

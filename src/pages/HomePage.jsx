@@ -164,17 +164,46 @@ const HomePage = () => {
             const currentChannel = workspaceChannels.find(channel => channel._id === activeChannel);
             
             if (currentChannel) {
-              // Update the selected workspace with the current channel
-              setSelectedWorkspace(currentChannel);
+              // Create a properly structured object with all IDs
+              const enrichedChannel = {
+                ...currentChannel,
+                channelId: currentChannel._id,
+                workspaceId: activeWorkspace,
+                id: currentChannel._id,
+                _id: currentChannel._id
+              };
+              
+              console.log("Setting enriched channel from sync:", enrichedChannel);
+              setSelectedWorkspace(enrichedChannel);
             } else if (workspaceChannels.length > 0) {
               // If active channel not found, set the first channel as active
               setActiveChannel(workspaceChannels[0]._id);
-              setSelectedWorkspace(workspaceChannels[0]);
+              
+              // Create a properly structured object with all IDs
+              const enrichedChannel = {
+                ...workspaceChannels[0],
+                channelId: workspaceChannels[0]._id,
+                workspaceId: activeWorkspace,
+                id: workspaceChannels[0]._id,
+                _id: workspaceChannels[0]._id
+              };
+              
+              setSelectedWorkspace(enrichedChannel);
             }
           } else if (workspaceChannels.length > 0) {
             // If no active channel set but workspace has channels, set the first one
             setActiveChannel(workspaceChannels[0]._id);
-            setSelectedWorkspace(workspaceChannels[0]);
+            
+            // Create a properly structured object with all IDs
+            const enrichedChannel = {
+              ...workspaceChannels[0],
+              channelId: workspaceChannels[0]._id,
+              workspaceId: activeWorkspace,
+              id: workspaceChannels[0]._id,
+              _id: workspaceChannels[0]._id
+            };
+            
+            setSelectedWorkspace(enrichedChannel);
           }
         } catch (error) {
           console.error("Failed to sync selected workspace:", error);

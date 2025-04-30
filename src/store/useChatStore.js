@@ -1,6 +1,8 @@
 import { create } from "zustand";
 import toast from "react-hot-toast";
 import { axiosInstance } from "../lib/axios";
+import { useAuthStore } from "./useAuthStore";
+import { sendChannelMessage } from "../lib/socket";
 
 export const useChatStore = create((set, get) => ({
   messages: [],
@@ -16,6 +18,7 @@ export const useChatStore = create((set, get) => ({
   searchQuery: "",
   searchPagination: null,
   typingIndicators: {}, // Track which users are typing
+  channelTypingIndicators: {}, // Track users typing in channels
   isSendingMessage: false,
   
   getMessages: async (channelId) => {
@@ -76,65 +79,163 @@ export const useChatStore = create((set, get) => ({
     }
   },
 
-  sendMessage: async (messageData, channelId) => {
-    if (!channelId) {
-      toast.error("Channel ID is required");
+  sendMessage: async (messageData, workspaceId) => {
+    if (!workspaceId) {
+      console.error("No workspace ID provided for channel message");
       return;
     }
-    
-    // Generate a temporary ID for optimistic update
-    const tempId = `temp-${Date.now()}`;
-    
-    // Get the current user ID
-    const authUser = JSON.parse(localStorage.getItem('auth-store'))?.state?.authUser;
-    
-    // Create an optimistic message
-    const optimisticMessage = {
-      _id: tempId,
-      content: messageData.content,
-      image: messageData.image,
-      createdAt: new Date().toISOString(),
-      isSentByMe: true,
-      isPending: true, // Flag to indicate this is a pending message
-      userId: authUser?._id || 'current-user', // Add user ID to ensure proper positioning
-      sender: {
-        userId: authUser?._id || 'current-user',
-        username: authUser?.username || 'You',
-        avatar: authUser?.avatar
-      }
-    };
-    
-    // Add the optimistic message to the UI immediately
-    set((state) => ({
-      messages: [...state.messages, optimisticMessage]
-    }));
-    
+
     try {
-      // Disable the send button for this message
-      const sendButton = document.querySelector(`[data-message-id="${tempId}"] button[type="submit"]`);
-      if (sendButton) {
-        sendButton.disabled = true;
+      set({ isSendingMessage: true });
+
+      // Prepare message for optimistic update
+      const authUser = window.authUser || JSON.parse(localStorage.getItem('auth-store'))?.state?.authUser;
+      
+      if (!authUser) {
+        console.error("No authenticated user found for sending message");
+        toast.error("You must be logged in to send messages");
+        set({ isSendingMessage: false });
+        return;
+      }
+
+      // Create an optimistic message to show immediately
+      const optimisticMessage = {
+        _id: `temp-${Date.now()}`,
+        content: messageData.message || messageData.content, // Support both properties
+        image: messageData.image,
+        senderId: authUser._id,
+        userId: authUser._id,
+        sender: {
+          userId: authUser._id,
+          username: authUser.username,
+          avatar: authUser.avatar
+        },
+        workspaceId: workspaceId, // Include workspaceId
+        createdAt: new Date().toISOString(),
+        isSentByMe: true,
+        isPending: true
+      };
+
+      // Add optimistic message to state
+      set((state) => ({
+        messages: [...state.messages, optimisticMessage]
+      }));
+
+      // Get the current selected workspace and resolve channelId
+      const { selectedWorkspace } = get();
+      
+      // We'll use workspaceId as channelId if needed
+      // This handles the case where the first channel is the workspace itself
+      let channelId = workspaceId;
+      
+      if (selectedWorkspace) {
+        console.log("Selected workspace for message:", selectedWorkspace);
+        
+        // Try to get the channelId from the workspace object
+        if (selectedWorkspace.channelId) {
+          channelId = selectedWorkspace.channelId;
+        } else if (selectedWorkspace._id) {
+          channelId = selectedWorkspace._id;
+        } else if (selectedWorkspace.id) {
+          channelId = selectedWorkspace.id;
+        }
       }
       
-      const response = await axiosInstance.post(`/messages/${channelId}`, messageData);
-      const newMessage = response.data.data;
+      console.log(`Resolved channelId: ${channelId}, workspaceId: ${workspaceId}`);
       
-      // Replace the optimistic message with the real one
-      set((state) => ({
-        messages: state.messages.map(msg => 
-          msg._id === tempId ? { ...newMessage, isSentByMe: true } : msg
-        )
-      }));
+      const { authUser: user } = useAuthStore.getState();
+      const { socket } = user || {};
       
-      return newMessage;
+      let socketSent = false;
+      
+      // Try to send via socket if connected
+      if (socket && socket.channels && socket.channels.connected && channelId) {
+        console.log("Sending message to channel via socket:", {
+          channelId,
+          workspaceId,
+          message: messageData.message || messageData.content,
+          image: messageData.image
+        });
+        
+        // Send using socket
+        socketSent = sendChannelMessage(
+          channelId,
+          {
+            message: messageData.message || messageData.content,
+            image: messageData.image
+          },
+          workspaceId
+        );
+      }
+
+      // Always use API to ensure persistence
+      if (channelId) {
+        console.log("Sending message via API to ensure persistence");
+        
+        try {
+          // Prepare API request data
+          const apiMessageData = {
+            message: messageData.message || messageData.content,
+            content: messageData.message || messageData.content,
+            image: messageData.image
+          };
+          
+          // Send API request to persist the message
+          const response = await axiosInstance.post(
+            `/messages/${channelId}`, 
+            apiMessageData
+          );
+          
+          console.log("API message response:", response.data);
+          
+          // Update the message in state with real ID and data from server
+          if (response.data && response.data.data && response.data.data.messageId) {
+            const serverMessage = response.data.data;
+            
+            set((state) => ({
+              messages: state.messages.map(msg => 
+                msg._id === optimisticMessage._id ? 
+                {
+                  ...msg,
+                  _id: serverMessage.messageId,
+                  content: serverMessage.message || serverMessage.content,
+                  image: serverMessage.image,
+                  isPending: false
+                } : msg
+              )
+            }));
+          } else {
+            // Mark as not pending if we didn't get expected server response
+            set((state) => ({
+              messages: state.messages.map(msg => 
+                msg._id === optimisticMessage._id ? { ...msg, isPending: false } : msg
+              )
+            }));
+          }
+        } catch (apiError) {
+          console.error("API message send failed:", apiError);
+          if (!socketSent) {
+            throw apiError;
+          }
+        }
+      } else {
+        console.error("Cannot send API message: No channel ID available");
+        if (!socketSent) {
+          throw new Error("Failed to send message: No channel ID available");
+        }
+      }
+
+      set({ isSendingMessage: false });
     } catch (error) {
-      console.log(error.message);
-      toast.error(error.response?.data?.message || "Failed to send message");
+      console.error("Failed to send message:", error);
       
-      // Remove the failed optimistic message
+      // Remove the optimistic message on failure
       set((state) => ({
-        messages: state.messages.filter(msg => msg._id !== tempId)
+        messages: state.messages.filter(msg => !msg._id.startsWith('temp-')),
+        isSendingMessage: false
       }));
+      
+      toast.error(error.response?.data?.message || "Failed to send message");
     }
   },
 
@@ -159,7 +260,7 @@ export const useChatStore = create((set, get) => ({
       content: messageData.message,
       image: messageData.image,
       createdAt: new Date().toISOString(),
-      isSentByMe: true,
+      isSentByMe: true, // Explicitly set this for optimistic update
       isPending: true, // Flag to indicate this is a pending message
       senderId: authUser?._id || 'current-user', // Add user ID to ensure proper positioning
       sender: {
@@ -202,7 +303,7 @@ export const useChatStore = create((set, get) => ({
           msg._id === tempId ? { 
             ...newMessage,
             _id: newMessage.messageId || newMessage._id, // Ensure messageId is properly mapped to _id
-            isSentByMe: true 
+            isSentByMe: true // Make sure this is explicitly set
           } : msg
         )
       }));
@@ -623,7 +724,7 @@ export const useChatStore = create((set, get) => ({
     const newMessage = {
       _id: messageData.messageId || messageData._id || messageData.id || `temp-${Date.now()}`,
       content: messageData.message || messageData.content,
-      image:messageData.image,
+      image: messageData.image,
       sender: isFromCurrentUser ? {
         userId: authUser._id,
         username: authUser.username,
@@ -731,5 +832,164 @@ export const useChatStore = create((set, get) => ({
     });
     
     set({ directMessages: updatedMessages });
+  },
+
+  // Add a channel message received via socket
+  addChannelMessage: (messageData) => {
+    console.log("Adding channel message to store:", messageData);
+    
+    if (!messageData) {
+      console.error("Invalid channel message data received");
+      return;
+    }
+    
+    // Get the current messages, auth info, and selected workspace
+    const { messages, selectedWorkspace } = get();
+    const authUser = window.authUser || JSON.parse(localStorage.getItem('auth-store'))?.state?.authUser;
+    
+    if (!authUser) {
+      console.error("Cannot add channel message: No authenticated user found");
+      return;
+    }
+    
+    // Check if the message belongs to the current active workspace
+    // If we have a workspaceId in the message and it doesn't match the current workspace, ignore it
+    if (messageData.workspaceId && selectedWorkspace) {
+      const selectedWorkspaceId = selectedWorkspace._id || selectedWorkspace.id;
+      
+      if (messageData.workspaceId !== selectedWorkspaceId) {
+        console.log(`Message workspaceId ${messageData.workspaceId} doesn't match selected workspace ${selectedWorkspaceId}, skipping`);
+        return;
+      }
+    }
+    
+    // Check if message already exists in store to avoid duplicates
+    const msgExists = messages.some(msg => 
+      (msg._id && msg._id === messageData._id) || 
+      (msg.content === messageData.content && 
+       msg.sender?.userId === messageData.sender?.userId && 
+       Math.abs(new Date(msg.createdAt) - new Date(messageData.createdAt)) < 1000)
+    );
+    
+    if (msgExists) {
+      console.log("Channel message already exists in store, skipping");
+      return;
+    }
+    
+    // Get senderId - handle both object and string formats
+    const senderId = messageData.senderId || messageData.sender?.userId;
+    
+    // Determine if message is from current user
+    const isFromCurrentUser = messageData.isSentByMe !== undefined 
+      ? messageData.isSentByMe 
+      : (authUser && senderId === authUser._id);
+    
+    // Create a standardized message format that correctly handles sender information
+    const newMessage = {
+      _id: messageData._id || `socket-${Date.now()}`,
+      content: messageData.content || messageData.message,
+      image: messageData.image,
+      // Add userId in proper format for both direct format and nested object
+      userId: messageData.userId || senderId,
+      senderId: senderId,
+      // Ensure sender information is complete
+      sender: messageData.sender || {
+        userId: senderId,
+        username: messageData.senderName || (isFromCurrentUser ? authUser.username : 'Unknown User'),
+        avatar: messageData.senderAvatar
+      },
+      channelId: messageData.channelId,
+      workspaceId: messageData.workspaceId, // Store the workspaceId with the message
+      createdAt: messageData.createdAt || messageData.timestamp || new Date().toISOString(),
+      isSentByMe: isFromCurrentUser
+    };
+    
+    console.log("Adding formatted channel message:", newMessage);
+    
+    // Add to messages store
+    set({
+      messages: [...messages, newMessage]
+    });
+    
+    // Show notification if not from current user
+    if (!newMessage.isSentByMe) {
+      toast.success(`New message from ${newMessage.sender?.username || 'someone'}`);
+    }
+  },
+  
+  // Track channel typing indicators
+  setChannelTypingIndicator: (data) => {
+    if (!data || !data.channelId) return;
+    
+    const { userId, channelId, isTyping, username } = data;
+    
+    set((state) => {
+      // Get current channel typing indicators
+      const currentChannelTyping = state.channelTypingIndicators[channelId] || {};
+      
+      if (isTyping) {
+        // Add or update user typing status
+        return {
+          channelTypingIndicators: {
+            ...state.channelTypingIndicators,
+            [channelId]: {
+              ...currentChannelTyping,
+              [userId]: {
+                timestamp: Date.now(),
+                username
+              }
+            }
+          }
+        };
+      } else {
+        // Remove user from typing
+        const updatedChannelTyping = { ...currentChannelTyping };
+        delete updatedChannelTyping[userId];
+        
+        return {
+          channelTypingIndicators: {
+            ...state.channelTypingIndicators,
+            [channelId]: updatedChannelTyping
+          }
+        };
+      }
+    });
+    
+    // Clear typing indicator after timeout
+    if (isTyping) {
+      setTimeout(() => {
+        set((state) => {
+          const currentChannelTyping = state.channelTypingIndicators[channelId] || {};
+          const userTyping = currentChannelTyping[userId];
+          
+          // Only clear if hasn't been updated recently
+          if (userTyping && Date.now() - userTyping.timestamp > 3000) {
+            const updatedChannelTyping = { ...currentChannelTyping };
+            delete updatedChannelTyping[userId];
+            
+            return {
+              channelTypingIndicators: {
+                ...state.channelTypingIndicators,
+                [channelId]: updatedChannelTyping
+              }
+            };
+          }
+          
+          return state;
+        });
+      }, 3500);
+    }
+  },
+  
+  // Get typing users for a specific channel
+  getChannelTypingUsers: (channelId) => {
+    const { channelTypingIndicators } = get();
+    const channelTyping = channelTypingIndicators[channelId] || {};
+    
+    return Object.entries(channelTyping)
+      .map(([userId, data]) => ({
+        userId,
+        username: data.username
+      }));
   },
 }));
