@@ -190,7 +190,7 @@ const ChannelMessage = ({ message, firstInGroup }) => {
   const [showEmojiMenu, setShowEmojiMenu] = useState(false);
   const [imageViewer, setImageViewer] = useState(false);
   const { authUser } = useAuthStore();
-  const { deleteMessage, reactToMessage, selectedWorkspace } = useChatStore();
+  const { deleteMessage, addReaction, selectedChannel } = useChatStore();
 
   // Common emoji reactions
   const COMMON_EMOJIS = [
@@ -261,81 +261,82 @@ const ChannelMessage = ({ message, firstInGroup }) => {
     content: message.content
   });
 
-  // Check if user is admin or owner of the workspace
+  // Check if the user is an admin or owner - needed for permission checks
   const isChannelAdminOrOwner = () => {
-    if (!selectedWorkspace) return false;
-    if (selectedWorkspace.createdBy === authUser._id) return true;
-    if (
-      selectedWorkspace.admins &&
-      selectedWorkspace.admins.includes(authUser._id)
-    )
-      return true;
-    return false;
+    // Implementation depends on how your permissions are structured
+    return true; // Placeholder - replace with actual logic
   };
 
-  // Handle message deletion
+  // Handle message deletion using real-time socket function
   const handleDeleteMessage = async () => {
     if (!window.confirm("Are you sure you want to delete this message?")) {
       return;
     }
 
     try {
-      let workspaceId = selectedWorkspace?._id;
-      if (!workspaceId && message.workspaceId) {
-        workspaceId = message.workspaceId;
+      // Get the channel ID from the message or selected channel
+      const channelId = message.channelId || selectedChannel?._id;
+      
+      if (!channelId) {
+        toast.error("Cannot delete message: Channel ID not found");
+        return;
       }
-
-      if (workspaceId) {
-        await deleteMessage(message._id, workspaceId, false);
-      } else if (message.channelId) {
-        await deleteMessage(message._id, message.channelId, false);
-      } else {
-        toast.error("Cannot delete: Missing workspace information");
-      }
+      
+      // Call the delete function with the right parameters for channel messages
+      await deleteMessage(message._id, channelId, false);
+      
+      // No need for toast notification as the UI will update via socket event
     } catch (error) {
       console.error("Error deleting message:", error);
-      toast.error(
-        "Failed to delete message: " + (error.message || "Unknown error")
-      );
+      toast.error("Failed to delete message");
     }
   };
 
-  // Handle emoji reaction
+  // Handle adding reaction using real-time socket function
   const handleReaction = async (emoji) => {
+    if (!emoji) return;
+    
     try {
-      let workspaceId = selectedWorkspace?._id;
-      if (!workspaceId && message.workspaceId) {
-        workspaceId = message.workspaceId;
+      // Get the channel ID from the message or selected channel
+      const channelId = message.channelId || selectedChannel?._id;
+      
+      if (!channelId) {
+        toast.error("Cannot add reaction: Channel ID not found");
+        return;
       }
-
-      if (workspaceId) {
-        await reactToMessage(message._id, emoji, workspaceId, authUser._id);
-        setShowEmojiMenu(false);
-      } else if (message.channelId) {
-        await reactToMessage(
-          message._id,
-          emoji,
-          message.channelId,
-          authUser._id
-        );
-        setShowEmojiMenu(false);
-      } else {
-        toast.error("Cannot add reaction: Missing workspace information");
-      }
+      
+      // Hide emoji menu
+      setShowEmojiMenu(false);
+      
+      // Call the reaction function
+      await addReaction(message._id, channelId, emoji);
+      
+      // No need for toast or local state update as the UI will update via socket event
     } catch (error) {
       console.error("Error adding reaction:", error);
-      toast.error(
-        "Failed to add reaction: " + (error.message || "Unknown error")
-      );
-      setShowEmojiMenu(false);
+      toast.error("Failed to add reaction");
     }
   };
 
-  // Check if user has reacted with a specific emoji
+  // Check if current user has already used this reaction
   const hasUserReacted = (reaction) => {
-    return reaction.users?.some((user) => {
-      const userId = typeof user === "object" ? user._id : user;
-      return userId === authUser._id;
+    if (!message.reactions || !Array.isArray(message.reactions)) return false;
+    
+    return message.reactions.some(r => {
+      // Check the new reaction format
+      if (r.userId === authUser?._id && (r.reaction === reaction || r.emoji === reaction)) {
+        return true;
+      }
+      
+      // Check the old format where reactions had a users array
+      if (r.emoji === reaction && r.users && Array.isArray(r.users)) {
+        return r.users.some(userId => 
+          userId === authUser?._id || 
+          (typeof userId === 'object' && userId._id === authUser?._id)
+        );
+      }
+      
+      return false;
     });
   };
 
@@ -447,32 +448,37 @@ const ChannelMessage = ({ message, firstInGroup }) => {
 
           {/* Message actions */}
           <div className="absolute right-0 top-0 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
-            {!isCurrentUser && (
-              <div className="relative">
-                <button
-                  className="btn btn-ghost btn-xs"
-                  onClick={() => setShowEmojiMenu(!showEmojiMenu)}
-                >
-                  <SmilePlus size={14} />
-                </button>
+            <div className="relative">
+              <button
+                className="btn btn-ghost btn-xs"
+                onClick={() => setShowEmojiMenu(!showEmojiMenu)}
+              >
+                <SmilePlus size={14} />
+              </button>
 
-                {showEmojiMenu && (
-                  <div className="absolute top-full left-0 mt-2 p-2 bg-base-100 rounded-lg shadow-lg flex gap-1 flex-wrap w-48 z-20 touch-auto">
+              {/* Emoji menu */}
+              {showEmojiMenu && (
+                <div
+                  className="absolute top-0 right-0 mt-8 bg-base-200 rounded-md shadow-lg p-2 z-10 border border-base-300"
+                  onMouseLeave={() => setShowEmojiMenu(false)}
+                >
+                  <div className="flex flex-wrap gap-1 max-w-[200px]">
                     {COMMON_EMOJIS.map((emoji) => (
                       <button
                         key={emoji}
-                        className="btn btn-ghost btn-xs"
+                        className={`btn btn-xs hover:bg-primary/20 ${hasUserReacted(emoji) ? "bg-primary/20" : "btn-ghost"}`}
                         onClick={() => handleReaction(emoji)}
                       >
                         {emoji}
                       </button>
                     ))}
                   </div>
-                )}
-              </div>
-            )}
+                </div>
+              )}
+            </div>
 
-            {(isCurrentUser || isChannelAdminOrOwner()) && (
+            {/* Only show delete button for the user's own messages */}
+            {isCurrentUser && (
               <button
                 className="btn btn-ghost btn-xs text-error"
                 onClick={handleDeleteMessage}
@@ -507,18 +513,35 @@ const ChannelMessage = ({ message, firstInGroup }) => {
 
         {/* Reactions display */}
         {message.reactions && message.reactions.length > 0 && (
-          <div className="flex gap-1 mt-1 flex-wrap">
-            {message.reactions.map((reaction, index) => (
-              <button
-                key={`${reaction.emoji}-${index}`}
-                className={`btn btn-xs ${
-                  hasUserReacted(reaction) ? "btn-accent" : "btn-ghost"
-                }`}
-                onClick={() => handleReaction(reaction.emoji)}
-              >
-                {reaction.emoji} {reaction.users?.length || 0}
-              </button>
-            ))}
+          <div className="mt-1 flex flex-wrap gap-1">
+            {message.reactions.map((reaction, index) => {
+              // Get the emoji and count
+              const emoji = reaction.reaction || reaction.emoji;
+              let count = 0;
+              
+              // Calculate count based on reaction format
+              if (reaction.users && Array.isArray(reaction.users)) {
+                count = reaction.users.length;
+              } else if (reaction.count) {
+                count = reaction.count;
+              } else {
+                count = 1; // Default count if no structure is available
+              }
+              
+              return (
+                <button
+                  key={`${emoji}-${index}`}
+                  className={`btn btn-xs ${
+                    hasUserReacted(emoji) ? "btn-accent" : "btn-ghost"
+                  }`}
+                  onClick={() => handleReaction(emoji)}
+                  title={`${count} reaction${count !== 1 ? 's' : ''}`}
+                >
+                  <span>{emoji}</span>
+                  {count > 1 && <span className="ml-1">{count}</span>}
+                </button>
+              );
+            })}
           </div>
         )}
       </div>

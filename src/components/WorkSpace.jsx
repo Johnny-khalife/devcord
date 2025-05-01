@@ -523,6 +523,33 @@ const handleChannelClick = (channel) => {
       // Add the new channel to the list
       setChannels([...channels, newChannel]);
       setActiveChannel(newChannel._id);
+      
+      // Create a properly structured channel object
+      const enrichedChannel = {
+        ...newChannel,
+        channelId: newChannel._id,
+        workspaceId: activeWorkspace,
+        id: newChannel._id,
+        _id: newChannel._id
+      };
+      
+      // Set the selected workspace and channel in ChatStore
+      setSelectedWorkspace(enrichedChannel);
+      useChatStore.getState().setSelectedChannel(enrichedChannel);
+      
+      // Reinitialize socket connections to ensure proper setup
+      const { reinitializeSocketConnections, joinChannel } = await import('../lib/socket');
+      await reinitializeSocketConnections();
+      
+      // Wait a brief moment for socket reconnection
+      setTimeout(async () => {
+        // Join the socket room for this new channel
+        joinChannel(newChannel._id);
+        console.log(`Joined new channel socket room: ${newChannel._id}`);
+        
+        // Fetch empty messages for this new channel
+        useChatStore.getState().getMessages(newChannel._id);
+      }, 1000);
 
       // Reset channel creation states
       resetChannelCreation();
@@ -884,6 +911,70 @@ const handleChannelClick = (channel) => {
   };
   
 
+  // Add this function near the top of the WorkSpace component where other imports and functions are defined
+  const handleWorkspaceSwitch = async (workspaceId) => {
+    console.log(`Switching to workspace: ${workspaceId}`);
+    setActiveWorkspace(workspaceId);
+    setShowWorkspaceMenu(false);
+    
+    // Reset active channel for now
+    setActiveChannel(null);
+    
+    // Reinitialize socket connections when switching workspaces
+    try {
+      const { reinitializeSocketConnections, joinAllWorkspaceChannels } = await import('../lib/socket');
+      await reinitializeSocketConnections();
+      console.log("Socket connections reinitialized for workspace switch");
+      
+      // Wait a moment for the socket connections to stabilize
+      setTimeout(async () => {
+        // Join all channels in this workspace
+        await joinAllWorkspaceChannels(workspaceId);
+        
+        // Fetch channels for this workspace
+        try {
+          const workspaceChannels = await fetchWorkspaceChannels(workspaceId);
+          console.log(`Fetched ${workspaceChannels.length} channels for workspace ${workspaceId}`);
+          
+          // Join each channel specifically
+          if (workspaceChannels && workspaceChannels.length > 0) {
+            const { joinChannel } = await import('../lib/socket');
+            
+            // Join each channel
+            workspaceChannels.forEach(channel => {
+              joinChannel(channel._id);
+              console.log(`Explicitly joined channel: ${channel._id}`);
+            });
+            
+            // Set the first channel as active
+            const firstChannel = workspaceChannels[0];
+            setActiveChannel(firstChannel._id);
+            
+            // Create enriched channel object
+            const enrichedChannel = {
+              ...firstChannel,
+              channelId: firstChannel._id,
+              workspaceId: workspaceId,
+              id: firstChannel._id,
+              _id: firstChannel._id
+            };
+            
+            // Set in both workspace store and chat store
+            setSelectedWorkspace(enrichedChannel);
+            useChatStore.getState().setSelectedChannel(enrichedChannel);
+            
+            // Fetch messages
+            useChatStore.getState().getMessages(firstChannel._id);
+          }
+        } catch (error) {
+          console.error(`Error fetching channels for workspace ${workspaceId}:`, error);
+        }
+      }, 1000);
+    } catch (error) {
+      console.error("Error reinitializing sockets for workspace switch:", error);
+    }
+  };
+
   if (workspaces.length === 0) {
     return (
       <div
@@ -1032,14 +1123,7 @@ const handleChannelClick = (channel) => {
                             } transition-colors`}
                             onClick={() => {
                               if (workspace?.id) {
-                                setActiveWorkspace(workspace.id);
-                                setShowWorkspaceMenu(false);
-                                if (
-                                  workspace.channels &&
-                                  workspace.channels.length > 0
-                                ) {
-                                  setActiveChannel(workspace.channels[0]);
-                                }
+                                handleWorkspaceSwitch(workspace.id);
                               }
                             }}
                           >
@@ -1096,10 +1180,7 @@ const handleChannelClick = (channel) => {
                                   } transition-colors`}
                                   onClick={() => {
                                     if (workspace?.id) {
-                                      setActiveWorkspace(workspace.id);
-                                      setShowWorkspaceMenu(false);
-                                      // Reset active channel when switching workspaces
-                                      setActiveChannel(null);
+                                      handleWorkspaceSwitch(workspace.id);
                                     }
                                   }}
                                 >
