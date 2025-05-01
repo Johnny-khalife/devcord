@@ -2,7 +2,13 @@ import { useState, memo } from "react";
 import { useAuthStore } from "../store/useAuthStore";
 import { useChatStore } from "../store/useChatStore";
 import { formatMessageTime, convertUrlsToLinks } from "../lib/utils.jsx";
-import { Trash2, SmilePlus, MoreVertical, Maximize, Download } from "lucide-react";
+import {
+  Trash2,
+  SmilePlus,
+  MoreVertical,
+  Maximize,
+  Download,
+} from "lucide-react";
 import toast from "react-hot-toast";
 import MessageSkeleton from "./skeletons/MessageSkeleton";
 
@@ -17,7 +23,7 @@ const DirectMessage = ({ message, firstInGroup }) => {
   const isSentByMe = message.isSentByMe === true;
   const senderId = message.senderId || message.sender?.userId;
   const isCurrentUser = isSentByMe || (authUser && senderId === authUser._id);
-  
+
   console.log("DirectMessage rendering:", {
     messageId: message._id,
     isCurrentUser,
@@ -26,7 +32,7 @@ const DirectMessage = ({ message, firstInGroup }) => {
     authUserId: authUser?._id,
     content: message.content,
     image: message.image,
-    isDeleted: message.isDeleted
+    isDeleted: message.isDeleted,
   });
 
   // Handle delete direct message
@@ -45,7 +51,7 @@ const DirectMessage = ({ message, firstInGroup }) => {
       );
     }
   };
-  
+
   if (message.isDeleted) {
     return (
       <div
@@ -55,9 +61,7 @@ const DirectMessage = ({ message, firstInGroup }) => {
         }`}
       >
         <div className="flex items-center gap-2">
-          <div className="text-sm text-gray-500 italic">
-            Message deleted
-          </div>
+          <div className="text-sm text-gray-500 italic">Message deleted</div>
         </div>
       </div>
     );
@@ -70,8 +74,6 @@ const DirectMessage = ({ message, firstInGroup }) => {
         isCurrentUser ? "flex-row-reverse justify-start" : "flex-row"
       }`}
     >
-     
-
       <div className={`flex flex-col max-w-[75%] `}>
         {/* Timestamp for messages */}
         {message.showTimestamp && (
@@ -80,7 +82,6 @@ const DirectMessage = ({ message, firstInGroup }) => {
               isCurrentUser ? "justify-end" : ""
             }`}
           >
-          
             <time className="text-xs text-base-content/50">
               {formatMessageTime(message.createdAt)}
             </time>
@@ -88,21 +89,27 @@ const DirectMessage = ({ message, firstInGroup }) => {
         )}
 
         {/* Combined message container for text and/or image */}
-        <div className={`relative group flex flex-col ${message.content && message.image ? "gap-[1px]" : ""}`}>
+        <div
+          className={`relative group flex flex-col ${
+            message.content && message.image ? "gap-[1px]" : ""
+          }`}
+        >
           {/* Content Bubble */}
           {message.content && (
-            <div 
+            <div
               className={`rounded-2xl px-4 py-2 text-sm break-words w-full ${
                 isCurrentUser
                   ? `bg-primary text-primary-content ${
                       firstInGroup ? "rounded-tr-none" : ""
                     } ${message.image ? "rounded-b-none" : ""}`
-                  : `bg-base-300 ${firstInGroup ? "rounded-tl-none" : ""} ${message.image ? "rounded-b-none" : ""}`
+                  : `bg-base-300 ${firstInGroup ? "rounded-tl-none" : ""} ${
+                      message.image ? "rounded-b-none" : ""
+                    }`
               }`}
               data-message-id={message._id}
             >
               <div className="whitespace-pre-wrap break-words">
-                {convertUrlsToLinks(message.content,isCurrentUser)}
+                {convertUrlsToLinks(message.content, isCurrentUser)}
               </div>
               {message.isPending && (
                 <div className="absolute -bottom-1 right-1">
@@ -114,16 +121,18 @@ const DirectMessage = ({ message, firstInGroup }) => {
 
           {/* Image (connected to text bubble if both exist) */}
           {message.image && (
-            <div 
-              className={`relative group/image ${!message.content ? "mt-0" : ""}`}
+            <div
+              className={`relative group/image ${
+                !message.content ? "mt-0" : ""
+              }`}
               style={{ marginTop: message.content ? "-1px" : "0" }}
             >
-              <div 
+              <div
                 className={`overflow-hidden shadow-md border-x border-b ${
-                  message.content 
-                    ? isCurrentUser 
-                      ? "border-primary/70 bg-primary/5 rounded-b-lg" 
-                      : "border-base-300/70 bg-base-300/5 rounded-b-lg" 
+                  message.content
+                    ? isCurrentUser
+                      ? "border-primary/70 bg-primary/5 rounded-b-lg"
+                      : "border-base-300/70 bg-base-300/5 rounded-b-lg"
                     : "border-t rounded-lg border-base-200 bg-transparent"
                 }`}
               >
@@ -136,7 +145,7 @@ const DirectMessage = ({ message, firstInGroup }) => {
                   onClick={() => setImageViewer(true)}
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent opacity-0 group-hover/image:opacity-100 transition-opacity flex items-end justify-between p-2">
-                  <button 
+                  <button
                     className="btn btn-circle btn-xs bg-black/50 text-white hover:bg-black/70 border-none"
                     onClick={() => setImageViewer(true)}
                   >
@@ -158,17 +167,20 @@ const DirectMessage = ({ message, firstInGroup }) => {
             </div>
           )}
         </div>
-        
+
         {/* Full screen image viewer */}
         {imageViewer && message.image && (
-          <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4" onClick={() => setImageViewer(false)}>
+          <div
+            className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4"
+            onClick={() => setImageViewer(false)}
+          >
             <div className="relative max-w-4xl max-h-[90vh]">
-              <img 
-                src={message.image} 
-                alt="Message attachment" 
-                className="max-h-[90vh] max-w-full object-contain rounded-md" 
+              <img
+                src={message.image}
+                alt="Message attachment"
+                className="max-h-[90vh] max-w-full object-contain rounded-md"
               />
-              <button 
+              <button
                 className="absolute top-2 right-2 btn btn-circle btn-sm bg-black/50 text-white hover:bg-black/70 border-none"
                 onClick={(e) => {
                   e.stopPropagation();
@@ -209,47 +221,51 @@ const ChannelMessage = ({ message, firstInGroup }) => {
   // Check if current user is the sender
   // First use isSentByMe if explicitly set, otherwise compare IDs
   let isCurrentUser = message.isSentByMe === true;
-  
+
   if (!isCurrentUser) {
     // Extract user ID, which might be nested
     const messageUserId = message.userId?._id || message.userId;
     const messageSenderId = message.senderId?._id || message.senderId;
-    
+
     // Check all possible ID locations
-    isCurrentUser = 
+    isCurrentUser =
       (messageUserId && messageUserId === authUser?._id) ||
       (messageSenderId && messageSenderId === authUser?._id);
   }
-  
+
   // Get sender information (username and avatar)
   const getSenderInfo = () => {
     if (isCurrentUser) {
       return {
         username: "You",
-        avatar: authUser?.avatar || "https://ui-avatars.com/api/?name=You&background=random"
+        avatar:
+          authUser?.avatar ||
+          "https://ui-avatars.com/api/?name=You&background=random",
       };
     }
-    
+
     // Try to get sender info from various possible locations
-    const username = message.sender?.username || 
-                    (message.userId?.username) ||
-                    (typeof message.userId === 'object' ? message.userId.username : null) ||
-                    (typeof message.senderId === 'object' ? message.senderId.username : null);
-                    
-    const avatar = message.sender?.avatar || 
-                  (message.userId?.avatar) ||
-                  (typeof message.userId === 'object' ? message.userId.avatar : null) ||
-                  (typeof message.senderId === 'object' ? message.senderId.avatar : null) ||
-                  "https://ui-avatars.com/api/?name=User&background=random";
-    
+    const username =
+      message.sender?.username ||
+      message.userId?.username ||
+      (typeof message.userId === "object" ? message.userId.username : null) ||
+      (typeof message.senderId === "object" ? message.senderId.username : null);
+
+    const avatar =
+      message.sender?.avatar ||
+      message.userId?.avatar ||
+      (typeof message.userId === "object" ? message.userId.avatar : null) ||
+      (typeof message.senderId === "object" ? message.senderId.avatar : null) ||
+      "https://ui-avatars.com/api/?name=User&background=random";
+
     return {
       username: username || "Unknown User",
-      avatar: avatar
+      avatar: avatar,
     };
   };
-  
+
   const senderInfo = getSenderInfo();
-  
+
   console.log("ChannelMessage rendering:", {
     messageId: message._id,
     userId: message.userId,
@@ -258,7 +274,7 @@ const ChannelMessage = ({ message, firstInGroup }) => {
     authUserId: authUser?._id,
     isCurrentUser,
     senderInfo,
-    content: message.content
+    content: message.content,
   });
 
   // Check if the user is an admin or owner - needed for permission checks
@@ -276,15 +292,15 @@ const ChannelMessage = ({ message, firstInGroup }) => {
     try {
       // Get the channel ID from the message or selected channel
       const channelId = message.channelId || selectedChannel?._id;
-      
+
       if (!channelId) {
         toast.error("Cannot delete message: Channel ID not found");
         return;
       }
-      
+
       // Call the delete function with the right parameters for channel messages
       await deleteMessage(message._id, channelId, false);
-      
+
       // No need for toast notification as the UI will update via socket event
     } catch (error) {
       console.error("Error deleting message:", error);
@@ -295,22 +311,22 @@ const ChannelMessage = ({ message, firstInGroup }) => {
   // Handle adding reaction using real-time socket function
   const handleReaction = async (emoji) => {
     if (!emoji) return;
-    
+
     try {
       // Get the channel ID from the message or selected channel
       const channelId = message.channelId || selectedChannel?._id;
-      
+
       if (!channelId) {
         toast.error("Cannot add reaction: Channel ID not found");
         return;
       }
-      
+
       // Hide emoji menu
       setShowEmojiMenu(false);
-      
+
       // Call the reaction function
       await addReaction(message._id, channelId, emoji);
-      
+
       // No need for toast or local state update as the UI will update via socket event
     } catch (error) {
       console.error("Error adding reaction:", error);
@@ -320,34 +336,35 @@ const ChannelMessage = ({ message, firstInGroup }) => {
 
   // Check if current user has already used this reaction
   const hasUserReacted = (emoji) => {
-    if (!message.reactions || !Array.isArray(message.reactions) || !authUser) return false;
-    
-    return message.reactions.some(r => {
+    if (!message.reactions || !Array.isArray(message.reactions) || !authUser)
+      return false;
+
+    return message.reactions.some((r) => {
       // Skip if not the right emoji
       if (r.emoji !== emoji && r.reaction !== emoji) return false;
-      
+
       // Format 1: Users array with full objects
       if (r.users && Array.isArray(r.users)) {
-        return r.users.some(user => {
-          if (typeof user === 'string') {
+        return r.users.some((user) => {
+          if (typeof user === "string") {
             return user === authUser._id;
-          } else if (user && typeof user === 'object') {
+          } else if (user && typeof user === "object") {
             return user._id === authUser._id;
           }
           return false;
         });
       }
-      
+
       // Format 2: Users array with just IDs
       if (r.users && Array.isArray(r.users)) {
         return r.users.includes(authUser._id);
       }
-      
+
       // Format 3: Direct userId property
       if (r.userId) {
         return r.userId === authUser._id;
       }
-      
+
       return false;
     });
   };
@@ -380,9 +397,7 @@ const ChannelMessage = ({ message, firstInGroup }) => {
               isCurrentUser ? "justify-end" : ""
             }`}
           >
-            <span className="text-sm font-semibold">
-              {senderInfo.username}
-            </span>
+            <span className="text-sm font-semibold">{senderInfo.username}</span>
             <time className="text-xs text-base-content/50">
               {formatMessageTime(message.createdAt)}
             </time>
@@ -390,16 +405,22 @@ const ChannelMessage = ({ message, firstInGroup }) => {
         )}
 
         {/* Combined message container for text and/or image */}
-        <div className={`relative group flex flex-col ${message.content && message.image ? "gap-[1px]" : ""}`}>
+        <div
+          className={`relative group flex flex-col ${
+            message.content && message.image ? "gap-[1px]" : ""
+          }`}
+        >
           {/* Content Bubble */}
           {message.content && (
-            <div 
+            <div
               className={`rounded-2xl px-4 py-2 text-sm break-words w-full ${
                 isCurrentUser
                   ? `bg-primary text-primary-content ${
                       firstInGroup ? "rounded-tr-none" : ""
                     } ${message.image ? "rounded-b-none" : ""}`
-                  : `bg-base-300 ${firstInGroup ? "rounded-tl-none" : ""} ${message.image ? "rounded-b-none" : ""}`
+                  : `bg-base-300 ${firstInGroup ? "rounded-tl-none" : ""} ${
+                      message.image ? "rounded-b-none" : ""
+                    }`
               }`}
               data-message-id={message._id}
             >
@@ -416,16 +437,18 @@ const ChannelMessage = ({ message, firstInGroup }) => {
 
           {/* Image (connected to text bubble if both exist) */}
           {message.image && (
-            <div 
-              className={`relative group/image ${!message.content ? "mt-0" : ""}`}
+            <div
+              className={`relative group/image ${
+                !message.content ? "mt-0" : ""
+              }`}
               style={{ marginTop: message.content ? "-1px" : "0" }}
             >
-              <div 
+              <div
                 className={`overflow-hidden shadow-md border-x border-b ${
-                  message.content 
-                    ? isCurrentUser 
-                      ? "border-primary/70 bg-primary/5 rounded-b-lg" 
-                      : "border-base-300/70 bg-base-300/5 rounded-b-lg" 
+                  message.content
+                    ? isCurrentUser
+                      ? "border-primary/70 bg-primary/5 rounded-b-lg"
+                      : "border-base-300/70 bg-base-300/5 rounded-b-lg"
                     : "border-t rounded-lg border-base-200 bg-transparent"
                 }`}
               >
@@ -438,16 +461,16 @@ const ChannelMessage = ({ message, firstInGroup }) => {
                   onClick={() => setImageViewer(true)}
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent opacity-0 group-hover/image:opacity-100 transition-opacity flex items-end justify-between p-2">
-                  <button 
+                  <button
                     className="btn btn-circle btn-xs bg-black/50 text-white hover:bg-black/70 border-none"
                     onClick={() => setImageViewer(true)}
                   >
                     <Maximize size={12} />
                   </button>
-                  <a 
-                    href={message.image} 
-                    download 
-                    target="_blank" 
+                  <a
+                    href={message.image}
+                    download
+                    target="_blank"
                     rel="noopener noreferrer"
                     className="btn btn-circle btn-xs bg-black/50 text-white hover:bg-black/70 border-none"
                   >
@@ -461,29 +484,54 @@ const ChannelMessage = ({ message, firstInGroup }) => {
           {/* Message actions */}
           <div className="absolute right-0 top-0 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
             <div className="relative">
-              <button
-                className="btn btn-ghost btn-xs"
-                onClick={() => setShowEmojiMenu(!showEmojiMenu)}
-              >
-                <SmilePlus size={14} />
-              </button>
-
+              {!isCurrentUser && (
+                <button
+                  className="btn btn-ghost btn-xs"
+                  onClick={() => setShowEmojiMenu(!showEmojiMenu)}
+                >
+                  <SmilePlus size={14} />
+                </button>
+              )}
               {/* Emoji menu */}
               {showEmojiMenu && (
                 <div
-                  className="absolute top-0 right-0 mt-8 bg-base-200 rounded-md shadow-lg p-2 z-10 border border-base-300"
+                  className="absolute top-0 -left-1/4 mt-8 bg-base-200 rounded-md shadow-lg p-2 z-10 border border-base-300"
                   onMouseLeave={() => setShowEmojiMenu(false)}
                 >
-                  <div className="flex flex-wrap gap-1 max-w-[200px]">
-                    {COMMON_EMOJIS.map((emoji) => (
-                      <button
-                        key={emoji}
-                        className={`btn btn-xs hover:bg-primary/20 ${hasUserReacted(emoji) ? "bg-primary/20" : "btn-ghost"}`}
-                        onClick={() => handleReaction(emoji)}
-                      >
-                        {emoji}
-                      </button>
-                    ))}
+                  <div className="flex flex-col gap-1">
+                    {/* First row - first 5 emojis */}
+                    <div className="flex gap-1">
+                      {COMMON_EMOJIS.slice(0, 5).map((emoji) => (
+                        <button
+                          key={emoji}
+                          className={`btn btn-xs hover:bg-primary/20 ${
+                            hasUserReacted(emoji)
+                              ? "bg-primary/20"
+                              : "btn-ghost"
+                          }`}
+                          onClick={() => handleReaction(emoji)}
+                        >
+                          {emoji}
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* Second row - next 5 emojis */}
+                    <div className="flex gap-1">
+                      {COMMON_EMOJIS.slice(5, 10).map((emoji) => (
+                        <button
+                          key={emoji}
+                          className={`btn btn-xs hover:bg-primary/20 ${
+                            hasUserReacted(emoji)
+                              ? "bg-primary/20"
+                              : "btn-ghost"
+                          }`}
+                          onClick={() => handleReaction(emoji)}
+                        >
+                          {emoji}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 </div>
               )}
@@ -503,14 +551,17 @@ const ChannelMessage = ({ message, firstInGroup }) => {
 
         {/* Full screen image viewer */}
         {imageViewer && message.image && (
-          <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4" onClick={() => setImageViewer(false)}>
+          <div
+            className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4"
+            onClick={() => setImageViewer(false)}
+          >
             <div className="relative max-w-4xl max-h-[90vh]">
-              <img 
-                src={message.image} 
-                alt="Message attachment" 
-                className="max-h-[90vh] max-w-full object-contain rounded-md" 
+              <img
+                src={message.image}
+                alt="Message attachment"
+                className="max-h-[90vh] max-w-full object-contain rounded-md"
               />
-              <button 
+              <button
                 className="absolute top-2 right-2 btn btn-circle btn-sm bg-black/50 text-white hover:bg-black/70 border-none"
                 onClick={(e) => {
                   e.stopPropagation();
@@ -529,17 +580,17 @@ const ChannelMessage = ({ message, firstInGroup }) => {
             {message.reactions.map((reaction, index) => {
               // Log reaction data to help debugging
               console.log(`Rendering reaction ${index}:`, reaction);
-              
+
               // Get the emoji (handle different formats)
               const emoji = reaction.emoji || reaction.reaction;
               if (!emoji) {
                 console.error("Missing emoji in reaction:", reaction);
                 return null;
               }
-              
+
               // Calculate count based on reaction format
               let count = 0;
-              
+
               if (reaction.users && Array.isArray(reaction.users)) {
                 count = reaction.users.length;
               } else if (reaction.count !== undefined) {
@@ -548,21 +599,19 @@ const ChannelMessage = ({ message, firstInGroup }) => {
                 // Default to 1 if we have a reaction but no count information
                 count = 1;
               }
-              
+
               // Skip empty reactions
               if (count === 0) return null;
-              
+
               // Determine if current user has reacted
               const userReacted = hasUserReacted(emoji);
-              
+
               return (
                 <button
                   key={`${emoji}-${index}`}
-                  className={`btn btn-xs ${
-                    userReacted ? "btn-accent" : "btn-ghost"
-                  }`}
+                  className="btn btn-xs btn-ghost"
                   onClick={() => handleReaction(emoji)}
-                  title={`${count} reaction${count !== 1 ? 's' : ''}`}
+                  title={`${count} reaction${count !== 1 ? "s" : ""}`}
                 >
                   <span className="text-lg">{emoji}</span>
                   {count > 1 && <span className="ml-1 text-xs">{count}</span>}
@@ -580,22 +629,25 @@ const ChannelMessage = ({ message, firstInGroup }) => {
 const Message = ({ message, activeNavItem, firstInGroup }) => {
   // Get auth user to determine if message is sent by current user
   const { authUser } = useAuthStore();
-  
+
   // Get senderId - could be an object or string depending on message source
   let senderId = message.senderId;
-  if (senderId && typeof senderId === 'object' && senderId._id) {
+  if (senderId && typeof senderId === "object" && senderId._id) {
     senderId = senderId._id;
   } else if (message.sender?.userId) {
     senderId = message.sender.userId;
   } else if (message.userId) {
     senderId = message.userId;
   }
-  
+
   // Get username
-  const senderName = message.sender?.username || 
-                     (message.senderId && typeof message.senderId === 'object' ? message.senderId.username : null) ||
-                     message.userId?.username;
-  
+  const senderName =
+    message.sender?.username ||
+    (message.senderId && typeof message.senderId === "object"
+      ? message.senderId.username
+      : null) ||
+    message.userId?.username;
+
   // Log message details to debug
   console.log("Message component rendering:", {
     id: message._id,
@@ -604,20 +656,21 @@ const Message = ({ message, activeNavItem, firstInGroup }) => {
     senderId,
     authUserId: authUser?._id,
     isSentByMe: message.isSentByMe,
-    activeNavItem
+    activeNavItem,
   });
-  
+
   // If message is optimistic and lacks proper ID structure, use default values
   const processedMessage = {
     ...message,
     _id: message._id || `temp-${Date.now()}`,
     content: message.content || message.message || "",
     // Set isSentByMe flag if it's not already set
-    isSentByMe: message.isSentByMe !== undefined 
-      ? message.isSentByMe 
-      : (senderId && authUser && senderId === authUser._id)
+    isSentByMe:
+      message.isSentByMe !== undefined
+        ? message.isSentByMe
+        : senderId && authUser && senderId === authUser._id,
   };
-  
+
   return activeNavItem === "workSpace" ? (
     <ChannelMessage message={processedMessage} firstInGroup={firstInGroup} />
   ) : (

@@ -294,10 +294,10 @@ const setupChannelSocketListeners = () => {
   });
 
   // Add event for any socket errors
-  channelSocket.on('error', (error) => {
-    console.error('🔴 Channel socket error:', error);
-    toast.error('Channel service error. Please refresh the page.');
-  });
+  // channelSocket.on('error', (error) => {
+  //   console.error('🔴 Channel socket error:', error);
+  //   toast.error('Channel service error. Please refresh the page.');
+  // });
 
   // Channel user events
   channelSocket.on('userChannels', (data) => {
