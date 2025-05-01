@@ -19,9 +19,9 @@ const ChatBox = ({ activeNavItem, isMobile }) => {
   const messageEndRef = useRef(null);
   const chatAreaRef = useRef(null);
   const messageInputRef = useRef(null);
+  const containerRef = useRef(null);
   const { authUser, socket } = useAuthStore();
   const [showChat, setShowChat] = useState(true);
-  const [visualViewportHeight, setVisualViewportHeight] = useState(window.innerHeight);
   const [inputHeight, setInputHeight] = useState(0);
   const {
     messages,
@@ -58,69 +58,55 @@ const ChatBox = ({ activeNavItem, isMobile }) => {
     }
   }, [selectedFriend, activeNavItem]);
 
-  // Measure and update input height to calculate proper message area height
+  // Update layout on resize and orientation change
   useEffect(() => {
-    const updateInputHeight = () => {
+    const updateLayout = () => {
       if (messageInputRef.current) {
-        const height = messageInputRef.current.offsetHeight;
-        setInputHeight(height);
+        setInputHeight(messageInputRef.current.offsetHeight);
       }
+      
+      setTimeout(() => {
+        scrollToBottom();
+      }, 100);
     };
-
-    // Use ResizeObserver to detect changes in the input height
-    const resizeObserver = new ResizeObserver(updateInputHeight);
     
-    if (messageInputRef.current) {
-      resizeObserver.observe(messageInputRef.current);
-      updateInputHeight();
+    // Call initially and set up listeners
+    updateLayout();
+    
+    window.addEventListener('resize', updateLayout);
+    window.addEventListener('orientationchange', updateLayout);
+    
+    // Create a MutationObserver to watch for DOM changes
+    if (containerRef.current) {
+      const observer = new MutationObserver(updateLayout);
+      observer.observe(containerRef.current, { 
+        childList: true, 
+        subtree: true,
+        attributes: true
+      });
+      
+      return () => {
+        observer.disconnect();
+        window.removeEventListener('resize', updateLayout);
+        window.removeEventListener('orientationchange', updateLayout);
+      };
     }
     
     return () => {
-      if (messageInputRef.current) {
-        resizeObserver.unobserve(messageInputRef.current);
-      }
+      window.removeEventListener('resize', updateLayout);
+      window.removeEventListener('orientationchange', updateLayout);
     };
   }, [shouldShowChatContent]);
 
-  // Handle viewport changes for mobile browsers
-  useEffect(() => {
-    const handleResize = () => {
-      if (window.visualViewport) {
-        setVisualViewportHeight(window.visualViewport.height);
-        
-        // Scroll to ensure input is visible when keyboard opens
-        if (window.visualViewport.height < window.innerHeight) {
-          messageEndRef.current?.scrollIntoView({ behavior: "smooth" });
-        }
-      }
-    };
-
-    if (window.visualViewport) {
-      window.visualViewport.addEventListener('resize', handleResize);
-      window.visualViewport.addEventListener('scroll', handleResize);
-    }
-
-    return () => {
-      if (window.visualViewport) {
-        window.visualViewport.removeEventListener('resize', handleResize);
-        window.visualViewport.removeEventListener('scroll', handleResize);
-      }
-    };
-  }, []);
-
   // Scroll to bottom when necessary
   const scrollToBottom = () => {
-    setTimeout(() => {
+    requestAnimationFrame(() => {
       if (chatAreaRef.current) {
-        const scrollHeight = chatAreaRef.current.scrollHeight;
-        const height = chatAreaRef.current.clientHeight;
-        const maxScrollTop = scrollHeight - height;
-        
-        chatAreaRef.current.scrollTop = maxScrollTop > 0 ? maxScrollTop : 0;
+        chatAreaRef.current.scrollTop = chatAreaRef.current.scrollHeight;
       }
       
       messageEndRef.current?.scrollIntoView({ behavior: "auto" });
-    }, 50);
+    });
   };
 
   // Load messages when channel or friend changes
@@ -145,21 +131,7 @@ const ChatBox = ({ activeNavItem, isMobile }) => {
     isSocketConnected
   ]);
 
-  // Scroll to bottom on resize
-  useEffect(() => {
-    const handleResize = () => {
-      if (showChat && ((activeNavItem === 'users' && selectedFriend) || (activeNavItem === 'workSpace' && selectedWorkspace))) {
-        scrollToBottom();
-      }
-    };
-
-    window.addEventListener('resize', handleResize);
-    return () => {
-      window.removeEventListener('resize', handleResize);
-    };
-  }, [selectedFriend, selectedWorkspace, activeNavItem, showChat]);
-
-  // Scroll to bottom when messages change
+  // Scroll to bottom after messages change
   useEffect(() => {
     if (showChat && ((activeNavItem === 'users' && selectedFriend) || (activeNavItem === 'workSpace' && selectedWorkspace))) {
       scrollToBottom();
@@ -296,31 +268,20 @@ const ChatBox = ({ activeNavItem, isMobile }) => {
                   </div>
                 </div>
               )}
-              <div ref={messageEndRef} className="h-4" />
+              <div ref={messageEndRef} className="h-2" />
           </>
       );
   } else {
        mainContent = <NoChatSelected />;
   }
 
-  // Calculate safe bottom spacing for mobile input
-  const safeBottomMargin = isMobile ? `${window.innerHeight - visualViewportHeight}px` : '0';
-  
-  // Calculate proper spacing for the message area to avoid content being hidden under the input
-  const getMessageAreaPaddingBottom = () => {
-    // Base padding plus any additional bottom spacing needed
-    let padding = isMobile ? 16 : 0; // 16px base padding on mobile
-    
-    if (isMobile) {
-      // Add additional padding to account for the input height and navigation
-      return `${inputHeight + 70 + padding}px`;
-    }
-    
-    return `${inputHeight + padding}px`;
-  };
-
   return (
-    <div className={`h-screen flex flex-col bg-base-100 border-l border-base-300 overflow-hidden pt-16 ${isMobile ? "fixed inset-0 max-h-screen" : ""}`}>
+    <div 
+      ref={containerRef}
+      className={`flex flex-col bg-base-100 border-l border-base-300 ${
+        isMobile ? "fixed inset-0 pt-16" : "h-screen pt-16"
+      }`}
+    >
       {/* Header Section */}
       <div className="flex-shrink-0 bg-base-200 p-3 border-b border-base-300 shadow-sm z-10">
         <div className="flex items-center justify-between">
@@ -362,51 +323,33 @@ const ChatBox = ({ activeNavItem, isMobile }) => {
         </div>
       </div>
 
-      {/* Messages Area (Scrollable) */}
-      <div 
-        ref={chatAreaRef}
-        className="flex-1 overflow-y-auto mobile-scroll px-4 py-4"
-        style={{ 
-          paddingBottom: getMessageAreaPaddingBottom(),
-        }}
-      >
-        {mainContent}
-      </div>
-
-      {/* Input Area (Fixed at Bottom) */}
-      {shouldShowChatContent && (
+      {/* Flexible content container */}
+      <div className="flex flex-col flex-1 relative overflow-hidden">
+        {/* Messages Area (Scrollable) */}
         <div 
-          ref={messageInputRef}
-          className={`flex-shrink-0 border-t border-base-300 bg-base-100 ${
-            isMobile ? "fixed left-0 right-0 z-50" : ""
-          }`} 
-          style={{ 
-            bottom: isMobile ? `calc(56px + ${safeBottomMargin})` : 0,
-            borderBottomWidth: isMobile ? '1px' : 0,
-            borderBottomStyle: isMobile ? 'solid' : 'none',
-            borderBottomColor: isMobile ? 'var(--b3)' : 'transparent',
-            boxShadow: isMobile ? '0 -1px 3px rgba(0,0,0,0.05)' : 'none'
-          }}
+          ref={chatAreaRef} 
+          className="flex-1 overflow-y-auto px-4 py-4 pb-4 overscroll-contain"
+          style={{ WebkitOverflowScrolling: 'touch' }}
         >
-          <MessageInput activeNavItem={activeNavItem} />
+          {mainContent}
         </div>
-      )}
-
-      {/* Add mobile scroll and viewport styles */}
-      {isMobile && (
-        <style jsx="true">{`
-          .mobile-scroll {
-            -webkit-overflow-scrolling: touch;
-            overscroll-behavior: contain;
-          }
-          
-          @supports (padding: env(safe-area-inset-bottom)) {
-            .mobile-scroll {
-              padding-bottom: calc(env(safe-area-inset-bottom) + ${inputHeight + 80}px);
-            }
-          }
-        `}</style>
-      )}
+        
+        {/* Input Area (Sticky at Bottom) */}
+        {shouldShowChatContent && (
+          <div 
+            className="sticky bottom-0 left-0 right-0 bg-base-100 border-t border-base-300 z-10"
+            style={{
+              boxShadow: '0 -2px 5px rgba(0,0,0,0.05)'
+            }}
+            ref={messageInputRef}
+          >
+            <MessageInput activeNavItem={activeNavItem} />
+            
+            {/* Extra space for mobile browsers */}
+            {isMobile && <div className="h-14 bg-base-100" />}
+          </div>
+        )}
+      </div>
     </div>
   );
 };
