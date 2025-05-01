@@ -17,8 +17,12 @@ const DirectMessageSearch = ({ friendId }) => {
     directMessageSearchResults, 
     directMessageSearchPagination,
     directMessageSearchQuery,
-    directMessages
+    directMessages,
+    selectedFriend
   } = useChatStore();
+
+  // Get the effective friend ID (from prop or store)
+  const effectiveFriendId = friendId || selectedFriend?.friendId;
 
   // Focus input when search is opened
   useEffect(() => {
@@ -34,12 +38,20 @@ const DirectMessageSearch = ({ friendId }) => {
     };
   }, [clearSearch]);
 
+  // Reset search when friend changes
+  useEffect(() => {
+    if (isOpen) {
+      setQuery("");
+      clearSearch();
+    }
+  }, [effectiveFriendId, clearSearch, isOpen]);
+
   // Handle input change with debounce
   useEffect(() => {
     const handler = setTimeout(() => {
-      if (query.trim() && friendId) {
-        console.log("Searching direct messages with query:", query, "with friend:", friendId);
-        searchDirectMessages(friendId, query, currentPage);
+      if (query.trim() && effectiveFriendId) {
+        console.log("Searching direct messages with query:", query, "with friend:", effectiveFriendId);
+        searchDirectMessages(effectiveFriendId, query, currentPage);
       } else if (!query.trim()) {
         clearSearch();
       }
@@ -48,7 +60,7 @@ const DirectMessageSearch = ({ friendId }) => {
     return () => {
       clearTimeout(handler);
     };
-  }, [query, friendId, currentPage, searchDirectMessages, clearSearch]);
+  }, [query, effectiveFriendId, currentPage, searchDirectMessages, clearSearch]);
 
   const handleToggleSearch = () => {
     setIsOpen(!isOpen);

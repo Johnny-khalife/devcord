@@ -307,10 +307,10 @@ const ChatBox = ({ activeNavItem, isMobile }) => {
           {/* Right side (Actions) */}
           <div className="flex gap-2">
             {activeNavItem === "workSpace" ? (
-              <MessageSearch />
+              <MessageSearch channelId={selectedWorkspace?._id} />
             ) : activeNavItem === "users" && selectedFriend ? (
               <>
-                <DirectMessageSearch />
+                <DirectMessageSearch friendId={selectedFriend?.friendId} />
                 <button
                   onClick={handleCloseChat}
                   className="btn btn-sm btn-circle btn-ghost"

@@ -17,8 +17,12 @@ const MessageSearch = ({ channelId }) => {
     searchResults, 
     searchPagination,
     searchQuery,
-    messages
+    messages,
+    selectedChannel
   } = useChatStore();
+
+  // Get the effective channel ID (from prop or store)
+  const effectiveChannelId = channelId || selectedChannel?._id;
 
   // Focus input when search is opened
   useEffect(() => {
@@ -34,12 +38,20 @@ const MessageSearch = ({ channelId }) => {
     };
   }, [clearSearch]);
 
+  // Reset search when channel changes
+  useEffect(() => {
+    if (isOpen) {
+      setQuery("");
+      clearSearch();
+    }
+  }, [effectiveChannelId, clearSearch, isOpen]);
+
   // Handle input change with debounce
   useEffect(() => {
     const handler = setTimeout(() => {
-      if (query.trim() && channelId) {
-        console.log("Searching messages with query:", query, "in channel:", channelId);
-        searchMessages(channelId, query, currentPage);
+      if (query.trim() && effectiveChannelId) {
+        console.log("Searching messages with query:", query, "in channel:", effectiveChannelId);
+        searchMessages(effectiveChannelId, query, currentPage);
       } else if (!query.trim()) {
         clearSearch();
       }
@@ -48,7 +60,7 @@ const MessageSearch = ({ channelId }) => {
     return () => {
       clearTimeout(handler);
     };
-  }, [query, channelId, currentPage, searchMessages, clearSearch]);
+  }, [query, effectiveChannelId, currentPage, searchMessages, clearSearch]);
 
   const handleToggleSearch = () => {
     setIsOpen(!isOpen);
