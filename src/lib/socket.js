@@ -61,11 +61,11 @@ const getTokenFromCookies = () => {
 export const connectSockets = () => {
   console.log("Attempting to connect to sockets...");
   
-  // Get JWT token from cookies
+  // Get JWT token from cookies or localStorage
   const token = getTokenFromCookies();
   
   if (!token) {
-    console.error('No token found in cookies for socket connection');
+    console.error('No token found in cookies or localStorage for socket connection');
     return { dm: null, channels: null };
   }
 
@@ -115,6 +115,22 @@ export const connectSockets = () => {
     // Set up event listeners
     setupDMSocketListeners();
     setupChannelSocketListeners();
+    
+    // Add connection status check
+    const checkSocketStatus = () => {
+      if (dmSocket && !dmSocket.connected) {
+        console.log("DM socket not connected, attempting reconnect...");
+        dmSocket.connect();
+      }
+      
+      if (channelSocket && !channelSocket.connected) {
+        console.log("Channel socket not connected, attempting reconnect...");
+        channelSocket.connect();
+      }
+    };
+    
+    // Check connection status after a short delay
+    setTimeout(checkSocketStatus, 2000);
 
     return {
       dm: dmSocket,
@@ -248,12 +264,23 @@ const setupChannelSocketListeners = () => {
         
         // Join all channels in this workspace
         if (workspaceStore.channels && workspaceStore.channels.length > 0) {
+          console.log(`Found ${workspaceStore.channels.length} channels to join`);
           workspaceStore.channels.forEach(channel => {
-            joinChannel(channel._id);
-            console.log(`Joined channel: ${channel._id}`);
+            if (channel && channel._id) {
+              joinChannel(channel._id);
+              console.log(`Joined channel: ${channel._id}`);
+            } else {
+              console.error("Invalid channel object:", channel);
+            }
           });
+        } else {
+          console.log("No channels found in workspace store to join");
         }
+      } else {
+        console.log("No selected workspace found for auto-joining channels");
       }
+    } else {
+      console.log("Auth store or workspace store not available for auto-joining channels");
     }
   });
 
@@ -383,6 +410,34 @@ const setupChannelSocketListeners = () => {
       console.error('❌ Error processing channel message:', error);
     }
   });
+  
+  // Handle message reactions
+  channelSocket.on('messageReaction', (data) => {
+    console.log('👍 Message reaction update:', data);
+    try {
+      if (chatStore && chatStore.updateMessageReactions) {
+        chatStore.updateMessageReactions(data.messageId, data.reactions);
+      } else {
+        console.error('❌ Chat store not available to update reactions');
+      }
+    } catch (error) {
+      console.error('❌ Error processing message reaction:', error);
+    }
+  });
+
+  // Handle message deletion
+  channelSocket.on('messageDeleted', (data) => {
+    console.log('🗑️ Message deleted:', data);
+    try {
+      if (chatStore && chatStore.removeChannelMessage) {
+        chatStore.removeChannelMessage(data.messageId);
+      } else {
+        console.error('❌ Chat store not available to remove message');
+      }
+    } catch (error) {
+      console.error('❌ Error processing message deletion:', error);
+    }
+  });
 
   // Typing indicator for channels
   channelSocket.on('userTyping', (data) => {
@@ -483,12 +538,58 @@ export const sendChannelMessage = (channelId, messageData, workspaceId) => {
  * Join a specific channel
  */
 export const joinChannel = (channelId) => {
-  if (!channelSocket || !channelSocket.connected) {
-    console.error('❌ Channel socket not connected for joining channel');
+  if (!channelId) {
+    console.error('❌ Cannot join channel: Missing channelId');
     return false;
   }
-
+  
   try {
+    // If the socket is not connected, try to reconnect first
+    if (!channelSocket || !channelSocket.connected) {
+      console.log(`📡 Channel socket not connected, attempting to reconnect before joining channel ${channelId}`);
+      
+      // Check if authStore is available for reference
+      const authToken = localStorage.getItem('auth_token') || getTokenFromCookies();
+      
+      if (!authToken) {
+        console.error('❌ No auth token found for socket connection');
+        return false;
+      }
+      
+      // If socket doesn't exist, create a new one
+      if (!channelSocket) {
+        const socketOptions = {
+          withCredentials: true,
+          auth: { token: authToken },
+          reconnection: true,
+          reconnectionAttempts: 5,
+          reconnectionDelay: 1000,
+          autoConnect: true
+        };
+        
+        channelSocket = io(`${BACKEND_URL}/channels`, socketOptions);
+        
+        // Set up basic listeners
+        setupChannelSocketListeners();
+      } else {
+        // Try to reconnect existing socket
+        channelSocket.connect();
+      }
+      
+      // Wait a bit for connection before trying to join
+      setTimeout(() => {
+        if (channelSocket.connected) {
+          console.log(`📤 Now joining channel ${channelId} after reconnection`);
+          channelSocket.emit('joinChannel', { channelId });
+        } else {
+          console.error('❌ Failed to reconnect channel socket for joining');
+        }
+      }, 1000);
+      
+      return true;
+    }
+    
+    // Normal flow when socket is already connected
     console.log(`📤 Joining channel ${channelId}`);
     channelSocket.emit('joinChannel', { channelId });
     return true;
@@ -558,6 +659,110 @@ export const markMessagesAsRead = (senderId) => {
     return true;
   } catch (error) {
     console.error('Error marking messages as read:', error);
+    return false;
+  }
+};
+
+/**
+ * Reinitialize socket connections 
+ * Useful when creating new workspaces/channels
+ */
+export const reinitializeSocketConnections = () => {
+  console.log("📡 Reinitializing socket connections");
+  
+  // Disconnect existing sockets
+  if (dmSocket) {
+    dmSocket.disconnect();
+    dmSocket = null;
+  }
+  
+  if (channelSocket) {
+    channelSocket.disconnect();
+    channelSocket = null;
+  }
+  
+  // Reconnect with fresh connections
+  return connectSockets();
+};
+
+/**
+ * Join all channels in a workspace
+ */
+export const joinAllWorkspaceChannels = async (workspaceId) => {
+  if (!workspaceId) {
+    console.error('❌ Cannot join workspace channels: Missing workspaceId');
+    return false;
+  }
+  
+  try {
+    console.log(`📤 Attempting to join all channels for workspace ${workspaceId}`);
+    
+    // Ensure socket is connected
+    if (!channelSocket || !channelSocket.connected) {
+      // Attempt to reconnect socket
+      const socketResult = await reinitializeSocketConnections();
+      if (!socketResult.channels || !socketResult.channels.connected) {
+        console.error('❌ Failed to connect channel socket for joining workspace channels');
+        return false;
+      }
+    }
+    
+    // Tell the server we're interested in this workspace's channels
+    channelSocket.emit('joinWorkspace', { workspaceId });
+    console.log(`📤 Sent joinWorkspace event for ${workspaceId}`);
+    
+    return true;
+  } catch (error) {
+    console.error('❌ Error joining workspace channels:', error);
+    return false;
+  }
+};
+
+/**
+ * Add a reaction to a message
+ */
+export const addMessageReaction = (messageId, channelId, reaction) => {
+  if (!channelSocket || !channelSocket.connected) {
+    console.error('❌ Channel socket not connected for adding reaction');
+    return false;
+  }
+  
+  try {
+    console.log(`👍 Adding reaction to message ${messageId} in channel ${channelId}: ${reaction}`);
+    
+    channelSocket.emit('addReaction', {
+      messageId,
+      channelId,
+      reaction
+    });
+    
+    return true;
+  } catch (error) {
+    console.error('❌ Error adding reaction via socket:', error);
+    return false;
+  }
+};
+
+/**
+ * Delete a message
+ */
+export const deleteMessage = (messageId, channelId) => {
+  if (!channelSocket || !channelSocket.connected) {
+    console.error('❌ Channel socket not connected for deleting message');
+    return false;
+  }
+  
+  try {
+    console.log(`🗑️ Deleting message ${messageId} from channel ${channelId}`);
+    
+    channelSocket.emit('deleteMessage', {
+      messageId,
+      channelId
+    });
+    
+    return true;
+  } catch (error) {
+    console.error('❌ Error deleting message via socket:', error);
     return false;
   }
 }; 

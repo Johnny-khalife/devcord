@@ -340,65 +340,30 @@ export const useChatStore = create((set, get) => ({
   },
 
   deleteMessage: async (messageId, channelId, isDirect = false) => {
-    console.log("deleteMessage called with:", { messageId, channelId, isDirect });
-    
-    if (!messageId) {
-      console.error("Missing messageId in deleteMessage");
-      toast.error("Message ID is requiredddd");
-      return;
-    }
-    
-    set({ isDeletingMessage: true });
     try {
-      let response;
+      set({ isDeletingMessage: true });
       
-      if (isDirect) {
-        console.log(`Sending delete request for direct message ${messageId}`);
-        response = await axiosInstance.delete(`/direct-messages/${messageId}`);
+      // For channel messages
+      if (!isDirect) {
+        // Try to use socket first
+        const { deleteMessage } = await import("../lib/socket");
+        const socketSent = deleteMessage(messageId, channelId);
         
-        set((state) => ({
-          directMessages: state.directMessages.filter((message) => message._id !== messageId),
-          // Also remove from search results to prevent "message not found" errors
-          directMessageSearchResults: state.directMessageSearchResults ? 
-            state.directMessageSearchResults.filter(
-              (message) => (message._id !== messageId && message.messageId !== messageId)
-            ) : []
-        }));
-      } else {
-        if (!channelId) {
-          console.error("Missing channelId in deleteMessage for channel message");
-          toast.error("Channel ID is required to delete messages");
-          return;
+        // Fall back to API if socket fails
+        if (!socketSent) {
+          await axiosInstance.delete(`/messages/${messageId}`);
+          // Only update state locally if not using sockets
+          get().removeChannelMessage(messageId);
         }
-        
-        console.log(`Sending delete request for message ${messageId} in channel ${channelId}`);
-        response = await axiosInstance.delete(`/messages/${messageId}`);
-        
-        set((state) => ({
-          messages: state.messages.filter((message) => message._id !== messageId),
-          // Also remove from search results to prevent "message not found" errors
-          searchResults: state.searchResults ? 
-            state.searchResults.filter(
-              (message) => (message._id !== messageId && message.messageId !== messageId)
-            ) : []
-        }));
+      } 
+      // For direct messages - always use API for now
+      else {
+        await axiosInstance.delete(`/direct-messages/${messageId}`);
+        get().removeDirectMessage(messageId);
       }
-      
-      console.log("Delete response:", response.data);
-      toast.success("Message deleted successfully");
     } catch (error) {
-      console.error("Error deleting message:", error);
-      console.error("Error details:", error.response?.data);
-      toast.error(error.response?.data?.message || "Failed to delete message");
-      
-      if (isDirect) {
-        const { selectedFriend } = get();
-        if (selectedFriend?.friendId) {
-          await get().getDirectMessages(selectedFriend.friendId);
-        }
-      } else if (channelId) {
-        await get().getMessages(channelId);
-      }
+      console.error("Failed to delete message:", error);
+      toast.error("Failed to delete message");
     } finally {
       set({ isDeletingMessage: false });
     }
@@ -983,5 +948,63 @@ export const useChatStore = create((set, get) => ({
         userId,
         username: data.username
       }));
+  },
+
+  // Add, update or remove a reaction to/from a message
+  updateMessageReactions: (messageId, reactions) => {
+    const { messages, directMessages } = get();
+    
+    // First check if the message is in channel messages
+    if (messages.some(msg => msg._id === messageId)) {
+      set({
+        messages: messages.map(msg => 
+          msg._id === messageId ? { ...msg, reactions } : msg
+        )
+      });
+    } 
+    // Then check if it's in direct messages
+    else if (directMessages.some(msg => msg._id === messageId)) {
+      set({
+        directMessages: directMessages.map(msg => 
+          msg._id === messageId ? { ...msg, reactions } : msg
+        )
+      });
+    }
+  },
+  
+  // Add a reaction to a message (client-side)
+  addReaction: async (messageId, channelId, reaction) => {
+    try {
+      set({ isReacting: true });
+      
+      // Import the socket function
+      const { addMessageReaction } = await import("../lib/socket");
+      
+      // Send via socket
+      const socketSent = addMessageReaction(messageId, channelId, reaction);
+      
+      // If socket fails, fall back to API
+      if (!socketSent) {
+        await axiosInstance.post(`/messages/${messageId}/reaction`, { 
+          reaction,
+          channelId 
+        });
+      }
+      
+      // No need to update state here as the socket event will trigger updateMessageReactions
+    } catch (error) {
+      console.error("Failed to add reaction:", error);
+      toast.error("Failed to add reaction");
+    } finally {
+      set({ isReacting: false });
+    }
+  },
+  
+  // Remove a message from state (used by socket handler)
+  removeChannelMessage: (messageId) => {
+    const { messages } = get();
+    set({
+      messages: messages.filter(msg => msg._id !== messageId)
+    });
   },
 }));

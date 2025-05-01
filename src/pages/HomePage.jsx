@@ -280,6 +280,47 @@ const HomePage = () => {
           setActiveWorkspace(formattedWorkspace.id);
           setActiveNavItem("workSpace"); // Switch to workspace view after creation
           setShowCreateWorkspaceModal(false);
+          
+          // Reinitialize socket connections for the new workspace
+          try {
+            const { reinitializeSocketConnections } = await import('../lib/socket');
+            await reinitializeSocketConnections();
+            
+            // Wait briefly for socket reconnection
+            setTimeout(async () => {
+              // Fetch channels for new workspace
+              const newChannels = await fetchWorkspaceChannels(formattedWorkspace.id);
+              
+              if (newChannels && newChannels.length > 0) {
+                // Set the first channel as active
+                const defaultChannel = newChannels[0];
+                setActiveChannel(defaultChannel._id);
+                
+                // Create enriched channel object
+                const enrichedChannel = {
+                  ...defaultChannel,
+                  channelId: defaultChannel._id,
+                  workspaceId: formattedWorkspace.id,
+                  id: defaultChannel._id,
+                  _id: defaultChannel._id
+                };
+                
+                // Set in both workspace store and chat store
+                setSelectedWorkspace(enrichedChannel);
+                useChatStore.getState().setSelectedChannel(enrichedChannel);
+                
+                // Import and join the channel's socket room
+                const { joinChannel } = await import('../lib/socket');
+                joinChannel(defaultChannel._id);
+                console.log(`Joined default channel socket room: ${defaultChannel._id}`);
+                
+                // Fetch initial empty messages
+                useChatStore.getState().getMessages(defaultChannel._id);
+              }
+            }, 1000);
+          } catch (error) {
+            console.error("Error setting up new workspace:", error);
+          }
         }
       } catch (error) {
         console.error("Failed to create workspace:", error);
