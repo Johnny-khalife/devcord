@@ -24,6 +24,7 @@ import { useAuthStore } from "../store/useAuthStore";
 import WorkspaceMembersPortal from "./WorkspaceMembersPortal";
 import RemoveMemberPortal from "./RemoveMemberPortal";
 import InviteFriendsPortal from "./InviteFriendsPortal";
+import { useChatStore } from "../store/useChatStore";
 
 const ChannelCreationModal = ({ 
   isOpen, 
@@ -369,13 +370,21 @@ const WorkSpace = ({
           );
           
           if (currentChannel) {
-            // Set the current channel as selected
+            // Set the current channel as selected with both channel and workspace IDs
             setActiveChannel(currentChannel._id);
-            setSelectedWorkspace(currentChannel);
+            setSelectedWorkspace({
+              ...currentChannel,
+              channelId: currentChannel._id,
+              workspaceId: activeWorkspace
+            });
           } else {
-            // Set the first channel as active
+            // Set the first channel as active with both channel and workspace IDs
             setActiveChannel(defaultChannel._id);
-            setSelectedWorkspace(defaultChannel);
+            setSelectedWorkspace({
+              ...defaultChannel,
+              channelId: defaultChannel._id,
+              workspaceId: activeWorkspace
+            });
           }
         } else {
           // If there are no channels, clear the active channel and selected workspace
@@ -450,9 +459,28 @@ const WorkSpace = ({
 ///////////////////////////////////////////////////////////////
 
 // In WorkSpace.jsx, update the selectedWorkspaceWhenClick function
-  const handleChannelClick = (channel) => {
-    setActiveChannel(channel._id);
-    setSelectedWorkspace(channel);
+const handleChannelClick = (channel) => {
+  console.log("Channel clicked:", channel);
+  setActiveChannel(channel._id);
+  
+  // Create a properly structured selectedWorkspace object with all necessary IDs
+  const enrichedChannel = {
+    ...channel,
+    channelId: channel._id,
+    workspaceId: activeWorkspace,
+    // Add these for backward compatibility
+    id: channel._id, 
+    _id: channel._id
+  };
+  
+  console.log("Setting enriched channel as selected workspace:", enrichedChannel);
+  setSelectedWorkspace(enrichedChannel);
+  
+  // Also set the selected channel in the ChatStore for socket message filtering
+  useChatStore.getState().setSelectedChannel(enrichedChannel);
+  
+  // Fetch messages for this channel
+  useChatStore.getState().getMessages(channel._id);
 };
 
   // Create a new channel

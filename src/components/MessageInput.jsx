@@ -4,7 +4,7 @@ import { Image, Send, X } from "lucide-react";
 import toast from "react-hot-toast";
 import { useWorkspaceStore } from "../store/useWorkspaceStore";
 import { useAuthStore } from "../store/useAuthStore";
-import { sendDirectMessage, sendTypingIndicator } from "../lib/socket";
+import { sendDirectMessage, sendTypingIndicator, sendChannelTypingIndicator } from "../lib/socket";
 
 const MessageInput = ({ activeNavItem }) => {
   const [text, setText] = useState("");
@@ -21,14 +21,15 @@ const MessageInput = ({ activeNavItem }) => {
     isSendingMessage 
   } = useChatStore();
   const { selectedWorkspace } = useWorkspaceStore();
-  const { authUser, socket } = useAuthStore();
+  const { socket } = useAuthStore();
   
   // Store previous selectedFriend ID to detect changes
   const prevFriendIdRef = useRef(selectedFriend?.friendId);
   const prevWorkspaceIdRef = useRef(selectedWorkspace?._id);
   
-  // Check if socket is connected
-  const isSocketConnected = socket?.dm && socket.dm.connected;
+  // Check if sockets are connected
+  const isDmSocketConnected = socket?.dm && socket.dm.connected;
+  const isChannelSocketConnected = socket?.channels && socket.channels.connected;
   
   // Clear input when selected friend or workspace changes
   useEffect(() => {
@@ -44,7 +45,7 @@ const MessageInput = ({ activeNavItem }) => {
       if (fileInputRef.current) fileInputRef.current.value = "";
       
       // Stop typing indicator if active
-      if (prevFriendIdRef.current && isTyping && isSocketConnected) {
+      if (prevFriendIdRef.current && isTyping && isDmSocketConnected) {
         sendTypingIndicator(prevFriendIdRef.current, false);
         setIsTyping(false);
       }
@@ -53,7 +54,7 @@ const MessageInput = ({ activeNavItem }) => {
       prevFriendIdRef.current = currentFriendId;
       prevWorkspaceIdRef.current = currentWorkspaceId;
     }
-  }, [selectedFriend?.friendId, selectedWorkspace?._id, isTyping, isSocketConnected]);
+  }, [selectedFriend?.friendId, selectedWorkspace?._id, isTyping, isDmSocketConnected]);
 
   // Focus the input field when component mounts
   useEffect(() => {
@@ -67,9 +68,8 @@ const MessageInput = ({ activeNavItem }) => {
     const { value } = e.target;
     setText(value);
     
-    // Only send typing indicators for direct messages when socket is connected
-    if (activeNavItem === "users" && selectedFriend?.friendId && isSocketConnected) {
-      // Set typing state
+    if (activeNavItem === "users" && selectedFriend?.friendId && isDmSocketConnected) {
+      // Set typing state for direct messages
       if (!isTyping && value.trim()) {
         setIsTyping(true);
         sendTypingIndicator(selectedFriend.friendId, true);
@@ -87,6 +87,27 @@ const MessageInput = ({ activeNavItem }) => {
           sendTypingIndicator(selectedFriend.friendId, false);
         }
       }, 2000);
+    } 
+    else if (activeNavItem === "workSpace" && selectedWorkspace?._id && isChannelSocketConnected) {
+      // For channel messages - channel ID is the workspace ID for now
+      // In a more complex system, you'd have a selected channel
+      const channelId = selectedWorkspace._id;
+      
+      // Only send typing indicators if there's content
+      if (value.trim()) {
+        // Clear previous timeout
+        if (typingTimeoutRef.current) {
+          clearTimeout(typingTimeoutRef.current);
+        }
+        
+        // Send typing indicator
+        sendChannelTypingIndicator(channelId, true);
+        
+        // Set timeout to stop typing indicator
+        typingTimeoutRef.current = setTimeout(() => {
+          sendChannelTypingIndicator(channelId, false);
+        }, 2000);
+      }
     }
   };
   
@@ -98,11 +119,15 @@ const MessageInput = ({ activeNavItem }) => {
       }
       
       // Ensure typing indicator is set to false when component unmounts
-      if (selectedFriend?.friendId && isTyping && isSocketConnected) {
+      if (activeNavItem === "users" && selectedFriend?.friendId && isTyping && isDmSocketConnected) {
         sendTypingIndicator(selectedFriend.friendId, false);
+      } 
+      else if (activeNavItem === "workSpace" && selectedWorkspace?._id && isChannelSocketConnected) {
+        const channelId = selectedWorkspace._id;
+        sendChannelTypingIndicator(channelId, false);
       }
     };
-  }, [selectedFriend?.friendId, isTyping, isSocketConnected]);
+  }, [selectedFriend?.friendId, selectedWorkspace?._id, activeNavItem, isTyping, isDmSocketConnected, isChannelSocketConnected]);
 
   const handleImageChange = (e) => {
     // Don't allow changing the image while a message is being sent
@@ -154,8 +179,17 @@ const MessageInput = ({ activeNavItem }) => {
         // Send channel message
         const messageData = {
           message: text.trim(),
+          content: text.trim(), // Add content field to support both formats
           image: imagePreview,
         };
+        console.log("Sending workspace message:", messageData);
+        
+        // Stop typing indicator if active
+        if (isChannelSocketConnected) {
+          sendChannelTypingIndicator(selectedWorkspace._id, false);
+        }
+        
+        // Send through the chat store (which will use both socket and API)
         await sendMessage(messageData, selectedWorkspace._id);
       } else if (activeNavItem === "users" && selectedFriend?.friendId) {
         // First, log debugging information
@@ -163,7 +197,7 @@ const MessageInput = ({ activeNavItem }) => {
         console.log("- To friend:", selectedFriend.friendId, selectedFriend.username);
         console.log("- Message content:", text.trim());
         console.log("- Has image:", !!imagePreview);
-        console.log("- Socket connected:", isSocketConnected);
+        console.log("- Socket connected:", isDmSocketConnected);
         console.log("- Socket object:", socket);
         
         // Always use the API first to ensure message persistence
@@ -180,7 +214,7 @@ const MessageInput = ({ activeNavItem }) => {
         console.log("API message sent successfully");
         
         // Then use the socket for real-time delivery (only for text messages)
-        if (isSocketConnected && text.trim()) {
+        if (isDmSocketConnected && text.trim()) {
           console.log("Sending via socket...");
           const success = sendDirectMessage(selectedFriend.friendId, text.trim());
           console.log("Socket message sent result:", success);
@@ -191,7 +225,7 @@ const MessageInput = ({ activeNavItem }) => {
         }
         
         // Stop typing indicator
-        if (isTyping && isSocketConnected) {
+        if (isTyping && isDmSocketConnected) {
           setIsTyping(false);
           sendTypingIndicator(selectedFriend.friendId, false);
         }

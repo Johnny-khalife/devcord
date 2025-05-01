@@ -156,6 +156,7 @@ const HomePage = () => {
             // If the workspace has no channels, reset both active channel and selected workspace
             setActiveChannel(null);
             setSelectedWorkspace(null);
+            useChatStore.getState().setSelectedChannel(null);
             return;
           }
           
@@ -164,22 +165,58 @@ const HomePage = () => {
             const currentChannel = workspaceChannels.find(channel => channel._id === activeChannel);
             
             if (currentChannel) {
-              // Update the selected workspace with the current channel
-              setSelectedWorkspace(currentChannel);
+              // Create a properly structured object with all IDs
+              const enrichedChannel = {
+                ...currentChannel,
+                channelId: currentChannel._id,
+                workspaceId: activeWorkspace,
+                id: currentChannel._id,
+                _id: currentChannel._id
+              };
+              
+              console.log("Setting enriched channel from sync:", enrichedChannel);
+              setSelectedWorkspace(enrichedChannel);
+              
+              // Set selected channel in the chat store for proper message filtering
+              useChatStore.getState().setSelectedChannel(enrichedChannel);
             } else if (workspaceChannels.length > 0) {
               // If active channel not found, set the first channel as active
               setActiveChannel(workspaceChannels[0]._id);
-              setSelectedWorkspace(workspaceChannels[0]);
+              
+              // Create a properly structured object with all IDs
+              const enrichedChannel = {
+                ...workspaceChannels[0],
+                channelId: workspaceChannels[0]._id,
+                workspaceId: activeWorkspace,
+                id: workspaceChannels[0]._id,
+                _id: workspaceChannels[0]._id
+              };
+              
+              setSelectedWorkspace(enrichedChannel);
+              
+              // Set selected channel in the chat store for proper message filtering
+              useChatStore.getState().setSelectedChannel(enrichedChannel);
             }
           } else if (workspaceChannels.length > 0) {
             // If no active channel set but workspace has channels, set the first one
             setActiveChannel(workspaceChannels[0]._id);
-            setSelectedWorkspace(workspaceChannels[0]);
+            
+            // Create a properly structured object with all IDs
+            const enrichedChannel = {
+              ...workspaceChannels[0],
+              channelId: workspaceChannels[0]._id,
+              workspaceId: activeWorkspace,
+              id: workspaceChannels[0]._id,
+              _id: workspaceChannels[0]._id
+            };
+            
+            setSelectedWorkspace(enrichedChannel);
+            
+            // Set selected channel in the chat store for proper message filtering
+            useChatStore.getState().setSelectedChannel(enrichedChannel);
           }
         } catch (error) {
-          console.error("Failed to sync selected workspace:", error);
-          // In case of error, reset selected workspace
-          setSelectedWorkspace(null);
+          console.error("Error syncing selected workspace:", error);
         }
       }
     };

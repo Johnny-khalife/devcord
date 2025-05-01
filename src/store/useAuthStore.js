@@ -4,6 +4,7 @@ import { axiosInstance } from "../lib/axios.js";
 import toast from "react-hot-toast";
 import { connectSockets, disconnectSockets, setStoreRefs } from "../lib/socket.js";
 import { useChatStore } from "./useChatStore.js";
+import { useWorkspaceStore } from "./useWorkspaceStore.js";
 
 export const useAuthStore = create(
   persist(
@@ -41,9 +42,10 @@ export const useAuthStore = create(
         }
         
         const chatStore = useChatStore.getState();
+        const workspaceStore = useWorkspaceStore.getState();
         
         // Set store references for socket events
-        setStoreRefs(authStore, chatStore);
+        setStoreRefs(authStore, chatStore, workspaceStore);
         
         // Connect to sockets
         console.log("Connecting to sockets...");
@@ -52,9 +54,15 @@ export const useAuthStore = create(
         
         // Log socket status
         if (socket?.dm) {
-          console.log("Socket connected status:", socket.dm.connected);
-        } else {
-          console.log("Socket connection failed");
+          console.log("DM Socket connected status:", socket.dm.connected);
+        }
+        
+        if (socket?.channels) {
+          console.log("Channels Socket connected status:", socket.channels.connected);
+        }
+        
+        if (!socket?.dm && !socket?.channels) {
+          console.log("Socket connections failed");
         }
       },
 
@@ -169,7 +177,7 @@ export const useAuthStore = create(
           localStorage.clear();
           window.authUser = null;
           sessionStorage.clear();
-          
+
           set({ 
             socket: null,
             socketConnectAttempted: false 
