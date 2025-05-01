@@ -89,14 +89,14 @@ const SignUpPage = () => {
 
 
   return (
-    <div className="min-h-screen grid lg:grid-cols-2">
+    <div className="min-h-screen grid lg:grid-cols-2 max-h-screen">
       {/* left side */}
-      <div className="flex flex-col justify-center overflow-y-auto items-center p-6 sm:p-12">
-        <div className="w-full max-w-md space-y-8">
+      <div className="flex flex-col justify-start overflow-y-auto h-screen pb-8">
+        <div className="w-full max-w-md mx-auto px-6 pt-6 pb-8">
           {/* LOGO */}
-          <div className="text-center mb-8">
+          <div className="text-center mb-6">
             <div className="flex flex-col items-center gap-2 group">
-              <div className="size-16 rounded-xl bg-primary/10 flex items-center justify-center mt-8 group-hover:bg-primary/20 transition-colors">
+              <div className="size-16 rounded-xl bg-primary/10 flex items-center justify-center mt-6 group-hover:bg-primary/20 transition-colors">
                 <MessageSquare className="h-8 w-8 text-primary" />
               </div>
 
@@ -107,7 +107,7 @@ const SignUpPage = () => {
             </div>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-6">
+          <form onSubmit={handleSubmit} className="space-y-5">
             <div className="form-control">
               <label className="label">
                 <span className="label-text font-medium">Full Name</span>
@@ -118,7 +118,7 @@ const SignUpPage = () => {
                 </div>
                 <input
                   type="text"
-                  className={`input input-bordered w-full pl-10 mt-2`}
+                  className={`input input-bordered w-full pl-10 mt-1`}
                   placeholder="Username"
                   value={formData.username}
                   onChange={(e) =>
@@ -138,7 +138,7 @@ const SignUpPage = () => {
                 </div>
                 <input
                   type="email"
-                  className={`input input-bordered w-full pl-10 mt-2`}
+                  className={`input input-bordered w-full pl-10 mt-1`}
                   placeholder="you@example.com"
                   value={formData.email}
                   onChange={(e) =>
@@ -158,7 +158,7 @@ const SignUpPage = () => {
                 </div>
                 <input
                   type={showPassword ? "text" : "password"}
-                  className={`input input-bordered w-full pl-10 mt-2 ${
+                  className={`input input-bordered w-full pl-10 mt-1 ${
                     formData.password.length > 0
                       ? Object.values(passwordChecks).every(Boolean)
                         ? "border-success"
@@ -218,7 +218,7 @@ const SignUpPage = () => {
                 </div>
                 <input
                   type={showPassword ? "text" : "password"}
-                  className={`input input-bordered w-full pl-10 mt-2 ${
+                  className={`input input-bordered w-full pl-10 mt-1 ${
                     formData.confirmPassword.length > 0
                       ? passwordChecks.passwordsMatch
                         ? "border-success"
@@ -260,7 +260,7 @@ const SignUpPage = () => {
 
             <button
               type="submit"
-              className="btn btn-primary w-full"
+              className="btn btn-primary w-full mt-6"
               disabled={isSigningUp || !Object.values(passwordChecks).every(Boolean)}
             >
               {isSigningUp ? (
@@ -274,7 +274,7 @@ const SignUpPage = () => {
             </button>
           </form>
 
-          <div className="text-center">
+          <div className="text-center mt-6">
             <p className="text-base-content/60">
               Already have an account?{" "}
               <Link to="/login" className="link link-primary">
