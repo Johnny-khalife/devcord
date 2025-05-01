@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Search, Briefcase, MapPin, Building, Calendar, Tag, Clock } from "lucide-react";
+import { Search, Briefcase, MapPin, Building, Calendar, Tag, Clock, X, FilterIcon, ArrowUpDown } from "lucide-react";
 import jobsData from "../data/jobs.json";
 
 const JobsView = () => {
@@ -10,6 +10,8 @@ const JobsView = () => {
   const [selectedLevel, setSelectedLevel] = useState("");
   const [filteredJobs, setFilteredJobs] = useState([]);
   const [isMobile, setIsMobile] = useState(false);
+  const [showFilters, setShowFilters] = useState(false);
+  
   // Get unique categories and levels from jobs
   const categories = [...new Set(jobsData.jobs.map(job => job.category))];
   const levels = [...new Set(jobsData.jobs.map(job => job.level))];
@@ -23,12 +25,15 @@ const JobsView = () => {
     const checkIfMobile = () => {
       const mobile = window.innerWidth < 768;
       setIsMobile(mobile);
-    
     };
     
     checkIfMobile();
+    window.addEventListener('resize', checkIfMobile);
+    
+    return () => {
+      window.removeEventListener('resize', checkIfMobile);
+    };
   }, []);
-
 
   // Filter jobs based on search term, category, and level
   useEffect(() => {
@@ -56,6 +61,16 @@ const JobsView = () => {
     setFilteredJobs(filtered);
   }, [searchTerm, selectedCategory, selectedLevel, jobs]);
 
+  const clearFilters = () => {
+    setSearchTerm("");
+    setSelectedCategory("");
+    setSelectedLevel("");
+  };
+
+  const toggleFilters = () => {
+    setShowFilters(!showFilters);
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-full">
@@ -64,62 +79,135 @@ const JobsView = () => {
     );
   }
 
+  const activeFiltersCount = [
+    searchTerm.trim() !== "",
+    selectedCategory !== "",
+    selectedLevel !== ""
+  ].filter(Boolean).length;
+
   return (
-    <div className={`${isMobile?" flex flex-col h-full bg-base-100 pb-16": "flex flex-col h-full bg-base-100 "}`}>
+    <div className="flex flex-col h-full bg-base-100 relative">
       {/* Header */}
-      <div className="p-4 border-b border-base-300 bg-base-100 sticky top-0 z-10">
-        <h2 className="text-xl font-bold mb-1">Recent Jobs</h2>
-        <p className="text-base-content/70 text-sm">Find your next opportunity</p>
+      <div className="p-4 border-b border-base-300 bg-base-100 sticky top-0 z-20 flex justify-between items-center">
+        <div>
+          <h2 className="text-xl font-bold mb-1">Recent Jobs</h2>
+          <p className="text-base-content/70 text-sm">Find your next opportunity</p>
+        </div>
+        <button 
+          onClick={toggleFilters}
+          className="btn btn-circle btn-sm"
+          aria-label="Toggle filters"
+        >
+          {showFilters ? <X size={18} /> : <FilterIcon size={18} />}
+          {activeFiltersCount > 0 && !showFilters && (
+            <span className="absolute -top-1 -right-1 bg-primary text-primary-content text-xs w-5 h-5 rounded-full flex items-center justify-center">
+              {activeFiltersCount}
+            </span>
+          )}
+        </button>
       </div>
 
-      {/* Search and Filters */}
-      <div className="p-4 border-b border-base-300 bg-base-100 sticky top-[73px] z-10">
-        {/* Search bar */}
-        <div className="relative mb-4">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-base-content/50 w-5 h-5" />
-          <input
-            type="text"
-            placeholder="Search jobs by title, company, or location"
-            className="input input-bordered w-full pl-10"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
-        </div>
+      {/* Filter panel - slides down when active */}
+      <div 
+        className={`bg-base-100 border-b border-base-300 transition-all duration-300 overflow-hidden z-10 ${
+          showFilters ? 'max-h-96 opacity-100 p-4' : 'max-h-0 opacity-0 p-0'
+        }`}
+      >
+        <div className="space-y-4">
+          {/* Search bar */}
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-base-content/50 w-5 h-5" />
+            <input
+              type="text"
+              placeholder="Search jobs by title, company, or location"
+              className="input input-bordered w-full pl-10 pr-10"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+            {searchTerm && (
+              <button
+                onClick={() => setSearchTerm("")}
+                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-base-content/50 hover:text-base-content"
+                aria-label="Clear search"
+              >
+                <X size={16} />
+              </button>
+            )}
+          </div>
 
-        {/* Filters */}
-        <div className="flex flex-col sm:flex-row gap-3">
-          {/* Category filter */}
-          <select
-            className="select select-bordered w-full sm:w-1/2"
-            value={selectedCategory}
-            onChange={(e) => setSelectedCategory(e.target.value)}
-          >
-            <option value="">All Categories</option>
-            {categories.map((category) => (
-              <option key={category} value={category}>
-                {category}
-              </option>
-            ))}
-          </select>
+          {/* Filters */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {/* Category filter */}
+            <div className="form-control">
+              <label className="label">
+                <span className="label-text">Category</span>
+              </label>
+              <select
+                className="select select-bordered w-full"
+                value={selectedCategory}
+                onChange={(e) => setSelectedCategory(e.target.value)}
+              >
+                <option value="">All Categories</option>
+                {categories.map((category) => (
+                  <option key={category} value={category}>
+                    {category}
+                  </option>
+                ))}
+              </select>
+            </div>
 
-          {/* Level filter */}
-          <select
-            className="select select-bordered w-full sm:w-1/2"
-            value={selectedLevel}
-            onChange={(e) => setSelectedLevel(e.target.value)}
-          >
-            <option value="">All Levels</option>
-            {levels.map((level) => (
-              <option key={level} value={level}>
-                {level.charAt(0).toUpperCase() + level.slice(1)}
-              </option>
-            ))}
-          </select>
+            {/* Level filter */}
+            <div className="form-control">
+              <label className="label">
+                <span className="label-text">Experience Level</span>
+              </label>
+              <select
+                className="select select-bordered w-full"
+                value={selectedLevel}
+                onChange={(e) => setSelectedLevel(e.target.value)}
+              >
+                <option value="">All Levels</option>
+                {levels.map((level) => (
+                  <option key={level} value={level}>
+                    {level.charAt(0).toUpperCase() + level.slice(1)}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {/* Actions */}
+          <div className="flex justify-end">
+            <button
+              onClick={clearFilters}
+              className="btn btn-ghost btn-sm"
+              disabled={!searchTerm && !selectedCategory && !selectedLevel}
+            >
+              Clear all
+            </button>
+          </div>
         </div>
       </div>
 
       {/* Jobs list */}
-      <div className="flex-1 overflow-y-auto touch-auto">
+      <div className="flex-1 overflow-y-auto">
+        {/* Results summary */}
+        <div className="p-4 pb-0 flex items-center justify-between">
+          <p className="text-sm text-base-content/70">
+            {filteredJobs.length} {filteredJobs.length === 1 ? 'job' : 'jobs'} found
+          </p>
+          
+          {activeFiltersCount > 0 && (
+            <button
+              onClick={clearFilters}
+              className="btn btn-ghost btn-xs gap-1"
+            >
+              <X size={14} />
+              Clear filters
+            </button>
+          )}
+        </div>
+
         <div className="p-4 space-y-4">
           {filteredJobs.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-8 text-base-content/70">
@@ -186,6 +274,9 @@ const JobsView = () => {
           )}
         </div>
       </div>
+
+      {/* Mobile padding to account for bottom navigation */}
+      {isMobile && <div className="h-16"></div>}
     </div>
   );
 };
