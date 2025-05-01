@@ -239,10 +239,21 @@ const setupChannelSocketListeners = () => {
   channelSocket.on('connect', () => {
     console.log('🟢 Connected to Channels socket');
     
-    // Auto-join current workspace channels if available
-    if (workspaceStore && workspaceStore.selectedWorkspace) {
-      const workspaceId = workspaceStore.selectedWorkspace._id;
-      console.log(`Auto-joining workspace ${workspaceId} channels`);
+    // If auth store and workspace store are available, join the current workspace's channels
+    if (authStore && workspaceStore) {
+      const selectedWorkspace = workspaceStore.selectedWorkspace;
+      if (selectedWorkspace) {
+        const workspaceId = selectedWorkspace._id || selectedWorkspace.id;
+        console.log(`Auto-joining workspace ${workspaceId} channels`);
+        
+        // Join all channels in this workspace
+        if (workspaceStore.channels && workspaceStore.channels.length > 0) {
+          workspaceStore.channels.forEach(channel => {
+            joinChannel(channel._id);
+            console.log(`Joined channel: ${channel._id}`);
+          });
+        }
+      }
     }
   });
 
@@ -264,6 +275,19 @@ const setupChannelSocketListeners = () => {
   // Channel user events
   channelSocket.on('userChannels', (data) => {
     console.log('📢 Received user channels:', data);
+    
+    // Join all available channels
+    if (data.publicChannels && data.publicChannels.length > 0) {
+      data.publicChannels.forEach(channelId => {
+        joinChannel(channelId);
+      });
+    }
+    
+    if (data.privateChannels && data.privateChannels.length > 0) {
+      data.privateChannels.forEach(channelId => {
+        joinChannel(channelId);
+      });
+    }
   });
 
   channelSocket.on('channelUsers', (data) => {
@@ -278,32 +302,80 @@ const setupChannelSocketListeners = () => {
     console.log('👋 User left channel:', data);
   });
 
-  // Channel message events
+  // Message sent acknowledgment (for sender only)
+  channelSocket.on('messageSent', (data) => {
+    console.log('✅ Message sent acknowledgment:', data);
+    
+    // If the message data is included, add it directly to the store
+    if (data.message && chatStore) {
+      // Mark message as sent (not pending)
+      const enhancedMessage = {
+        ...data.message,
+        isSentByMe: true,
+        isPending: false
+      };
+      
+      // Update any temporary message or add this one
+      if (chatStore.updateSentMessage) {
+        chatStore.updateSentMessage(data.messageId, enhancedMessage);
+      }
+    }
+  });
+
+  // Channel message events - this is from other users
   channelSocket.on('receiveMessage', (data) => {
     console.log('📨 Received channel message:', data);
     try {
       if (chatStore) {
-        // Add necessary info to the message before adding to store
-        const authUser = authStore?.authUser;
+        // Get auth user for comparison
+        const authUser = authStore?.authUser ||
+                        window.authUser ||
+                        JSON.parse(localStorage.getItem('auth-store'))?.state?.authUser;
         
-        // Check if the message is from the current user
-        const isFromCurrentUser = data.sender?.userId === authUser?._id;
+        if (!authUser) {
+          console.error('Cannot process channel message: No auth user found');
+          return;
+        }
         
-        // Format the message for the store
+        // Check if the message is from the current user (should not happen with socket.to())
+        const isFromCurrentUser = data.sender?.userId === authUser._id;
+        if (isFromCurrentUser) {
+          console.log('Ignoring message from self (already handled by messageSent)');
+          return;
+        }
+        
+        // Only process messages for the channel we're currently viewing
+        const currentChannelId = chatStore.getCurrentChannelId?.() || 
+                                workspaceStore?.selectedChannel?._id;
+                                
+        if (currentChannelId && data.channelId !== currentChannelId) {
+          console.log(`Message is for channel ${data.channelId} but we're viewing ${currentChannelId}`);
+          // TODO: Show notification for unread message in another channel
+          return;
+        }
+        
+        // Format the message for the store with consistent field names
         const messageData = {
           _id: data._id || `socket-${Date.now()}`,
-          content: data.message,
+          content: data.content || data.message,
+          image: data.image,
           senderId: data.sender?.userId,
-          sender: data.sender,
           userId: data.sender?.userId,
+          sender: data.sender,
           channelId: data.channelId,
           workspaceId: data.workspaceId,
-          createdAt: data.timestamp || new Date().toISOString(),
-          isSentByMe: isFromCurrentUser
+          createdAt: data.createdAt || data.timestamp || new Date().toISOString(),
+          isSentByMe: false
         };
         
-        console.log('Adding message to chat store with enhanced data:', messageData);
+        // Add message to the store
+        console.log('Adding message to chat store:', messageData);
         chatStore.addChannelMessage(messageData);
+        
+        // Play notification sound or show toast for new message
+        if (!isFromCurrentUser) {
+          toast.success(`New message from ${data.sender?.username || 'someone'}`);
+        }
       } else {
         console.error('❌ Chat store not available to receive channel message');
       }
@@ -357,30 +429,47 @@ export const sendChannelMessage = (channelId, messageData, workspaceId) => {
     console.error('❌ Channel socket not connected for sending message');
     return false;
   }
+  
+  // Validate required fields
+  if (!channelId) {
+    console.error('❌ Cannot send channel message: Missing channelId');
+    return false;
+  }
+  
+  if (!messageData) {
+    console.error('❌ Cannot send channel message: Missing message data');
+    return false;
+  }
 
   try {
     // Get auth user info to include with the message
-    const authUser = authStore?.authUser;
+    const authUser = authStore?.authUser || 
+                     window.authUser || 
+                     JSON.parse(localStorage.getItem('auth-store'))?.state?.authUser;
+    
+    if (!authUser) {
+      console.error('❌ Cannot send channel message: No authenticated user found');
+      return false;
+    }
+    
+    // Extract message content, handling different possible formats
+    const message = messageData.message || messageData.content || '';
+    const image = messageData.image; // Include image if present
     
     console.log(`📤 Emitting 'sendMessage' event to channel ${channelId}:`, { 
       channelId, 
       workspaceId, 
-      message: messageData.message, 
-      hasImage: !!messageData.image 
+      messageLength: message.length,
+      hasImage: !!image 
     });
     
-    // Send the message with timestamp and sender info
+    // Send the message with all required fields
     channelSocket.emit('sendMessage', { 
       channelId, 
-      workspaceId, // Include workspaceId in socket message
-      message: messageData.message,
-      image: messageData.image, // Include image data if available
-      timestamp: new Date().toISOString(),
-      sender: {
-        userId: authUser?._id,
-        username: authUser?.username,
-        avatar: authUser?.avatar
-      }
+      workspaceId, // Include workspaceId
+      message,
+      image, // Include image data if available
+      timestamp: new Date().toISOString()
     });
     
     return true;
