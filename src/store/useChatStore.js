@@ -952,10 +952,12 @@ export const useChatStore = create((set, get) => ({
 
   // Add, update or remove a reaction to/from a message
   updateMessageReactions: (messageId, reactions) => {
+    console.log(`Updating reactions for message ${messageId}:`, reactions);
     const { messages, directMessages } = get();
     
     // First check if the message is in channel messages
     if (messages.some(msg => msg._id === messageId)) {
+      console.log("Updating reactions in channel messages");
       set({
         messages: messages.map(msg => 
           msg._id === messageId ? { ...msg, reactions } : msg
@@ -964,11 +966,14 @@ export const useChatStore = create((set, get) => ({
     } 
     // Then check if it's in direct messages
     else if (directMessages.some(msg => msg._id === messageId)) {
+      console.log("Updating reactions in direct messages");
       set({
         directMessages: directMessages.map(msg => 
           msg._id === messageId ? { ...msg, reactions } : msg
         )
       });
+    } else {
+      console.log(`Message ${messageId} not found in state, can't update reactions`);
     }
   },
   

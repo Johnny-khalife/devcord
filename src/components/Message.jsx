@@ -319,21 +319,33 @@ const ChannelMessage = ({ message, firstInGroup }) => {
   };
 
   // Check if current user has already used this reaction
-  const hasUserReacted = (reaction) => {
-    if (!message.reactions || !Array.isArray(message.reactions)) return false;
+  const hasUserReacted = (emoji) => {
+    if (!message.reactions || !Array.isArray(message.reactions) || !authUser) return false;
     
     return message.reactions.some(r => {
-      // Check the new reaction format
-      if (r.userId === authUser?._id && (r.reaction === reaction || r.emoji === reaction)) {
-        return true;
+      // Skip if not the right emoji
+      if (r.emoji !== emoji && r.reaction !== emoji) return false;
+      
+      // Format 1: Users array with full objects
+      if (r.users && Array.isArray(r.users)) {
+        return r.users.some(user => {
+          if (typeof user === 'string') {
+            return user === authUser._id;
+          } else if (user && typeof user === 'object') {
+            return user._id === authUser._id;
+          }
+          return false;
+        });
       }
       
-      // Check the old format where reactions had a users array
-      if (r.emoji === reaction && r.users && Array.isArray(r.users)) {
-        return r.users.some(userId => 
-          userId === authUser?._id || 
-          (typeof userId === 'object' && userId._id === authUser?._id)
-        );
+      // Format 2: Users array with just IDs
+      if (r.users && Array.isArray(r.users)) {
+        return r.users.includes(authUser._id);
+      }
+      
+      // Format 3: Direct userId property
+      if (r.userId) {
+        return r.userId === authUser._id;
       }
       
       return false;
@@ -515,30 +527,45 @@ const ChannelMessage = ({ message, firstInGroup }) => {
         {message.reactions && message.reactions.length > 0 && (
           <div className="mt-1 flex flex-wrap gap-1">
             {message.reactions.map((reaction, index) => {
-              // Get the emoji and count
-              const emoji = reaction.reaction || reaction.emoji;
-              let count = 0;
+              // Log reaction data to help debugging
+              console.log(`Rendering reaction ${index}:`, reaction);
+              
+              // Get the emoji (handle different formats)
+              const emoji = reaction.emoji || reaction.reaction;
+              if (!emoji) {
+                console.error("Missing emoji in reaction:", reaction);
+                return null;
+              }
               
               // Calculate count based on reaction format
+              let count = 0;
+              
               if (reaction.users && Array.isArray(reaction.users)) {
                 count = reaction.users.length;
-              } else if (reaction.count) {
+              } else if (reaction.count !== undefined) {
                 count = reaction.count;
               } else {
-                count = 1; // Default count if no structure is available
+                // Default to 1 if we have a reaction but no count information
+                count = 1;
               }
+              
+              // Skip empty reactions
+              if (count === 0) return null;
+              
+              // Determine if current user has reacted
+              const userReacted = hasUserReacted(emoji);
               
               return (
                 <button
                   key={`${emoji}-${index}`}
                   className={`btn btn-xs ${
-                    hasUserReacted(emoji) ? "btn-accent" : "btn-ghost"
+                    userReacted ? "btn-accent" : "btn-ghost"
                   }`}
                   onClick={() => handleReaction(emoji)}
                   title={`${count} reaction${count !== 1 ? 's' : ''}`}
                 >
-                  <span>{emoji}</span>
-                  {count > 1 && <span className="ml-1">{count}</span>}
+                  <span className="text-lg">{emoji}</span>
+                  {count > 1 && <span className="ml-1 text-xs">{count}</span>}
                 </button>
               );
             })}

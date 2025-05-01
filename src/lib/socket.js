@@ -413,10 +413,41 @@ const setupChannelSocketListeners = () => {
   
   // Handle message reactions
   channelSocket.on('messageReaction', (data) => {
-    console.log('👍 Message reaction update:', data);
+    console.log('👍 Message reaction update received:', data);
     try {
       if (chatStore && chatStore.updateMessageReactions) {
-        chatStore.updateMessageReactions(data.messageId, data.reactions);
+        // Check for valid data structure
+        if (!data.messageId || !data.reactions) {
+          console.error('Invalid reaction data received:', data);
+          return;
+        }
+        
+        // Add additional logging to help with debugging
+        if (data.reactions.length > 0) {
+          console.log('Sample reaction format:', data.reactions[0]);
+        }
+        
+        // Ensure reactions are properly formatted before passing to the store
+        const formattedReactions = data.reactions.map(r => {
+          // Make sure emoji property exists
+          if (!r.emoji && r.reaction) {
+            r.emoji = r.reaction;
+          }
+          
+          // Make sure count is a number
+          if (r.count === undefined) {
+            if (r.users && Array.isArray(r.users)) {
+              r.count = r.users.length;
+            } else {
+              r.count = 1; // Default count
+            }
+          }
+          
+          return r;
+        });
+        
+        console.log(`Updating ${formattedReactions.length} reactions for message ${data.messageId}`);
+        chatStore.updateMessageReactions(data.messageId, formattedReactions);
       } else {
         console.error('❌ Chat store not available to update reactions');
       }
@@ -728,12 +759,17 @@ export const addMessageReaction = (messageId, channelId, reaction) => {
   }
   
   try {
-    console.log(`👍 Adding reaction to message ${messageId} in channel ${channelId}: ${reaction}`);
+    console.log(`👍 Adding reaction "${reaction}" to message ${messageId} in channel ${channelId}`);
     
     channelSocket.emit('addReaction', {
       messageId,
       channelId,
       reaction
+    }, (response) => {
+      // Handle acknowledgment if the server sends one
+      if (response) {
+        console.log('Reaction acknowledged by server:', response);
+      }
     });
     
     return true;
