@@ -609,12 +609,12 @@ const ChannelMessage = ({ message, firstInGroup }) => {
               return (
                 <button
                   key={`${emoji}-${index}`}
-                  className="btn btn-xs btn-ghost"
+                  className={`btn btn-xs ${userReacted ? "btn-primary/20" : "btn-ghost"}`}
                   onClick={() => handleReaction(emoji)}
                   title={`${count} reaction${count !== 1 ? "s" : ""}`}
                 >
-                  <span className="text-lg">{emoji}</span>
-                  {count > 1 && <span className="ml-1 text-xs">{count}</span>}
+                  <span className="mr-1">{emoji}</span>
+                  <span className="text-xs">{count}</span>
                 </button>
               );
             })}
