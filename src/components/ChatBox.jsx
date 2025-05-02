@@ -276,7 +276,7 @@ const ChatBox = ({ activeNavItem, isMobile }) => {
               {/* Typing indicator */}
               {isTyping && activeNavItem === "users" && (
                 <div className="flex items-center gap-2 px-4 py-2 text-sm text-base-content/60 italic">
-                  <span>{selectedFriend?.username} is typing</span>
+                  <span>typing</span>
                   <div className="flex space-x-1">
                     <div className="w-2 h-2 rounded-full bg-primary animate-bounce" style={{ animationDelay: "0ms" }}></div>
                     <div className="w-2 h-2 rounded-full bg-primary animate-bounce" style={{ animationDelay: "200ms" }}></div>

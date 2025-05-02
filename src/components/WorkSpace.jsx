@@ -15,6 +15,7 @@ import {
   Shield,
   ShieldCheck,
   UserMinus,
+  RefreshCw,
 } from "lucide-react";
 import { useFriendStore } from "../store/useFriendsStore"; // Import the friend store
 import { useWorkspaceStore } from "../store/useWorkspaceStore";
@@ -203,6 +204,7 @@ const WorkSpace = ({
   activeWorkspace,
   setActiveWorkspace,
   workspaces,
+  setWorkspaces,
   setShowWorkspaceMenu,
   showWorkspaceMenu,
   setActiveChannel,
@@ -234,9 +236,17 @@ const WorkSpace = ({
     toggleAdminRole,
     removeMember,
     workspaceMembersCache,
+    getUserWorkspaces,
+    forceRefresh,
   } = useWorkspaceStore();
   const { friends, sendFriendRequest, removeFriend } = useFriendStore();
   const { user: currentUser } = useAuthStore();
+  const { 
+    fetchWorkspaceChannels, 
+    createChannel, 
+    deleteChannel,
+    channelsCache 
+  } = useChannelStore();
   const [workspaceMembers, setWorkspaceMembers] = useState([]);
   const [isWorkspaceMembersLoading, setIsWorkspaceMembersLoading] =
   useState(false);
@@ -297,12 +307,6 @@ const WorkSpace = ({
   // Get friends data and methods from the friend store
   const { getFriendsList } = useFriendStore();
   const { sendWorkspaceInvite } = useWorkspaceStore();
-  const { 
-    fetchWorkspaceChannels, 
-    createChannel, 
-    deleteChannel,
-    channelsCache 
-  } = useChannelStore();
 
   // Add this at the beginning of your component
   console.log("Workspace component props:", {
@@ -927,6 +931,58 @@ const handleChannelClick = async (channel) => {
     }
   };
 
+  // Function to handle refreshing workspaces and channels
+  const refreshWorkspaces = async () => {
+    console.log("Refreshing workspaces and channels");
+    
+    try {
+      // Show loading toast
+      const toastId = toast.loading("Refreshing...");
+      
+      // First, refresh the workspaces list from the server
+      const refreshedWorkspaces = await forceRefresh();
+      console.log("Refreshed workspaces:", refreshedWorkspaces);
+      
+      // Update the parent component's workspaces state with the refreshed data
+      if (refreshedWorkspaces && refreshedWorkspaces.length > 0) {
+        // Format the workspaces properly to match the expected format in HomePage
+        const formattedWorkspaces = refreshedWorkspaces.map(ws => ({
+          id: ws._id || ws.id,
+          name: ws.workspaceName || ws.name || "Unnamed Workspace",
+          description: ws.description || "",
+          channels: ws.channels || ["general"],
+          icon: "briefcase",
+          isOwned: ws.role === "owner" || ws.isOwned,
+          isInvited: ws.role !== "owner" && !ws.isOwned,
+          role: ws.role || "member"
+        }));
+        setWorkspaces(formattedWorkspaces);
+      }
+      
+      // If we have an active workspace, refresh its channels too
+      if (activeWorkspace) {
+        setIsChannelsLoading(true);
+        try {
+          // Force refresh channels by passing true to skip cache
+          const refreshedChannels = await fetchWorkspaceChannels(activeWorkspace, true);
+          console.log("Refreshed channels:", refreshedChannels);
+          setChannels(refreshedChannels);
+        } catch (error) {
+          console.error("Error refreshing channels:", error);
+          toast.error("Failed to refresh channels");
+        } finally {
+          setIsChannelsLoading(false);
+        }
+      }
+      
+      // Success toast
+      toast.success("Refresh complete", { id: toastId });
+    } catch (error) {
+      console.error("Error during refresh:", error);
+      toast.error("Failed to refresh");
+    }
+  };
+
   if (workspaces.length === 0) {
     return (
       <div
@@ -981,7 +1037,14 @@ const handleChannelClick = async (channel) => {
                 : activeNavItem.charAt(0).toUpperCase() +
                   activeNavItem.slice(1)}
             </h2>
-            <div className="flex items-center relative">
+            <div className="flex items-center relative gap-2">
+              <button
+                className="p-2 hover:bg-base-300 rounded-lg transition-colors"
+                onClick={refreshWorkspaces}
+                aria-label="Refresh Workspaces"
+              >
+                <RefreshCw className="w-5 h-5" />
+              </button>
               <button
                 className="p-2 hover:bg-base-300 rounded-lg transition-colors"
                 onClick={handleCreateWorkspace}
