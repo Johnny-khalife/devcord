@@ -364,10 +364,8 @@ const WorkSpace = ({
           }
         }
 
-        // Set activeChannel to the first channel if none is selected
-        if (!activeChannel && fetchedChannels.length > 0) {
-          setActiveChannel(fetchedChannels[0]._id);
-        }
+        // Don't automatically set activeChannel - let the user click a channel first
+        // This ensures the "No channel selected" state is shown
       } catch (error) {
         console.error("Failed to load workspace channels:", error);
         toast.error("Failed to load workspace channels");
@@ -416,7 +414,7 @@ const WorkSpace = ({
 ///////////////////////////////////////////////////////////////
 
 // In WorkSpace.jsx, update the selectedWorkspaceWhenClick function
-const handleChannelClick = (channel) => {
+const handleChannelClick = async (channel) => {
   console.log("Channel clicked:", channel);
   setActiveChannel(channel._id);
   
@@ -433,11 +431,22 @@ const handleChannelClick = (channel) => {
   console.log("Setting enriched channel as selected workspace:", enrichedChannel);
   setSelectedWorkspace(enrichedChannel);
   
-  // Also set the selected channel in the ChatStore for socket message filtering
-  useChatStore.getState().setSelectedChannel(enrichedChannel);
-  
-  // Fetch messages for this channel
-  useChatStore.getState().getMessages(channel._id);
+  try {
+    // Import the improved setSelectedChannel function from socket.js
+    const { setSelectedChannel } = await import('../lib/socket');
+    
+    // Use the new function to properly handle socket rooms and channel switching
+    await setSelectedChannel(channel._id, activeWorkspace);
+    
+    // Fetch messages for this channel
+    useChatStore.getState().getMessages(channel._id);
+  } catch (error) {
+    console.error("Error switching channels:", error);
+    
+    // Fallback to old method
+    useChatStore.getState().setSelectedChannel(enrichedChannel);
+    useChatStore.getState().getMessages(channel._id);
+  }
 };
 
   // Create a new channel
@@ -874,8 +883,11 @@ const handleChannelClick = (channel) => {
     setActiveWorkspace(workspaceId);
     setShowWorkspaceMenu(false);
     
-    // Reset active channel for now
+    // Reset active channel - this ensures the "No channel selected" state appears
     setActiveChannel(null);
+    
+    // Reset the chat store's selected channel
+    useChatStore.getState().setSelectedChannel(null);
     
     // Reinitialize socket connections when switching workspaces
     try {
@@ -888,7 +900,7 @@ const handleChannelClick = (channel) => {
         // Join all channels in this workspace
         await joinAllWorkspaceChannels(workspaceId);
         
-        // Fetch channels for this workspace
+        // Fetch channels for this workspace but don't select any
         try {
           const workspaceChannels = await fetchWorkspaceChannels(workspaceId);
           console.log(`Fetched ${workspaceChannels.length} channels for workspace ${workspaceId}`);
@@ -903,25 +915,8 @@ const handleChannelClick = (channel) => {
               console.log(`Explicitly joined channel: ${channel._id}`);
             });
             
-            // Set the first channel as active
-            const firstChannel = workspaceChannels[0];
-            setActiveChannel(firstChannel._id);
-            
-            // Create enriched channel object
-            const enrichedChannel = {
-              ...firstChannel,
-              channelId: firstChannel._id,
-              workspaceId: workspaceId,
-              id: firstChannel._id,
-              _id: firstChannel._id
-            };
-            
-            // Set in both workspace store and chat store
-            setSelectedWorkspace(enrichedChannel);
-            useChatStore.getState().setSelectedChannel(enrichedChannel);
-            
-            // Fetch messages
-            useChatStore.getState().getMessages(firstChannel._id);
+            // Don't automatically select any channel
+            // This ensures the "No channel selected" state is shown
           }
         } catch (error) {
           console.error(`Error fetching channels for workspace ${workspaceId}:`, error);

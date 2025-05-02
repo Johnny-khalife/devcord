@@ -277,12 +277,6 @@ const ChannelMessage = ({ message, firstInGroup }) => {
     content: message.content,
   });
 
-  // Check if the user is an admin or owner - needed for permission checks
-  const isChannelAdminOrOwner = () => {
-    // Implementation depends on how your permissions are structured
-    return true; // Placeholder - replace with actual logic
-  };
-
   // Handle message deletion using real-time socket function
   const handleDeleteMessage = async () => {
     if (!window.confirm("Are you sure you want to delete this message?")) {
@@ -324,8 +318,19 @@ const ChannelMessage = ({ message, firstInGroup }) => {
       // Hide emoji menu
       setShowEmojiMenu(false);
 
+      // Prevent any potential scroll to bottom by adding a small delay
+      const currentScrollPosition = document.documentElement.scrollTop || document.body.scrollTop;
+      
       // Call the reaction function
       await addReaction(message._id, channelId, emoji);
+      
+      // Restore scroll position to prevent auto-scrolling
+      setTimeout(() => {
+        window.scrollTo({
+          top: currentScrollPosition,
+          behavior: 'auto'
+        });
+      }, 50);
 
       // No need for toast or local state update as the UI will update via socket event
     } catch (error) {

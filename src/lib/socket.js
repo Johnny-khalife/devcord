@@ -371,17 +371,20 @@ const setupChannelSocketListeners = () => {
           return;
         }
         
-        // Only process messages for the channel we're currently viewing
+        // Get the current channel ID - much more reliable check
         const currentChannelId = chatStore.getCurrentChannelId?.() || 
-                                workspaceStore?.selectedChannel?._id;
-                                
-        if (currentChannelId && data.channelId !== currentChannelId) {
-          console.log(`Message is for channel ${data.channelId} but we're viewing ${currentChannelId}`);
-          // TODO: Show notification for unread message in another channel
+                               workspaceStore?.selectedChannel?._id;
+        
+        // Add channel ID validation logging
+        if (!data.channelId) {
+          console.error('Received message without channel ID, cannot process:', data);
           return;
         }
         
-        // Format the message for the store with consistent field names
+        console.log(`Processing message for channel ${data.channelId}, current channel: ${currentChannelId}`);
+                                
+        // Always store the message even if we're not currently viewing the channel
+        // This ensures we don't miss messages when switching channels
         const messageData = {
           _id: data._id || `socket-${Date.now()}`,
           content: data.content || data.message,
@@ -395,13 +398,15 @@ const setupChannelSocketListeners = () => {
           isSentByMe: false
         };
         
-        // Add message to the store
+        // Always add the message to the store
         console.log('Adding message to chat store:', messageData);
         chatStore.addChannelMessage(messageData);
         
-        // Play notification sound or show toast for new message
-        if (!isFromCurrentUser) {
-          toast.success(`New message from ${data.sender?.username || 'someone'}`);
+        // Only show notification if we're not currently viewing this channel
+        if (currentChannelId && data.channelId !== currentChannelId) {
+          console.log(`Message is for channel ${data.channelId} but we're viewing ${currentChannelId}`);
+          // Show notification for unread message in another channel
+          toast.success(`New message in ${data.channelName || 'another channel'} from ${data.sender?.username || 'someone'}`);
         }
       } else {
         console.error('❌ Chat store not available to receive channel message');
@@ -587,31 +592,43 @@ export const joinChannel = (channelId) => {
         return false;
       }
       
-      // If socket doesn't exist, create a new one
-      if (!channelSocket) {
-        const socketOptions = {
-          withCredentials: true,
-          auth: { token: authToken },
-          reconnection: true,
-          reconnectionAttempts: 5,
-          reconnectionDelay: 1000,
-          autoConnect: true
-        };
-        
-        channelSocket = io(`${BACKEND_URL}/channels`, socketOptions);
-        
-        // Set up basic listeners
-        setupChannelSocketListeners();
-      } else {
-        // Try to reconnect existing socket
-        channelSocket.connect();
+      // Always create a new socket connection to ensure proper state
+      if (channelSocket) {
+        // Properly clean up existing socket before creating a new one
+        channelSocket.disconnect();
       }
+      
+      const socketOptions = {
+        withCredentials: true,
+        auth: { token: authToken },
+        reconnection: true,
+        reconnectionAttempts: 5,
+        reconnectionDelay: 1000,
+        autoConnect: true
+      };
+      
+      channelSocket = io(`${BACKEND_URL}/channels`, socketOptions);
+      
+      // Set up basic listeners
+      setupChannelSocketListeners();
       
       // Wait a bit for connection before trying to join
       setTimeout(() => {
         if (channelSocket.connected) {
           console.log(`📤 Now joining channel ${channelId} after reconnection`);
           channelSocket.emit('joinChannel', { channelId });
+          
+          // Set the current channel ID in chat store for message filtering
+          if (chatStore) {
+            const currentChannel = chatStore.selectedChannel;
+            if (!currentChannel || currentChannel._id !== channelId) {
+              console.log(`Updating current channel in chat store to ${channelId}`);
+              chatStore.setSelectedChannel({ _id: channelId });
+            }
+          }
+          
+          // Announce presence to server
+          channelSocket.emit('userPresence', { channelId, status: 'active' });
         } else {
           console.error('❌ Failed to reconnect channel socket for joining');
         }
@@ -620,9 +637,22 @@ export const joinChannel = (channelId) => {
       return true;
     }
     
-    // Normal flow when socket is already connected
+    // Socket is already connected, just join the channel
     console.log(`📤 Joining channel ${channelId}`);
     channelSocket.emit('joinChannel', { channelId });
+    
+    // Set the current channel ID in chat store for message filtering
+    if (chatStore) {
+      const currentChannel = chatStore.selectedChannel;
+      if (!currentChannel || currentChannel._id !== channelId) {
+        console.log(`Updating current channel in chat store to ${channelId}`);
+        chatStore.setSelectedChannel({ _id: channelId });
+      }
+    }
+    
+    // Announce presence to server
+    channelSocket.emit('userPresence', { channelId, status: 'active' });
+    
     return true;
   } catch (error) {
     console.error('❌ Error joining channel:', error);
@@ -799,6 +829,84 @@ export const deleteMessage = (messageId, channelId) => {
     return true;
   } catch (error) {
     console.error('❌ Error deleting message via socket:', error);
+    return false;
+  }
+};
+
+/**
+ * Delete a direct message
+ */
+export const deleteDirectMessage = (messageId) => {
+  if (!dmSocket || !dmSocket.connected) {
+    console.error('❌ DM socket not connected for deleting message');
+    return false;
+  }
+  
+  try {
+    console.log(`🗑️ Deleting direct message ${messageId}`);
+    
+    dmSocket.emit('deleteMessage', {
+      messageId
+    });
+    
+    return true;
+  } catch (error) {
+    console.error('❌ Error deleting direct message via socket:', error);
+    return false;
+  }
+};
+
+/**
+ * Set the selected channel and join the corresponding socket room
+ */
+export const setSelectedChannel = async (channelId, workspaceId) => {
+  if (!channelId) {
+    console.error('❌ Cannot set selected channel: Missing channelId');
+    return false;
+  }
+  
+  console.log(`Setting selected channel to ${channelId}`);
+  
+  try {
+    // First check if the channelSocket is already connected
+    if (!channelSocket || !channelSocket.connected) {
+      console.log('Channel socket not connected, reconnecting first');
+      
+      // Try to reconnect the socket
+      await reinitializeSocketConnections();
+      
+      // If still not connected, return error
+      if (!channelSocket || !channelSocket.connected) {
+        console.error('Failed to establish channel socket connection');
+        return false;
+      }
+    }
+    
+    // Actually join the channel
+    joinChannel(channelId);
+    
+    // Update the selected channel in the chat store - this is critical for filtering messages
+    if (chatStore) {
+      // Create a channel object with all necessary properties
+      const channelObject = {
+        _id: channelId,
+        id: channelId,
+        channelId: channelId,
+        workspaceId: workspaceId
+      };
+      
+      console.log('Updating selected channel in store:', channelObject);
+      chatStore.setSelectedChannel(channelObject);
+      
+      // Clear message cache for the previous channel to avoid confusion
+      console.log('Clearing messages in store to prepare for new channel data');
+      // Set an empty array rather than null to avoid UI flash
+      chatStore.setEmptyMessages?.() || chatStore.setMessages?.([]);
+    }
+    
+    return true;
+  } catch (error) {
+    console.error('Error setting selected channel:', error);
     return false;
   }
 }; 

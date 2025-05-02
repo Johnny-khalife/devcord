@@ -23,6 +23,8 @@ const ChatBox = ({ activeNavItem, isMobile }) => {
   const { authUser, socket } = useAuthStore();
   const [showChat, setShowChat] = useState(true);
   const [inputHeight, setInputHeight] = useState(0);
+  const [userScrolled, setUserScrolled] = useState(false);
+  const [messageCount, setMessageCount] = useState(0);
   const {
     messages,
     directMessages,
@@ -58,16 +60,43 @@ const ChatBox = ({ activeNavItem, isMobile }) => {
     }
   }, [selectedFriend, activeNavItem]);
 
+  // Track scroll position to determine if user has scrolled up
+  useEffect(() => {
+    const handleScroll = () => {
+      if (!chatAreaRef.current) return;
+      
+      const { scrollTop, scrollHeight, clientHeight } = chatAreaRef.current;
+      // Consider user scrolled if they're not at the bottom (with a small threshold)
+      const isAtBottom = scrollHeight - scrollTop - clientHeight < 50;
+      setUserScrolled(!isAtBottom);
+    };
+    
+    const chatArea = chatAreaRef.current;
+    if (chatArea) {
+      chatArea.addEventListener('scroll', handleScroll);
+      return () => chatArea.removeEventListener('scroll', handleScroll);
+    }
+  }, []);
+
+  // Track message count changes to determine when to scroll
+  useEffect(() => {
+    const currentMessages = activeNavItem === "workSpace" ? messages : directMessages;
+    const newCount = currentMessages?.length || 0;
+    
+    // Only auto-scroll if message count increased (new message) and user hasn't scrolled up
+    if (newCount > messageCount && !userScrolled) {
+      scrollToBottom();
+    }
+    
+    setMessageCount(newCount);
+  }, [messages, directMessages, activeNavItem]);
+
   // Update layout on resize and orientation change
   useEffect(() => {
     const updateLayout = () => {
       if (messageInputRef.current) {
         setInputHeight(messageInputRef.current.offsetHeight);
       }
-      
-      setTimeout(() => {
-        scrollToBottom();
-      }, 100);
     };
     
     // Call initially and set up listeners
@@ -75,22 +104,6 @@ const ChatBox = ({ activeNavItem, isMobile }) => {
     
     window.addEventListener('resize', updateLayout);
     window.addEventListener('orientationchange', updateLayout);
-    
-    // Create a MutationObserver to watch for DOM changes
-    if (containerRef.current) {
-      const observer = new MutationObserver(updateLayout);
-      observer.observe(containerRef.current, { 
-        childList: true, 
-        subtree: true,
-        attributes: true
-      });
-      
-      return () => {
-        observer.disconnect();
-        window.removeEventListener('resize', updateLayout);
-        window.removeEventListener('orientationchange', updateLayout);
-      };
-    }
     
     return () => {
       window.removeEventListener('resize', updateLayout);
@@ -107,14 +120,23 @@ const ChatBox = ({ activeNavItem, isMobile }) => {
       
       messageEndRef.current?.scrollIntoView({ behavior: "auto" });
     });
+    setUserScrolled(false);
   };
 
   // Load messages when channel or friend changes
   useEffect(() => {
     if (activeNavItem === "workSpace" && selectedWorkspace?._id) {
-      getMessages(selectedWorkspace._id);
+      getMessages(selectedWorkspace._id).then(() => {
+        // Reset scroll position when changing channels
+        setUserScrolled(false);
+        scrollToBottom();
+      });
     } else if (activeNavItem === "users" && selectedFriend?.friendId && showChat) {
-      getDirectMessages(selectedFriend.friendId);
+      getDirectMessages(selectedFriend.friendId).then(() => {
+        // Reset scroll position when changing direct message conversation
+        setUserScrolled(false);
+        scrollToBottom();
+      });
       
       // Mark messages as read when we view a direct message conversation
       if (selectedFriend?.friendId && isSocketConnected) {
@@ -130,13 +152,6 @@ const ChatBox = ({ activeNavItem, isMobile }) => {
     showChat,
     isSocketConnected
   ]);
-
-  // Scroll to bottom after messages change
-  useEffect(() => {
-    if (showChat && ((activeNavItem === 'users' && selectedFriend) || (activeNavItem === 'workSpace' && selectedWorkspace))) {
-      scrollToBottom();
-    }
-  }, [messages, directMessages, selectedFriend, selectedWorkspace, activeNavItem, showChat]);
 
   const messagesToDisplaySource = activeNavItem === "workSpace" ? messages : directMessages;
 
@@ -227,8 +242,9 @@ const ChatBox = ({ activeNavItem, isMobile }) => {
 
   let mainContent;
 
-  if ((activeNavItem === 'users' && !selectedFriend) || (activeNavItem === 'workSpace' && !selectedWorkspace)) {
-      mainContent = <NoChatSelected />;
+  if ((activeNavItem === 'users' && !selectedFriend) || 
+      (activeNavItem === 'workSpace' && (!selectedWorkspace || !selectedWorkspace._id))) {
+      mainContent = <NoChatSelected activeNavItem={activeNavItem} />;
   } else if (loading) {
       mainContent = (
           <div className="flex h-full w-full items-center justify-center">
@@ -333,6 +349,19 @@ const ChatBox = ({ activeNavItem, isMobile }) => {
         >
           {mainContent}
         </div>
+        
+        {/* Scroll to bottom button (visible when user has scrolled up) */}
+        {userScrolled && !loading && !isMessagesLoading && messagesForDisplay.length > 0 && (
+          <button 
+            className="btn btn-circle btn-sm btn-primary absolute bottom-20 right-5 shadow-lg z-20"
+            onClick={scrollToBottom}
+            aria-label="Scroll to bottom"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="6 9 12 15 18 9"></polyline>
+            </svg>
+          </button>
+        )}
         
         {/* Input Area (Sticky at Bottom) */}
         {shouldShowChatContent && (

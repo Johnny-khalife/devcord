@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useLocation } from "react-router-dom";
 import ChatBox from "../components/ChatBox";
 import Sidebar from "../components/Sidebar";
@@ -44,14 +44,11 @@ const HomePage = () => {
     }
   }, [location.state]);
 
-  const [showOptions, setShowOptions] = useState(false);
   const [showWorkspaceMenu, setShowWorkspaceMenu] = useState(false);
   const [workspaces, setWorkspaces] = useState([]);
-  const [invitedWorkspaces, setInvitedWorkspaces] = useState([]);
   const [activeWorkspace, setActiveWorkspace] = useState(null);
   const [activeChannel, setActiveChannel] = useState("general");
   const [activeNavItem, setActiveNavItem] = useState("users");
-  const [showWorkspacesNav, setShowWorkspacesNav] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   // Settings modal state
   const [showSettingsForm, setShowSettingsForm] = useState(false);
@@ -179,41 +176,17 @@ const HomePage = () => {
               
               // Set selected channel in the chat store for proper message filtering
               useChatStore.getState().setSelectedChannel(enrichedChannel);
-            } else if (workspaceChannels.length > 0) {
-              // If active channel not found, set the first channel as active
-              setActiveChannel(workspaceChannels[0]._id);
-              
-              // Create a properly structured object with all IDs
-              const enrichedChannel = {
-                ...workspaceChannels[0],
-                channelId: workspaceChannels[0]._id,
-                workspaceId: activeWorkspace,
-                id: workspaceChannels[0]._id,
-                _id: workspaceChannels[0]._id
-              };
-              
-              setSelectedWorkspace(enrichedChannel);
-              
-              // Set selected channel in the chat store for proper message filtering
-              useChatStore.getState().setSelectedChannel(enrichedChannel);
+            } else {
+              // If the active channel isn't found, reset it to show "No channel selected"
+              setActiveChannel(null);
+              setSelectedWorkspace(null);
+              useChatStore.getState().setSelectedChannel(null);
             }
-          } else if (workspaceChannels.length > 0) {
-            // If no active channel set but workspace has channels, set the first one
-            setActiveChannel(workspaceChannels[0]._id);
-            
-            // Create a properly structured object with all IDs
-            const enrichedChannel = {
-              ...workspaceChannels[0],
-              channelId: workspaceChannels[0]._id,
-              workspaceId: activeWorkspace,
-              id: workspaceChannels[0]._id,
-              _id: workspaceChannels[0]._id
-            };
-            
-            setSelectedWorkspace(enrichedChannel);
-            
-            // Set selected channel in the chat store for proper message filtering
-            useChatStore.getState().setSelectedChannel(enrichedChannel);
+          } else {
+            // If no active channel is set, don't automatically select one
+            // This ensures the "No channel selected" state is displayed
+            setSelectedWorkspace(null);
+            useChatStore.getState().setSelectedChannel(null);
           }
         } catch (error) {
           console.error("Error syncing selected workspace:", error);
@@ -225,12 +198,23 @@ const HomePage = () => {
   }, [activeNavItem, activeWorkspace, activeChannel, fetchWorkspaceChannels, setSelectedWorkspace]);
 
   // Add an effect to clear selectedFriend when switching between navigation items
+  const prevNavItem = useRef(null);
   useEffect(() => {
     // When switching to a non-users tab, reset the selectedFriend
     if (activeNavItem !== "users") {
       setSelectedFriend(null);
     }
-  }, [activeNavItem, setSelectedFriend]);
+    
+    // When switching to workspace view, reset the selected channel
+    if (activeNavItem === "workSpace" && activeNavItem !== prevNavItem.current) {
+      setActiveChannel(null);
+      setSelectedWorkspace(null);
+      useChatStore.getState().setSelectedChannel(null);
+    }
+    
+    // Keep track of previous nav item for comparison
+    prevNavItem.current = activeNavItem;
+  }, [activeNavItem, setSelectedFriend, setSelectedWorkspace]);
 
   // Add this useEffect to handle workspace access
   useEffect(() => {
@@ -425,10 +409,15 @@ const HomePage = () => {
           ) : (
             <>
               {((activeNavItem === "users" && !selectedFriend) || 
-                (activeNavItem === "workSpace" && (!selectedWorkspace || !workspaces.some(ws => 
-                  ws?.id === activeWorkspace && (ws.isOwned || ws.isInvited || ws.role === "member" || ws.role === "admin")
-                )))) ? (
-                <NoChatSelected />
+                (activeNavItem === "workSpace" && (
+                  !selectedWorkspace || 
+                  !selectedWorkspace._id || 
+                  !activeChannel ||
+                  !workspaces.some(ws => 
+                    ws?.id === activeWorkspace && (ws.isOwned || ws.isInvited || ws.role === "member" || ws.role === "admin")
+                  )
+                ))) ? (
+                <NoChatSelected activeNavItem={activeNavItem} />
               ) : (
                 <ChatBox 
                   activeNavItem={activeNavItem}

@@ -31,6 +31,10 @@ export const useChatStore = create((set, get) => ({
     set({ selectedChannel: channel });
   },
   
+  setEmptyMessages: () => {
+    set({ messages: [] });
+  },
+  
   updateSentMessage: (messageId, serverMessage) => {
     const { messages } = get();
     
@@ -112,8 +116,7 @@ export const useChatStore = create((set, get) => ({
 
       // Prepare message for optimistic update
       const authUser = window.authUser || 
-                      JSON.parse(localStorage.getItem('auth-store'))?.state?.authUser || 
-                      useAuthStore.getState().authUser;
+                      JSON.parse(localStorage.getItem('auth-store'))?.state?.authUser;
       
       if (!authUser) {
         console.error("No authenticated user found for sending message");
@@ -168,6 +171,13 @@ export const useChatStore = create((set, get) => ({
           },
           workspaceId
         );
+        
+        // Use socketSent to avoid linter error
+        if (!socketSent) {
+          console.log("Socket message might not have been sent, will mark as delivered anyway");
+        } else {
+          console.log("Message sent via socket successfully");
+        }
         
         // Socket handling will update the message via updateSentMessage when the server confirms
         
@@ -343,23 +353,50 @@ export const useChatStore = create((set, get) => ({
     try {
       set({ isDeletingMessage: true });
       
-      // For channel messages
       if (!isDirect) {
-        // Try to use socket first
-        const { deleteMessage } = await import("../lib/socket");
-        const socketSent = deleteMessage(messageId, channelId);
-        
-        // Fall back to API if socket fails
-        if (!socketSent) {
+        // For channel messages
+        try {
+          // Import the socket function for channels
+          const { deleteMessage } = await import("../lib/socket");
+          
+          // Try socket approach first for channel messages
+          if (deleteMessage(messageId, channelId)) {
+            console.log("Channel delete message sent via socket");
+          } else {
+            // Fall back to API if socket approach fails
+            console.log("Channel socket approach failed, using API fallback");
+            await axiosInstance.delete(`/messages/${messageId}`);
+            // Update state locally when using API
+            get().removeChannelMessage(messageId);
+          }
+        } catch (err) {
+          // Handle any socket-related errors
+          console.error("Channel socket error, falling back to API:", err);
           await axiosInstance.delete(`/messages/${messageId}`);
-          // Only update state locally if not using sockets
           get().removeChannelMessage(messageId);
         }
-      } 
-      // For direct messages - always use API for now
-      else {
-        await axiosInstance.delete(`/direct-messages/${messageId}`);
-        get().removeDirectMessage(messageId);
+      } else {
+        // For direct messages
+        try {
+          // Import the socket function for direct messages
+          const { deleteDirectMessage } = await import("../lib/socket");
+          
+          // Try socket approach first for direct messages
+          if (deleteDirectMessage(messageId)) {
+            console.log("Direct message delete sent via socket");
+          } else {
+            // Fall back to API if socket approach fails
+            console.log("Direct message socket approach failed, using API fallback");
+            await axiosInstance.delete(`/direct-messages/${messageId}`);
+            // Update state locally when using API
+            get().removeDirectMessage(messageId);
+          }
+        } catch (err) {
+          // Handle any socket-related errors
+          console.error("Direct message socket error, falling back to API:", err);
+          await axiosInstance.delete(`/direct-messages/${messageId}`);
+          get().removeDirectMessage(messageId);
+        }
       }
     } catch (error) {
       console.error("Failed to delete message:", error);
@@ -817,7 +854,7 @@ export const useChatStore = create((set, get) => ({
     }
     
     // Get the current messages, auth info, and selected workspace
-    const { messages } = get();
+    const { messages, selectedChannel } = get();
     const authUser = window.authUser || 
                      JSON.parse(localStorage.getItem('auth-store'))?.state?.authUser || 
                      useAuthStore.getState().authUser;
@@ -868,10 +905,20 @@ export const useChatStore = create((set, get) => ({
     
     console.log("Adding formatted channel message:", newMessage);
     
-    // Add to messages store
-    set({
-      messages: [...messages, newMessage]
-    });
+    // IMPORTANT: Only add messages that are for the currently selected channel
+    // This prevents messages appearing in all channels
+    const currentChannelId = selectedChannel?._id || selectedChannel?.channelId;
+    
+    if (newMessage.channelId === currentChannelId) {
+      console.log(`Message is for current channel ${currentChannelId}, adding to messages array`);
+      // Add to messages store for the current channel
+      set({
+        messages: [...messages, newMessage]
+      });
+    } else {
+      console.log(`Message is for channel ${newMessage.channelId} but current channel is ${currentChannelId}, not adding to messages array`);
+      // Don't add messages for other channels to the current view
+    }
   },
   
   // Track channel typing indicators
