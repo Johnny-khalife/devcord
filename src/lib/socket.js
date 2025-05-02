@@ -6,6 +6,7 @@ import toast from 'react-hot-toast';
 let authStore = null;
 let chatStore = null;
 let workspaceStore = null;
+let channelStore = null;
 
 // Socket instances - will be initialized in connectSockets
 let dmSocket = null;
@@ -14,10 +15,16 @@ let channelSocket = null;
 /**
  * Set the store references for socket event handlers to use
  */
-export const setStoreRefs = (auth, chat, workspace) => {
+export const setStoreRefs = (auth, chat, workspace, channel) => {
   authStore = auth;
   chatStore = chat;
   workspaceStore = workspace;
+  channelStore = channel;
+  
+  // Also make channelStore available on window for components that need it
+  if (typeof window !== 'undefined') {
+    window.channelStore = channel;
+  }
 };
 
 /**
@@ -185,6 +192,74 @@ const setupDMSocketListeners = () => {
     toast.error('Messaging service error. Please refresh the page.');
   });
 
+  // Listen for workspace updates
+  dmSocket.on('workspaceJoined', (workspaceData) => {
+    console.log('🏢 Joined workspace:', workspaceData);
+    
+    if (workspaceStore) {
+      // Force refresh the workspaces list
+      console.log('Refreshing workspaces after joining a new workspace');
+      workspaceStore.getUserWorkspaces(true) // true = force refresh
+        .then(workspaces => {
+          console.log('Workspaces refreshed after joining:', workspaces);
+          
+          // Show a notification to the user
+          toast.success(`You joined the workspace: ${workspaceData.workspaceName || 'New workspace'}`);
+          
+          // Auto-join the workspace's channels
+          if (workspaceData._id) {
+            joinAllWorkspaceChannels(workspaceData._id).catch(err => {
+              console.error('Error joining workspace channels after workspaceJoined event:', err);
+            });
+          }
+        })
+        .catch(error => {
+          console.error('Error refreshing workspaces after joining:', error);
+        });
+    } else {
+      console.error('Workspace store not available to handle workspaceJoined event');
+    }
+  });
+
+  // Listen for workspace deletion
+  dmSocket.on('workspaceDeleted', (data) => {
+    console.log('🏢 Workspace deleted:', data);
+    
+    if (workspaceStore) {
+      // Force refresh the workspaces list to remove the deleted workspace
+      console.log(`Refreshing workspaces after deletion of workspace ${data.workspaceId}`);
+      workspaceStore.getUserWorkspaces(true)
+        .then(workspaces => {
+          console.log('Workspaces refreshed after deletion');
+          
+          // Check if the currently selected workspace was deleted
+          const currentWorkspace = workspaceStore.selectedWorkspace;
+          if (currentWorkspace && currentWorkspace._id === data.workspaceId) {
+            // Reset selected workspace since it was deleted
+            workspaceStore.setSelectedWorkspace(null);
+            
+            // Also reset selected channel
+            if (chatStore) {
+              chatStore.setSelectedChannel(null);
+            }
+            
+            // Navigate to workspace selection view if possible
+            if (typeof window !== 'undefined' && window.location.pathname.includes(data.workspaceId)) {
+              window.location.href = '/workspaces';
+            }
+          }
+          
+          // Show a notification to the user
+          toast.info(data.message || 'A workspace has been deleted');
+        })
+        .catch(error => {
+          console.error('Error refreshing workspaces after deletion:', error);
+        });
+    } else {
+      console.error('Workspace store not available to handle workspaceDeleted event');
+    }
+  });
+
   // Message events
   dmSocket.on('receiveDirectMessage', (data) => {
     console.log('📨 Received direct message:', data.image);
@@ -327,6 +402,48 @@ const setupChannelSocketListeners = () => {
 
   channelSocket.on('userLeftChannel', (data) => {
     console.log('👋 User left channel:', data);
+  });
+
+  // Channel creation events
+  channelSocket.on('channelCreated', (channelData) => {
+    console.log('📢 New channel created:', channelData);
+    
+    // Use the channelStore reference directly
+    if (channelStore) {
+      // Clear channel cache for this workspace to force a refresh
+      const workspaceId = channelData.workspaceId;
+      console.log(`Clearing channel cache for workspace ${workspaceId} due to new channel creation`);
+      channelStore.clearChannelCache(workspaceId);
+      
+      // Always fetch the updated channel list for the workspace where the channel was created
+      // This ensures all users will see the new channel without needing to refresh
+      channelStore.fetchWorkspaceChannels(workspaceId, true)
+        .then(updatedChannels => {
+          console.log(`Channel list updated for workspace ${workspaceId}, now has ${updatedChannels.length} channels`);
+          
+          // If this is the current workspace, also join the new channel
+          if (workspaceStore && workspaceStore.selectedWorkspace) {
+            const currentWorkspaceId = workspaceStore.selectedWorkspace._id || 
+                                      workspaceStore.selectedWorkspace.id || 
+                                      workspaceStore.selectedWorkspace.workspaceId;
+            
+            if (currentWorkspaceId === workspaceId) {
+              // If user is currently viewing this workspace, join the channel
+              joinChannel(channelData._id).catch(error => {
+                console.error(`Error joining channel ${channelData._id}:`, error);
+              });
+            }
+          }
+          
+          // Show notification to all users in the workspace
+          toast.success(`New channel available: ${channelData.channelName}`);
+        })
+        .catch(error => {
+          console.error('Error refreshing channel list after channel creation:', error);
+        });
+    } else {
+      console.error('Channel store not available to handle channelCreated event');
+    }
   });
 
   // Message sent acknowledgment (for sender only)
