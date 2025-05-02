@@ -13,13 +13,20 @@ export const useFriendStore = create(
       blockedUsers: [],
       isLoading: false,
       error: null,
+      dataLoaded: false,
 
       // Get all friend requests received by the current user
       getFriendRequests: async () => {
+        const { dataLoaded, friendRequests } = get();
+        
+        if (dataLoaded && friendRequests.length > 0) {
+          return friendRequests;
+        }
+        
         set({ isLoading: true });
         try {
           const response = await axiosInstance.get("/friends/requests");
-          set({ friendRequests: response.data.data, isLoading: false });
+          set({ friendRequests: response.data.data, isLoading: false, dataLoaded: true });
           return response.data.data;
         } catch (error) {
           set({ error: error.response?.data?.message || "Failed to fetch friend requests", isLoading: false });
@@ -30,10 +37,16 @@ export const useFriendStore = create(
 
       // Get all pending friend requests sent by the current user
       getSentFriendRequests: async () => {
+        const { dataLoaded, sentRequests } = get();
+        
+        if (dataLoaded && sentRequests.length > 0) {
+          return sentRequests;
+        }
+        
         set({ isLoading: true });
         try {
           const response = await axiosInstance.get("/friends/requests/sent");
-          set({ sentRequests: response.data.data, isLoading: false });
+          set({ sentRequests: response.data.data, isLoading: false, dataLoaded: true });
           return response.data.data;
         } catch (error) {
           set({ error: error.response?.data?.message || "Failed to fetch sent requests", isLoading: false });
@@ -88,13 +101,19 @@ export const useFriendStore = create(
       },
 
       // Get list of friends for the current user
-      getFriendsList: async () => {
+      getFriendsList: async (forceRefresh = false) => {
+        const { dataLoaded, friends } = get();
+        
+        if (dataLoaded && friends.length > 0 && !forceRefresh) {
+          return friends;
+        }
+        
         set({ isLoading: true });
         try {
-          console.log("getFriendsList is called",get().friends)	
+          console.log("getFriendsList is called", get().friends);	
           const response = await axiosInstance.get("/friends");
-          set({ friends: response.data.data, isLoading: false });
-          console.log(response.data)
+          set({ friends: response.data.data, isLoading: false, dataLoaded: true });
+          console.log(response.data);
           return response.data.data;
         } catch (error) {
           set({ error: error.response?.data?.message || "Failed to fetch friends list", isLoading: false });
@@ -211,10 +230,16 @@ export const useFriendStore = create(
 
       // Get list of blocked users
       getBlockedUsers: async () => {
+        const { dataLoaded, blockedUsers } = get();
+        
+        if (dataLoaded && blockedUsers.length > 0) {
+          return blockedUsers;
+        }
+        
         set({ isLoading: true });
         try {
           const response = await axiosInstance.get("/friends/block");
-          set({ blockedUsers: response.data.data, isLoading: false });
+          set({ blockedUsers: response.data.data, isLoading: false, dataLoaded: true });
           return response.data.data;
         } catch (error) {
           set({ error: error.response?.data?.message || "Failed to fetch blocked users", isLoading: false });
@@ -245,8 +270,15 @@ export const useFriendStore = create(
           friends: [],
           blockedUsers: [],
           isLoading: false,
-          error: null
+          error: null,
+          dataLoaded: false
         });
+      },
+      
+      // Force refresh data
+      forceRefresh: async () => {
+        set({ dataLoaded: false });
+        await get().initialize();
       }
     }),
     {

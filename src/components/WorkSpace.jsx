@@ -233,6 +233,7 @@ const WorkSpace = ({
     setSelectedWorkspace,
     toggleAdminRole,
     removeMember,
+    workspaceMembersCache,
   } = useWorkspaceStore();
   const { friends, sendFriendRequest, removeFriend } = useFriendStore();
   const { user: currentUser } = useAuthStore();
@@ -296,8 +297,12 @@ const WorkSpace = ({
   // Get friends data and methods from the friend store
   const { getFriendsList } = useFriendStore();
   const { sendWorkspaceInvite } = useWorkspaceStore();
-  const { fetchWorkspaceChannels, createChannel, deleteChannel } =
-    useChannelStore();
+  const { 
+    fetchWorkspaceChannels, 
+    createChannel, 
+    deleteChannel,
+    channelsCache 
+  } = useChannelStore();
 
   // Add this at the beginning of your component
   console.log("Workspace component props:", {
@@ -335,126 +340,78 @@ const WorkSpace = ({
   // Fetch channels for the active workspace
   useEffect(() => {
     const loadWorkspaceChannels = async () => {
-      if (!activeWorkspace) {
-        // Reset channel and workspace state if no active workspace
-        setActiveChannel(null);
-        setSelectedWorkspace(null);
-        return;
+      // Only show loading if we don't have cached channels
+      const hasChannelCache = channelsCache && channelsCache[activeWorkspace];
+      if (!hasChannelCache) {
+        setIsChannelsLoading(true);
       }
-
-      // Check if user has access to this workspace
-      const hasAccess = workspaces.some(ws => 
-        ws.id === activeWorkspace && (ws.isOwned || ws.isInvited || ws.role === "member" || ws.role === "admin")
-      );
-
-      if (!hasAccess) {
-        // Reset state if user doesn't have access
-        setActiveWorkspace(null);
-        setActiveChannel(null);
-        setSelectedWorkspace(null);
-        return;
-      }
-
-      setIsChannelsLoading(true);
+      
       try {
-        const workspaceChannels = await fetchWorkspaceChannels(activeWorkspace);
-        setChannels(workspaceChannels);
-
-        // If there are channels, set one as active
-        if (workspaceChannels.length > 0) {
-          const defaultChannel = workspaceChannels[0];
-          
-          // Check if activeChannel exists in the list of channels
-          const currentChannel = workspaceChannels.find(
-            (channel) => channel._id === activeChannel
-          );
-          
-          if (currentChannel) {
-            // Set the current channel as selected with both channel and workspace IDs
-            setActiveChannel(currentChannel._id);
-            setSelectedWorkspace({
-              ...currentChannel,
-              channelId: currentChannel._id,
-              workspaceId: activeWorkspace
-            });
-          } else {
-            // Set the first channel as active with both channel and workspace IDs
-            setActiveChannel(defaultChannel._id);
-            setSelectedWorkspace({
-              ...defaultChannel,
-              channelId: defaultChannel._id,
-              workspaceId: activeWorkspace
-            });
+        // The fetchWorkspaceChannels function now handles caching internally
+        const fetchedChannels = await fetchWorkspaceChannels(activeWorkspace);
+        console.log("Fetched channels:", fetchedChannels);
+        setChannels(fetchedChannels);
+        
+        // If there are no channels and there should be a default "general" channel, create it
+        if (fetchedChannels.length === 0) {
+          console.log("No channels found in workspace, creating general channel...");
+          if (hasAdminPrivileges()) {
+            try {
+              await createDefaultChannel();
+            } catch (error) {
+              console.error("Error creating default channel:", error);
+            }
           }
-        } else {
-          // If there are no channels, clear the active channel and selected workspace
-          setActiveChannel(null);
-          setSelectedWorkspace(null);
-          console.log("No channels found for workspace:", activeWorkspace);
+        }
+
+        // Set activeChannel to the first channel if none is selected
+        if (!activeChannel && fetchedChannels.length > 0) {
+          setActiveChannel(fetchedChannels[0]._id);
         }
       } catch (error) {
-        console.error("Failed to fetch workspace channels:", error);
-        // On error, reset the active channel and selected workspace
-        setActiveChannel(null);
-        setSelectedWorkspace(null);
+        console.error("Failed to load workspace channels:", error);
+        toast.error("Failed to load workspace channels");
       } finally {
         setIsChannelsLoading(false);
       }
     };
 
-    loadWorkspaceChannels();
-  }, [activeWorkspace, fetchWorkspaceChannels, activeChannel, setSelectedWorkspace, workspaces]);
+    if (activeWorkspace) {
+      loadWorkspaceChannels();
+    }
+  }, [activeWorkspace, channelsCache]);
 
   useEffect(() => {
     console.log("Current user:", currentUser);
   }, [currentUser]);
 
-  // And inside useEffect that depends on activeWorkspace
+  // Update the workspace members loading effect
   useEffect(() => {
-    console.log("Active workspace changed:", activeWorkspace);
-    console.log("Current workspaces:", workspaces);
-
     const fetchWorkspaceMembers = async () => {
-      if (!activeWorkspace) {
-        console.log("No active workspace, skipping member fetch");
-        return;
+      if (!activeWorkspace) return;
+      
+      // Only show loading if we don't have cached members
+      const hasMembersCache = workspaceMembersCache && workspaceMembersCache[activeWorkspace];
+      if (!hasMembersCache) {
+        setIsWorkspaceMembersLoading(true);
       }
-
-      setIsWorkspaceMembersLoading(true);
+      
       try {
-        console.log("Fetching members for workspace:", activeWorkspace);
+        // Let the store's caching handle this
         const members = await getWorkspaceMembers(activeWorkspace);
-
-        if (Array.isArray(members)) {
-          // Map members to include both id and _id and role 
-          const formattedMembers = members.map((member) => ({
-            ...member,
-            id: member.id || member._id || member.userId,
-            // Make sure role is included
-            role: member.role || "member",
-            isOwned: member.role === "owner",
-            isAdmin: member.role === "admin",
-          }));
-
-          setWorkspaceMembers(formattedMembers);
-          console.log("Members loaded successfully:", formattedMembers);
-        } else {
-          console.error("Received invalid members data:", members);
-          setWorkspaceMembers([]);
-        }
+        setWorkspaceMembers(members);
       } catch (error) {
-        console.error("Error in fetchWorkspaceMembers:", error);
-        toast.error(
-          error.response?.data?.message || "Could not load workspace members"
-        );
-        setWorkspaceMembers([]);
+        console.error("Error fetching workspace members:", error);
       } finally {
         setIsWorkspaceMembersLoading(false);
       }
     };
-
-    fetchWorkspaceMembers();
-  }, [activeWorkspace, getWorkspaceMembers]);
+    
+    // Only fetch members when the active workspace changes
+    if (activeWorkspace) {
+      fetchWorkspaceMembers();
+    }
+  }, [activeWorkspace, workspaceMembersCache]);
 
 ///////////////////////////////////////////////////////////////
 

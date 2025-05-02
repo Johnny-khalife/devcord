@@ -7,11 +7,18 @@ import {
   Newspaper,
 } from "lucide-react";
 import { useChatStore } from "../store/useChatStore";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
+import { useFriendStore } from "../store/useFriendsStore";
+import { useWorkspaceStore } from "../store/useWorkspaceStore";
+import { useChannelStore } from "../store/useChannelStore";
 
 const Sidebar = ({ activeNavItem, setActiveNavItem }) => {
   const { setSelectedFriend } = useChatStore();
   const [isMobile, setIsMobile] = useState(false);
+  
+  // Access store methods for preloading data
+  const { getFriendsList, getBlockedUsers, getFriendRequests } = useFriendStore();
+  const { getUserWorkspaces } = useWorkspaceStore();
   
   // Check if we're on a mobile device
   useEffect(() => {
@@ -29,7 +36,19 @@ const Sidebar = ({ activeNavItem, setActiveNavItem }) => {
     return () => window.removeEventListener('resize', checkIfMobile);
   }, []);
   
-  const workSpacePage = () => {
+  // Preload data when component mounts
+  useEffect(() => {
+    // Preload friends data
+    getFriendsList();
+    getBlockedUsers();
+    getFriendRequests();
+    
+    // Preload workspaces data
+    getUserWorkspaces();
+  }, []);
+  
+  // Use useCallback to memoize functions
+  const workSpacePage = useCallback(() => {
     if (isMobile && activeNavItem === "workSpace") {
       // If already on workspace page, toggle the workspace sidebar
       window.dispatchEvent(new CustomEvent('toggle-workspace-sidebar'));
@@ -38,9 +57,9 @@ const Sidebar = ({ activeNavItem, setActiveNavItem }) => {
       setSelectedFriend(null);
       setActiveNavItem("workSpace");
     }
-  };
+  }, [isMobile, activeNavItem, setSelectedFriend, setActiveNavItem]);
   
-  const userChatPage = () => {
+  const userChatPage = useCallback(() => {
     if (isMobile && activeNavItem === "users") {
       // If already on users page, toggle the user friends sidebar
       window.dispatchEvent(new CustomEvent('toggle-user-friends-sidebar'));
@@ -48,9 +67,9 @@ const Sidebar = ({ activeNavItem, setActiveNavItem }) => {
       setActiveNavItem("users");
       // Don't reset selectedFriend here, let it be handled by the UserFriends component
     }
-  };
+  }, [isMobile, activeNavItem, setActiveNavItem]);
 
-  const jobsPage = () => {
+  const jobsPage = useCallback(() => {
     if (isMobile && activeNavItem === "jobs") {
       // If already on jobs page, toggle any relevant sidebar
       // Add jobs toggle event if needed
@@ -58,7 +77,7 @@ const Sidebar = ({ activeNavItem, setActiveNavItem }) => {
       setSelectedFriend(null);
       setActiveNavItem("jobs");
     }
-  };
+  }, [isMobile, activeNavItem, setSelectedFriend, setActiveNavItem]);
 
   // Always show the navigation bar
   return (

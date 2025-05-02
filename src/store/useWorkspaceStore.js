@@ -9,6 +9,8 @@ export const useWorkspaceStore = create(
       workspacesWithRoles: [],
       selectedWorkspace: null,
       isLoading: false,
+      workspacesLoaded: false, // Flag to track if workspaces were loaded
+      workspaceMembersCache: {}, // Cache for workspace members to avoid refetching
 
       updateWorkspace: async (workspaceId, workspaceData, setIsLoading, onSuccess, onClose) => {
         setIsLoading(true);
@@ -115,7 +117,14 @@ export const useWorkspaceStore = create(
       },
 
       // Add function to get user workspaces from API
-      getUserWorkspaces: async () => {
+      getUserWorkspaces: async (forceRefresh = false) => {
+        const { workspacesLoaded, workspacesWithRoles } = get();
+        
+        // If workspaces are already loaded and we have data, return them unless forceRefresh is true
+        if (workspacesLoaded && workspacesWithRoles.length > 0 && !forceRefresh) {
+          return workspacesWithRoles;
+        }
+
         set({ isLoading: true });
         try {
           const response = await axiosInstance.get('/workspaces/user');
@@ -133,7 +142,7 @@ export const useWorkspaceStore = create(
                 isAdmin: membership.role === 'admin'
               }));
             console.log("Formatted workspaces with roles:", workspaces);
-            set({ workspacesWithRoles: workspaces }); // Store workspaces with roles
+            set({ workspacesWithRoles: workspaces, workspacesLoaded: true }); // Store workspaces with roles and mark as loaded
             return workspaces;
           }
           return [];
@@ -182,12 +191,19 @@ export const useWorkspaceStore = create(
         }
       },
 
-      // Function to get workspace members
+      // Function to get workspace members with caching
       getWorkspaceMembers: async (workspaceId) => {
         try {
           if (!workspaceId) {
             console.error("No workspace ID provided to getWorkspaceMembers");
             return [];
+          }
+
+          // Check if we have cached members for this workspace
+          const { workspaceMembersCache } = get();
+          if (workspaceMembersCache[workspaceId]) {
+            console.log("Using cached workspace members");
+            return workspaceMembersCache[workspaceId];
           }
 
           const response = await axiosInstance.get(`/workspaces/${workspaceId}/members`);
@@ -202,6 +218,15 @@ export const useWorkspaceStore = create(
               isOwner: member.role === 'owner'
             }));
             console.log("Formatted workspace members:", formattedMembers);
+            
+            // Cache the members
+            set(state => ({
+              workspaceMembersCache: {
+                ...state.workspaceMembersCache,
+                [workspaceId]: formattedMembers
+              }
+            }));
+            
             return formattedMembers;
           } else {
             console.error("API returned unsuccessful response:", response.data);
@@ -324,6 +349,26 @@ export const useWorkspaceStore = create(
         }
         
         set({ selectedWorkspace });
+      },
+
+      // Clear workspace members cache for a specific workspace
+      clearWorkspaceMembersCache: (workspaceId) => {
+        if (!workspaceId) return;
+        
+        set(state => {
+          const newCache = { ...state.workspaceMembersCache };
+          delete newCache[workspaceId];
+          return { workspaceMembersCache: newCache };
+        });
+      },
+
+      // Force refresh all data
+      forceRefresh: async () => {
+        set({ 
+          workspacesLoaded: false,
+          workspaceMembersCache: {}
+        });
+        return await get().getUserWorkspaces(true);
       },
     }),
     {

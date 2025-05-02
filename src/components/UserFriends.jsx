@@ -12,12 +12,14 @@ import {
   User,
   AlertCircle,
   Ban,
+  Check,
 } from "lucide-react";
 import { useAuthStore } from "../store/useAuthStore";
 import { useFriendStore } from "../store/useFriendsStore";
 import { useChatStore } from "../store/useChatStore";
 import SidebarSkeleton from "./skeletons/SidebarSkeleton";
 import SearchFriendsPortal from "./SearchFriendsPortal";
+import { toast } from "react-hot-toast";
 
 const UserFriends = () => {
   // State management
@@ -35,6 +37,10 @@ const UserFriends = () => {
   const [isMobile, setIsMobile] = useState(false);
   const [isUserFriendsSidebarOpen, setIsUserFriendsSidebarOpen] =
     useState(true);
+
+  // Add filtered friends and requests state
+  const [filteredFriends, setFilteredFriends] = useState([]);
+  const [filteredRequests, setFilteredRequests] = useState([]);
 
   // Check screen size
   useEffect(() => {
@@ -87,6 +93,9 @@ const UserFriends = () => {
     blockUser,
     unblockUser,
     isLoading: friendLoading,
+    dataLoaded,
+    acceptFriendRequest,
+    declineFriendRequest,
   } = useFriendStore();
 
   // Refs for click outside detection
@@ -113,9 +122,13 @@ const UserFriends = () => {
   // Initialize data on component mount
   useEffect(() => {
     const loadData = async () => {
-      await getFriendsList();
-      await getFriendRequests();
-      await getBlockedUsers();
+      // Only show loading if data isn't already loaded
+      if (!dataLoaded) {
+        // Let the store handle caching instead of always fetching
+        await getFriendsList();
+        await getFriendRequests();
+        await getBlockedUsers();
+      }
     };
 
     loadData();
@@ -124,7 +137,29 @@ const UserFriends = () => {
     // This ensures that when switching back to the Friends view, no friend is pre-selected
     setSelectedFriend(null);
     setActiveFriend(null);
-  }, [getFriendsList, getFriendRequests, getBlockedUsers, setSelectedFriend]);
+  }, []);  // Remove dependencies to prevent refetching
+
+  // Update filtered friends and requests when data or search query changes
+  useEffect(() => {
+    if (!searchQuery) {
+      setFilteredFriends(friends);
+      setFilteredRequests(friendRequests);
+    } else {
+      const query = searchQuery.toLowerCase();
+      
+      // Filter friends based on username
+      const filteredFriends = friends.filter(friend => 
+        friend.username.toLowerCase().includes(query)
+      );
+      setFilteredFriends(filteredFriends);
+      
+      // Filter friend requests based on username
+      const filteredRequests = friendRequests.filter(request => 
+        request.senderUsername?.toLowerCase().includes(query)
+      );
+      setFilteredRequests(filteredRequests);
+    }
+  }, [friends, friendRequests, searchQuery]);
 
   // Handler functions
   const handleAddFriend = () => {
@@ -181,8 +216,6 @@ const UserFriends = () => {
   // Search friends in the sidebar
   const handleSearchFriends = (e) => {
     setSearchQuery(e.target.value);
-    // Filter the friends list based on search query
-    // This would be implemented in a real app
   };
 
   const selectedFriendWhenClick = ({ id, friend }) => {
@@ -193,8 +226,198 @@ const UserFriends = () => {
     }
   };
 
-  // Loading state
-  const isLoadingData = authLoading || friendLoading;
+  // Loading state - only show loading when data isn't loaded yet
+  const isLoadingData = authLoading || (friendLoading && !dataLoaded);
+
+  // Render the scrollable content with friends and requests
+  const renderContent = () => {
+    if (isLoadingData) {
+      return <SidebarSkeleton />;
+    }
+
+    return (
+      <div className="flex-1 overflow-y-auto">
+        <div className="p-2">
+          {/* Friend requests section */}
+          {friendRequests.length > 0 && (
+            <div className="mb-4">
+              <div className="px-2 py-1 text-xs font-semibold text-base-content/70 flex items-center justify-between">
+                <span>PENDING REQUESTS</span>
+                <span className="px-1.5 py-0.5 bg-primary/20 text-primary text-xs rounded">
+                  {filteredRequests.length}/{friendRequests.length}
+                </span>
+              </div>
+              
+              {filteredRequests.length === 0 && searchQuery ? (
+                <div className="p-2 text-center text-xs text-base-content/50">
+                  No requests match "{searchQuery}"
+                </div>
+              ) : (
+                filteredRequests.map((request) => (
+                  <div 
+                    key={request.requestId} 
+                    className="flex items-center justify-between p-2 my-1 rounded-md hover:bg-base-300 bg-base-300/40"
+                  >
+                    <div className="flex items-center gap-2">
+                      <div className="relative">
+                        <img
+                          src={request.senderAvatar || "/avatar.png"}
+                          alt=""
+                          className="w-8 h-8 rounded-full"
+                        />
+                      </div>
+                      <div>
+                        <div className="text-sm font-medium">{request.senderUsername}</div>
+                        <div className="text-xs text-base-content/60">Wants to add you</div>
+                      </div>
+                    </div>
+                    <div className="flex gap-1">
+                      <button 
+                        onClick={() => handleAcceptFriendRequest(request.requestId)}
+                        className="p-1.5 bg-primary/20 text-primary hover:bg-primary/30 rounded-md"
+                        title="Accept"
+                      >
+                        <Check size={16} />
+                      </button>
+                      <button 
+                        onClick={() => handleDeclineFriendRequest(request.requestId)}
+                        className="p-1.5 bg-error/20 text-error hover:bg-error/30 rounded-md"
+                        title="Decline"
+                      >
+                        <X size={16} />
+                      </button>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          )}
+
+          {/* Friends list */}
+          <div className="space-y-1 mt-4">
+            <div className="px-2 py-1 text-xs font-semibold text-base-content/70 flex items-center justify-between">
+              <span>FRIENDS</span>
+              {searchQuery && (
+                <span className="px-1.5 py-0.5 bg-blue-500/20 text-blue-500 text-xs rounded">
+                  {filteredFriends.length}/{friends.length}
+                </span>
+              )}
+            </div>
+            
+            {filteredFriends.length === 0 && (
+              <div className="p-4 text-center text-sm text-base-content/70">
+                {searchQuery ? 
+                  `No friends match "${searchQuery}"` :
+                  "You don't have any friends yet"
+                }
+              </div>
+            )}
+            
+            {filteredFriends.map((friend) => (
+              <div key={friend.friendId} className="flex items-center">
+                <button
+                  className={`flex items-center gap-2 px-2 py-2 rounded-md hover:bg-base-300 flex-grow ${
+                    activeFriend === friend.friendId
+                      ? "bg-primary/10 text-primary font-medium"
+                      : ""
+                  }`}
+                  onClick={() =>
+                    selectedFriendWhenClick({
+                      id: friend.friendId,
+                      friend: friend,
+                    })
+                  }
+                >
+                  <div className="flex items-center justify-center relative">
+                    <img
+                      src={friend.avatar || "/avatar.png"}
+                      alt=""
+                      className="w-6 h-6 rounded-full mr-2"
+                    />
+                    {onlineUsers.includes(friend.friendId) && (
+                      <span
+                        className="absolute -bottom-0.5 -right-0.5 w-2 h-2 bg-green-500 
+                        rounded-full ring-1 ring-base-200"
+                      />
+                    )}
+                  </div>
+                  <span className="text-sm">{friend.username}</span>
+                </button>
+                <div className="relative">
+                  <button
+                    className="w-8 h-8 flex items-center justify-center hover:bg-base-300 rounded-full"
+                    onClick={() => toggleFriendActions(friend.friendId)}
+                  >
+                    <MoreVertical size={16} />
+                  </button>
+
+                  {showFriendActions === friend.friendId && (
+                    <div
+                      className="absolute right-0 mt-1 w-40 bg-base-100 shadow-lg rounded-md z-50 py-1"
+                      ref={friendActionsRef}
+                    >
+                      <button
+                        className="w-full px-3 py-2 text-sm text-left hover:bg-base-200 flex items-center gap-2"
+                        onClick={() => handleViewProfile(friend.friendId)}
+                      >
+                        <User size={14} />
+                        View Profile
+                      </button>
+                      <button
+                        className="w-full px-3 py-2 text-sm text-left hover:bg-base-200 flex items-center gap-2"
+                        onClick={() => handleRemoveFriend(friend.friendId)}
+                      >
+                        <X size={14} />
+                        Remove Friend
+                      </button>
+                      <button
+                        className="w-full px-3 py-2 text-sm text-left hover:bg-base-200 flex items-center gap-2 text-red-500"
+                        onClick={() =>
+                          handleBlockFriend(
+                            friend.friendId,
+                            friend.username
+                          )
+                        }
+                      >
+                        <ShieldAlert size={14} />
+                        <div>
+                          <span>Block User</span>
+                          <p className="text-xs text-gray-500">
+                            Prevents all interaction
+                          </p>
+                        </div>
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // Add accept and decline friend request functions
+  const handleAcceptFriendRequest = async (requestId) => {
+    try {
+      await acceptFriendRequest(requestId);
+      toast.success("Friend request accepted");
+    } catch (error) {
+      toast.error("Failed to accept friend request");
+      console.error(error);
+    }
+  };
+
+  const handleDeclineFriendRequest = async (requestId) => {
+    try {
+      await declineFriendRequest(requestId);
+      toast.success("Friend request declined");
+    } catch (error) {
+      toast.error("Failed to decline friend request");
+      console.error(error);
+    }
+  };
 
   // Empty state if no friends and no friend requests
   if (
@@ -325,109 +548,19 @@ const UserFriends = () => {
                 d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
               ></path>
             </svg>
+            {searchQuery && (
+              <button
+                className="absolute right-2 top-2 text-base-content/50 hover:text-base-content"
+                onClick={() => setSearchQuery("")}
+              >
+                <X size={16} />
+              </button>
+            )}
           </div>
         </div>
 
-        {/* Loading state */}
-        {isLoadingData && <SidebarSkeleton />}
-
-        {/* Scrollable content area */}
-        {!isLoadingData && (
-          <div className="flex-1 overflow-y-auto">
-            <div className="p-2">
-              {/* Friend requests section */}
-
-              {/* Friends list */}
-              <div className="space-y-1 mt-4">
-                <div className="px-2 py-1 text-xs font-semibold text-base-content/70">
-                  FRIENDS
-                </div>
-                {friends.map((friend) => (
-                  <div key={friend.friendId} className="flex items-center">
-                    <button
-                      className={`flex items-center gap-2 px-2 py-2 rounded-md hover:bg-base-300 flex-grow ${
-                        activeFriend === friend.friendId
-                          ? "bg-primary/10 text-primary font-medium"
-                          : ""
-                      }`}
-                      onClick={() =>
-                        selectedFriendWhenClick({
-                          id: friend.friendId,
-                          friend: friend,
-                        })
-                      }
-                    >
-                      <div className="flex items-center justify-center">
-                        <img
-                          src={friend.avatar || "/avatar.png"}
-                          alt=""
-                          className="w-6 h-6 rounded-full mr-2"
-                        />
-                      </div>
-                      <span className="text-sm">{friend.username}</span>
-
-                      <div>
-                        {onlineUsers.includes(friend.friendId) && (
-                          <span
-                            className="absolute bottom-0 right-0 size-3 bg-indigo-500 
-                        rounded-full ring-2 ring-zinc-900"
-                          />
-                        )}
-                      </div>
-                    </button>
-                    <div className="relative">
-                      <button
-                        className="w-8 h-8 flex items-center justify-center hover:bg-base-300 rounded-full"
-                        onClick={() => toggleFriendActions(friend.friendId)}
-                      >
-                        <MoreVertical size={16} />
-                      </button>
-
-                      {showFriendActions === friend.friendId && (
-                        <div
-                          className="absolute right-0 mt-1 w-40 bg-base-100 shadow-lg rounded-md z-50 py-1"
-                          ref={friendActionsRef}
-                        >
-                          <button
-                            className="w-full px-3 py-2 text-sm text-left hover:bg-base-200 flex items-center gap-2"
-                            onClick={() => handleViewProfile(friend.friendId)}
-                          >
-                            <User size={14} />
-                            View Profile
-                          </button>
-                          <button
-                            className="w-full px-3 py-2 text-sm text-left hover:bg-base-200 flex items-center gap-2"
-                            onClick={() => handleRemoveFriend(friend.friendId)}
-                          >
-                            <X size={14} />
-                            Remove Friend
-                          </button>
-                          <button
-                            className="w-full px-3 py-2 text-sm text-left hover:bg-base-200 flex items-center gap-2 text-red-500"
-                            onClick={() =>
-                              handleBlockFriend(
-                                friend.friendId,
-                                friend.username
-                              )
-                            }
-                          >
-                            <ShieldAlert size={14} />
-                            <div>
-                              <span>Block User</span>
-                              <p className="text-xs text-gray-500">
-                                Prevents all interaction
-                              </p>
-                            </div>
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
+        {/* Use the renderContent function */}
+        {renderContent()}
       </div>
 
       {/* Friend search portal */}
