@@ -290,7 +290,7 @@ const MessageInput = ({ activeNavItem }) => {
         <div className="flex-1 flex gap-2">
           <input
             type="text"
-            className="w-full input input-bordered rounded-lg input-sm sm:input-md"
+            className="w-full input input-bordered rounded-lg input-sm sm:input-md mt-1"
             placeholder="Type a message..."
             value={text}
             onChange={handleTyping}
