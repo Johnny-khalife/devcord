@@ -292,7 +292,7 @@ export const useChatStore = create((set, get) => ({
         username: authUser?.username || 'You',
         avatar: authUser?.avatar
       },
-      isCode: messageData.isCode || false,      // Preserve isCode flag
+      isCode: false,      // Preserve isCode flag
       language: messageData.language || null    // Preserve language
     };
     
@@ -310,7 +310,7 @@ export const useChatStore = create((set, get) => ({
       
       const requestData = {
         content: messageData.message,
-        isCode: messageData.isCode || false,      // Use isCode from messageData if provided
+        isCode: false,      // Use isCode from messageData if provided
         language: messageData.language || "text",  // Use language from messageData if provided
         image: messageData.image
       };
@@ -752,7 +752,7 @@ export const useChatStore = create((set, get) => ({
       receiverId: isFromCurrentUser ? messageData.receiverId || selectedFriend?.friendId : authUser._id,
       createdAt: messageData.timestamp || messageData.createdAt || new Date().toISOString(),
       updatedAt: messageData.updatedAt || new Date().toISOString(),
-      isCode: messageData.isCode || false,
+      isCode:false,
       language: messageData.language || "text",
       isSentByMe: isFromCurrentUser
     };

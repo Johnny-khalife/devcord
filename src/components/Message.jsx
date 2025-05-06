@@ -135,6 +135,7 @@ const DirectMessage = ({ message, firstInGroup }) => {
             message.content && message.image ? "gap-[1px]" : ""
           }`}
         >
+
           {/* Content Bubble */}
           {message.content && (
             <div
