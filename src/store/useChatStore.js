@@ -145,7 +145,9 @@ export const useChatStore = create((set, get) => ({
         channelId: channelId,
         createdAt: new Date().toISOString(),
         isSentByMe: true,
-        isPending: true
+        isPending: true,
+        isCode: messageData.isCode || false,
+        language: messageData.language || null
       };
 
       // Add optimistic message to state
@@ -167,7 +169,9 @@ export const useChatStore = create((set, get) => ({
           channelId,
           {
             message: messageData.message || messageData.content,
-            image: messageData.image
+            image: messageData.image,
+            isCode: messageData.isCode || false,
+            language: messageData.language || null
           },
           workspaceId
         );
@@ -207,7 +211,9 @@ export const useChatStore = create((set, get) => ({
         // Prepare API request data
         const apiMessageData = {
           message: messageData.message || messageData.content,
-          image: messageData.image
+          image: messageData.image,
+          isCode: messageData.isCode || false,
+          language: messageData.language || null
         };
         
         // Send API request
@@ -285,7 +291,9 @@ export const useChatStore = create((set, get) => ({
         userId: authUser?._id || 'current-user',
         username: authUser?.username || 'You',
         avatar: authUser?.avatar
-      }
+      },
+      isCode: messageData.isCode || false,      // Preserve isCode flag
+      language: messageData.language || null    // Preserve language
     };
     
     // Add the optimistic message to the UI immediately
@@ -302,8 +310,8 @@ export const useChatStore = create((set, get) => ({
       
       const requestData = {
         content: messageData.message,
-        isCode: false,
-        language: "text",
+        isCode: messageData.isCode || false,      // Use isCode from messageData if provided
+        language: messageData.language || "text",  // Use language from messageData if provided
         image: messageData.image
       };
       

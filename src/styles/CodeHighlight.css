@@ -1,0 +1,94 @@
+/* Code highlighting styles */
+.code-block {
+  margin: 0.5rem 0;
+  padding: 1rem;
+  background: #1e1e1e;
+  border-radius: 0.5rem;
+  color: #f8f8f2;
+  font-family: 'Consolas', 'Monaco', 'Andale Mono', 'Ubuntu Mono', monospace;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  tab-size: 4;
+  max-height: 400px;
+  overflow-y: auto;
+  position: relative;
+}
+
+.code-block:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* Language indicator */
+.code-block::before {
+  content: attr(data-language);
+  position: absolute;
+  top: 0;
+  right: 0;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.75rem;
+  background: rgba(0, 0, 0, 0.3);
+  color: #f8f8f2;
+  border-bottom-left-radius: 0.5rem;
+  opacity: 0.8;
+}
+
+/* Style for highlighted code */
+.hljs {
+  display: block;
+  overflow-x: auto;
+  color: #f8f8f2;
+}
+
+/* Basic syntax highlighting colors - will be enhanced by highlight.js theme */
+.hljs-keyword,
+.hljs-selector-tag,
+.hljs-literal,
+.hljs-section,
+.hljs-link {
+  color: #ff79c6;
+}
+
+.hljs-function .hljs-keyword {
+  color: #8be9fd;
+}
+
+.hljs-subst {
+  color: #f8f8f2;
+}
+
+.hljs-string,
+.hljs-title,
+.hljs-name,
+.hljs-type,
+.hljs-attribute,
+.hljs-symbol,
+.hljs-bullet,
+.hljs-addition,
+.hljs-variable,
+.hljs-template-tag,
+.hljs-template-variable {
+  color: #f1fa8c;
+}
+
+.hljs-comment,
+.hljs-quote,
+.hljs-deletion,
+.hljs-meta {
+  color: #6272a4;
+}
+
+.hljs-keyword,
+.hljs-selector-tag,
+.hljs-literal,
+.hljs-title,
+.hljs-section,
+.hljs-doctag,
+.hljs-type,
+.hljs-name,
+.hljs-strong {
+  font-weight: bold;
+}
+
+.hljs-emphasis {
+  font-style: italic;
+} 

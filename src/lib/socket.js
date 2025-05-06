@@ -663,12 +663,16 @@ export const sendChannelMessage = (channelId, messageData, workspaceId) => {
     // Extract message content, handling different possible formats
     const message = messageData.message || messageData.content || '';
     const image = messageData.image; // Include image if present
+    const isCode = messageData.isCode || false; // Extract isCode flag
+    const language = messageData.language || null; // Extract language
     
     console.log(`📤 Emitting 'sendMessage' event to channel ${channelId}:`, { 
       channelId, 
       workspaceId, 
       messageLength: message.length,
-      hasImage: !!image 
+      hasImage: !!image,
+      isCode,
+      language
     });
     
     // Send the message with all required fields
@@ -677,7 +681,9 @@ export const sendChannelMessage = (channelId, messageData, workspaceId) => {
       workspaceId, // Include workspaceId
       message,
       image, // Include image data if available
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      isCode, // Include isCode flag
+      language // Include language
     });
     
     return true;

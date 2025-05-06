@@ -1,7 +1,12 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Send, Play, X, Maximize2, Minimize2, ChevronDown, ChevronUp, RotateCcw } from 'lucide-react';
 import '../styles/CodePlayground.css';
+import { useFriendStore } from '../store/useFriendsStore';
+import { useChatStore } from '../store/useChatStore';
+import { useWorkspaceStore } from '../store/useWorkspaceStore';
+import { useChannelStore } from '../store/useChannelStore';
+import { toast } from 'react-hot-toast';
 
 // Import CodeMirror components
 import CodeMirror from '@uiw/react-codemirror';
@@ -28,6 +33,20 @@ const CodePlayground = () => {
   // State for share modal
   const [shareModalOpen, setShareModalOpen] = useState(false);
   const [shareTarget, setShareTarget] = useState('channel');
+  const [selectedFriendId, setSelectedFriendId] = useState('');
+  const [selectedWorkspaceId, setSelectedWorkspaceId] = useState('');
+  const [selectedChannelId, setSelectedChannelId] = useState('');
+  
+  // Get friends from friend store
+  const { friends, getFriendsList, isLoading: friendsLoading } = useFriendStore();
+  
+  // Get workspaces and channels
+  const { workspacesWithRoles, getUserWorkspaces, isLoading: workspacesLoading } = useWorkspaceStore();
+  const { fetchWorkspaceChannels, isLoading: channelsLoading } = useChannelStore();
+  const [channels, setChannels] = useState([]);
+  
+  // Get send direct message function from chat store
+  const { sendDirectMessage, sendMessage } = useChatStore();
   
   // State for editor expansion
   const [expandedEditor, setExpandedEditor] = useState(null);
@@ -36,6 +55,65 @@ const CodePlayground = () => {
     css: false,
     js: false
   });
+
+  // State for workspace dropdown
+  const [showWorkspaceDropdown, setShowWorkspaceDropdown] = useState(false);
+  const workspaceDropdownRef = useRef(null);
+  
+  // State for channel dropdown
+  const [showChannelDropdown, setShowChannelDropdown] = useState(false);
+  const channelDropdownRef = useRef(null);
+  
+  // Handle click outside dropdowns to close them
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (workspaceDropdownRef.current && !workspaceDropdownRef.current.contains(event.target)) {
+        setShowWorkspaceDropdown(false);
+      }
+      if (channelDropdownRef.current && !channelDropdownRef.current.contains(event.target)) {
+        setShowChannelDropdown(false);
+      }
+    }
+    
+    // Add event listener
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      // Clean up
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [workspaceDropdownRef, channelDropdownRef]);
+
+  // Load friends when component mounts
+  useEffect(() => {
+    if (shareModalOpen && shareTarget === 'dm') {
+      getFriendsList();
+    }
+  }, [shareModalOpen, shareTarget, getFriendsList]);
+
+  // Load workspaces when component mounts
+  useEffect(() => {
+    if (shareModalOpen && shareTarget === 'channel') {
+      getUserWorkspaces();
+    }
+  }, [shareModalOpen, shareTarget, getUserWorkspaces]);
+
+  // Load channels when workspace is selected
+  useEffect(() => {
+    async function loadChannels() {
+      if (selectedWorkspaceId) {
+        try {
+          const channelsList = await fetchWorkspaceChannels(selectedWorkspaceId);
+          setChannels(channelsList || []);
+          setSelectedChannelId(''); // Reset channel selection when workspace changes
+        } catch (error) {
+          console.error('Error fetching channels:', error);
+          toast.error('Failed to load channels');
+        }
+      }
+    }
+    
+    loadChannels();
+  }, [selectedWorkspaceId, fetchWorkspaceChannels]);
 
   // Handle editor expansion
   const toggleExpandEditor = (editorName) => {
@@ -83,14 +161,86 @@ const CodePlayground = () => {
   };
   
   // Handle sharing to selected target
-  const handleShareSubmit = () => {
-    console.log(`Sharing code snippet to ${shareTarget}`);
-    console.log({
-      html: htmlCode,
-      css: cssCode,
-      js: jsCode
-    });
-    setShareModalOpen(false);
+  const handleShareSubmit = async () => {
+    // For DM, use friend ID as target ID
+    // For channel, use channel ID as target ID
+    const targetId = shareTarget === 'dm' ? selectedFriendId : selectedChannelId;
+    
+    if (!targetId) {
+      toast.error(`Please select a ${shareTarget === 'dm' ? 'friend' : 'channel'} to share with`);
+      return;
+    }
+    
+    if (shareTarget === 'channel' && !selectedWorkspaceId) {
+      toast.error('Please select a workspace');
+      return;
+    }
+    
+    try {
+      // Create code content with formatted code blocks
+      let codeContent;
+      let language = 'multiple';
+      
+      // Use code blocks format, which will be automatically highlighted
+      if (htmlCode.trim() && cssCode.trim() && jsCode.trim()) {
+        codeContent = `
+**Code Snippet from Devcord Code Playground**
+
+\`\`\`html
+${htmlCode}
+\`\`\`
+
+\`\`\`css
+${cssCode}
+\`\`\`
+
+\`\`\`javascript
+${jsCode}
+\`\`\`
+`;
+      } else if (htmlCode.trim()) {
+        codeContent = `\`\`\`html\n${htmlCode}\n\`\`\``;
+        language = 'html';
+      } else if (cssCode.trim()) {
+        codeContent = `\`\`\`css\n${cssCode}\n\`\`\``;
+        language = 'css';
+      } else if (jsCode.trim()) {
+        codeContent = `\`\`\`javascript\n${jsCode}\n\`\`\``;
+        language = 'javascript';
+      } else {
+        codeContent = "No code to share";
+        language = 'plaintext';
+      }
+      
+      // Common message data for both DM and channel
+      const messageData = {
+        message: codeContent,
+        isCode: true,
+        language: language
+      };
+      
+      if (shareTarget === 'dm') {
+        // Send to DM
+        await sendDirectMessage(messageData, targetId);
+        toast.success('Code snippet sent to friend successfully!');
+      } else {
+        // Send to channel - use the same messageData structure
+        messageData.channelId = selectedChannelId;
+        
+        // Send message to channel
+        await sendMessage(messageData, selectedWorkspaceId);
+        toast.success('Code snippet sent to channel successfully!');
+      }
+      
+      // Reset state
+      setShareModalOpen(false);
+      setSelectedFriendId('');
+      setSelectedWorkspaceId('');
+      setSelectedChannelId('');
+    } catch (error) {
+      console.error('Error sharing code snippet:', error);
+      toast.error('Failed to share code snippet. Please try again.');
+    }
   };
 
   // Handle reset button click
@@ -320,7 +470,7 @@ const CodePlayground = () => {
       {/* Share Modal */}
       {shareModalOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 modal-backdrop">
-          <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg max-w-md w-full modal-content">
+          <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg max-w-md w-full mx-4 modal-content">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-medium text-gray-900 dark:text-white">Share Code Snippet</h3>
               <button onClick={() => setShareModalOpen(false)} className="text-gray-500">
@@ -334,13 +484,173 @@ const CodePlayground = () => {
               </label>
               <select 
                 value={shareTarget}
-                onChange={(e) => setShareTarget(e.target.value)}
+                onChange={(e) => {
+                  setShareTarget(e.target.value);
+                  setSelectedFriendId('');
+                  setSelectedWorkspaceId('');
+                  setSelectedChannelId('');
+                }}
                 className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
               >
                 <option value="channel">Send to Channel</option>
                 <option value="dm">Send to DM</option>
               </select>
             </div>
+            
+            {shareTarget === 'dm' && (
+              <div className="mb-4">
+                <label className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Select Friend:
+                </label>
+                {friendsLoading ? (
+                  <div className="text-center py-2">Loading friends...</div>
+                ) : friends.length > 0 ? (
+                  <select 
+                    value={selectedFriendId}
+                    onChange={(e) => setSelectedFriendId(e.target.value)}
+                    className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                  >
+                    <option value="">Select a friend</option>
+                    {friends.map(friend => (
+                      <option key={friend.friendId} value={friend.friendId}>
+                        {friend.username}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <div className="text-center py-2 text-yellow-600 dark:text-yellow-400">
+                    No friends found. Add friends to share code with them.
+                  </div>
+                )}
+              </div>
+            )}
+            
+            {shareTarget === 'channel' && (
+              <>
+                <div className="mb-4">
+                  <label className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Select Workspace:
+                  </label>
+                  {workspacesLoading ? (
+                    <div className="text-center py-2">Loading workspaces...</div>
+                  ) : workspacesWithRoles.length > 0 ? (
+                    <div className="relative" ref={workspaceDropdownRef}>
+                      <div 
+                        className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white cursor-pointer flex justify-between items-center"
+                        onClick={() => setShowWorkspaceDropdown(!showWorkspaceDropdown)}
+                      >
+                        <span>
+                          {selectedWorkspaceId 
+                            ? workspacesWithRoles.find(w => w._id === selectedWorkspaceId)?.name || 
+                              workspacesWithRoles.find(w => w._id === selectedWorkspaceId)?.workspaceName 
+                            : 'Select a workspace'}
+                        </span>
+                        <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+                          <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" />
+                        </svg>
+                      </div>
+                      
+                      {showWorkspaceDropdown && (
+                        <div className="absolute z-20 mt-1 w-full rounded-md bg-white dark:bg-gray-800 shadow-lg max-h-60 overflow-auto">
+                          <div className="py-1">
+                            <div 
+                              className="px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer"
+                              onClick={() => {
+                                setSelectedWorkspaceId('');
+                                setSelectedChannelId('');
+                                setShowWorkspaceDropdown(false);
+                              }}
+                            >
+                              Select a workspace
+                            </div>
+                            {workspacesWithRoles.map(workspace => (
+                              <div 
+                                key={workspace._id}
+                                className={`px-4 py-2 text-sm cursor-pointer ${
+                                  selectedWorkspaceId === workspace._id
+                                    ? "bg-blue-500 text-white"
+                                    : "text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+                                }`}
+                                onClick={() => {
+                                  setSelectedWorkspaceId(workspace._id);
+                                  setSelectedChannelId(''); // Reset channel selection when workspace changes
+                                  setShowWorkspaceDropdown(false);
+                                }}
+                              >
+                                {workspace.name || workspace.workspaceName}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="text-center py-2 text-yellow-600 dark:text-yellow-400">
+                      No workspaces found. Create or join a workspace first.
+                    </div>
+                  )}
+                </div>
+                
+                {selectedWorkspaceId && (
+                  <div className="mb-4">
+                    <label className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">
+                      Select Channel:
+                    </label>
+                    {channelsLoading ? (
+                      <div className="text-center py-2">Loading channels...</div>
+                    ) : channels.length > 0 ? (
+                      <div className="relative" ref={channelDropdownRef}>
+                        <div 
+                          className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white cursor-pointer flex justify-between items-center"
+                          onClick={() => setShowChannelDropdown(!showChannelDropdown)}
+                        >
+                          <span>{selectedChannelId ? channels.find(c => c._id === selectedChannelId)?.channelName : 'Select a channel'}</span>
+                          <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+                            <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" />
+                          </svg>
+                        </div>
+                        
+                        {showChannelDropdown && (
+                          <div className="absolute z-30 mt-1 w-full rounded-md bg-white dark:bg-gray-800 shadow-lg max-h-60 overflow-auto">
+                            <div className="py-1">
+                              <div 
+                                className="px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer"
+                                onClick={() => {
+                                  setSelectedChannelId('');
+                                  setShowChannelDropdown(false);
+                                }}
+                              >
+                                Select a channel
+                              </div>
+                              {channels.map(channel => (
+                                <div 
+                                  key={channel._id}
+                                  className={`px-4 py-2 text-sm cursor-pointer ${
+                                    selectedChannelId === channel._id
+                                      ? "bg-blue-500 text-white"
+                                      : "text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+                                  }`}
+                                  onClick={() => {
+                                    setSelectedChannelId(channel._id);
+                                    setShowChannelDropdown(false);
+                                  }}
+                                >
+                                  {channel.channelName}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="text-center py-2 text-yellow-600 dark:text-yellow-400">
+                        No channels found in this workspace.
+                      </div>
+                    )}
+                  </div>
+                )}
+              </>
+            )}
             
             <div className="flex justify-end gap-2">
               <button 
@@ -352,6 +662,10 @@ const CodePlayground = () => {
               <button 
                 onClick={handleShareSubmit}
                 className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md flex items-center gap-2"
+                disabled={
+                  (shareTarget === 'dm' && !selectedFriendId) || 
+                  (shareTarget === 'channel' && (!selectedWorkspaceId || !selectedChannelId))
+                }
               >
                 <Send size={16} />
                 Share

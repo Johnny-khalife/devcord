@@ -1,13 +1,14 @@
 import { useState, memo } from "react";
 import { useAuthStore } from "../store/useAuthStore";
 import { useChatStore } from "../store/useChatStore";
-import { formatMessageTime, convertUrlsToLinks } from "../lib/utils.jsx";
+import { formatMessageTime, convertUrlsToLinks, parseMessageContent, renderCodeBlock } from "../lib/utils.jsx";
 import {
   Trash2,
   SmilePlus,
   MoreVertical,
   Maximize,
   Download,
+  Code,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import MessageSkeleton from "./skeletons/MessageSkeleton";
@@ -50,6 +51,47 @@ const DirectMessage = ({ message, firstInGroup }) => {
         "Failed to delete message: " + (error.message || "Unknown error")
       );
     }
+  };
+
+  // Helper function to render message content with code highlighting
+  const renderMessageContent = (content) => {
+    // Check if this is specifically marked as a code message
+    if (message.isCode) {
+      return renderCodeBlock(content, message.language || 'plaintext');
+    }
+    
+    // Otherwise parse the content for code blocks and regular text
+    const segments = parseMessageContent(content);
+    
+    // If no code blocks detected, just do the normal URL conversion
+    if (segments.length === 1 && segments[0].type === 'text') {
+      return (
+        <div className="whitespace-pre-wrap break-words">
+          {convertUrlsToLinks(content, isCurrentUser)}
+        </div>
+      );
+    }
+    
+    // Render mixed content with code blocks and text
+    return (
+      <div className="whitespace-pre-wrap break-words">
+        {segments.map((segment, index) => {
+          if (segment.type === 'code') {
+            return (
+              <div key={index} className="my-2">
+                {renderCodeBlock(segment.content, segment.language)}
+              </div>
+            );
+          } else {
+            return (
+              <div key={index}>
+                {convertUrlsToLinks(segment.content, isCurrentUser)}
+              </div>
+            );
+          }
+        })}
+      </div>
+    );
   };
 
   if (message.isDeleted) {
@@ -98,6 +140,8 @@ const DirectMessage = ({ message, firstInGroup }) => {
           {message.content && (
             <div
               className={`rounded-2xl px-4 py-2 text-sm break-words w-full ${
+                message.isCode ? "bg-gray-800 text-gray-100" : ""
+              } ${
                 isCurrentUser
                   ? `bg-primary text-primary-content ${
                       firstInGroup ? "rounded-tr-none" : ""
@@ -108,9 +152,7 @@ const DirectMessage = ({ message, firstInGroup }) => {
               }`}
               data-message-id={message._id}
             >
-              <div className="whitespace-pre-wrap break-words">
-                {convertUrlsToLinks(message.content, isCurrentUser)}
-              </div>
+              {renderMessageContent(message.content)}
               {message.isPending && (
                 <div className="absolute -bottom-1 right-1">
                   <div className="w-1 h-1 border-1 border-white border-t-transparent rounded-full animate-spin opacity-50"></div>
@@ -374,6 +416,47 @@ const ChannelMessage = ({ message, firstInGroup }) => {
     });
   };
 
+  // Helper function to render message content with code highlighting
+  const renderMessageContent = (content) => {
+    // Check if this is specifically marked as a code message
+    if (message.isCode) {
+      return renderCodeBlock(content, message.language || 'plaintext');
+    }
+    
+    // Otherwise parse the content for code blocks and regular text
+    const segments = parseMessageContent(content);
+    
+    // If no code blocks detected, just do the normal URL conversion
+    if (segments.length === 1 && segments[0].type === 'text') {
+      return (
+        <div className="whitespace-pre-wrap break-words">
+          {convertUrlsToLinks(content)}
+        </div>
+      );
+    }
+    
+    // Render mixed content with code blocks and text
+    return (
+      <div className="whitespace-pre-wrap break-words">
+        {segments.map((segment, index) => {
+          if (segment.type === 'code') {
+            return (
+              <div key={index} className="my-2">
+                {renderCodeBlock(segment.content, segment.language)}
+              </div>
+            );
+          } else {
+            return (
+              <div key={index}>
+                {convertUrlsToLinks(segment.content)}
+              </div>
+            );
+          }
+        })}
+      </div>
+    );
+  };
+
   return (
     <div
       id={`message-${message._id}`}
@@ -419,6 +502,8 @@ const ChannelMessage = ({ message, firstInGroup }) => {
           {message.content && (
             <div
               className={`rounded-2xl px-4 py-2 text-sm break-words w-full ${
+                message.isCode ? "bg-gray-800 text-gray-100" : ""
+              } ${
                 isCurrentUser
                   ? `bg-primary text-primary-content ${
                       firstInGroup ? "rounded-tr-none" : ""
@@ -429,9 +514,7 @@ const ChannelMessage = ({ message, firstInGroup }) => {
               }`}
               data-message-id={message._id}
             >
-              <div className="whitespace-pre-wrap break-words">
-                {convertUrlsToLinks(message.content)}
-              </div>
+              {renderMessageContent(message.content)}
               {message.isPending && (
                 <div className="absolute -bottom-1 right-1">
                   <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin opacity-50"></div>
