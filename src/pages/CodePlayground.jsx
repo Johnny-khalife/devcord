@@ -263,7 +263,7 @@ ${jsCode}
   };
   
   return (
-    <div className="flex flex-col h-screen bg-gray-100 dark:bg-gray-900 p-4 code-playground-container">
+    <div className="flex flex-col h-screen bg-gray-100 dark:bg-gray-900 p-4 code-playground-container pt-16">
       <header className="flex justify-between items-center mb-4 pt-2">
         <h1 className="text-2xl font-bold text-gray-800 dark:text-white">Code Playground</h1>
         <button 

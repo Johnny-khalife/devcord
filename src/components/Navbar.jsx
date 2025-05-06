@@ -1,13 +1,15 @@
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useAuthStore } from "../store/useAuthStore";
 import { LogOut, MessageSquare, Settings, User, Code, Menu, X } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 
 const Navbar = () => {
+  const navigate = useNavigate();
   const { logout, authUser } = useAuthStore();
   const [isMobile, setIsMobile] = useState(false);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const mobileMenuRef = useRef(null);
+  const logoRef = useRef(null);
 
   // Check if we're on a mobile device
   useEffect(() => {
@@ -23,6 +25,23 @@ const Navbar = () => {
     
     // Cleanup
     return () => window.removeEventListener('resize', checkIfMobile);
+  }, []);
+
+  // Fix scrolling issue after page loads
+  useEffect(() => {
+    // Ensure the body is scrollable after page load
+    document.body.style.overflow = "auto";
+    
+    // Add a click handler to the document to ensure focus and scrolling works
+    const handleDocumentClick = () => {
+      document.body.style.overflow = "auto";
+    };
+    
+    document.addEventListener('click', handleDocumentClick);
+    
+    return () => {
+      document.removeEventListener('click', handleDocumentClick);
+    };
   }, []);
 
   // Handle clicking outside of the mobile menu
@@ -52,6 +71,12 @@ const Navbar = () => {
     setShowMobileMenu(!showMobileMenu);
   };
 
+  // Navigate home and ensure scrolling works
+  const navigateHome = () => {
+    navigate('/');
+    document.body.style.overflow = "auto";
+  };
+
   return (
     <header
       className="bg-base-100 border-b border-base-300 fixed w-full top-0 z-40 
@@ -60,7 +85,12 @@ const Navbar = () => {
       <div className="container mx-auto px-4 h-16">
         <div className="flex items-center justify-between h-full">
           <div className="flex items-center gap-4">
-            <Link to="/" className="flex items-center gap-2.5 hover:opacity-80 transition-all">
+            <Link 
+              to="/" 
+              className="flex items-center gap-2.5 hover:opacity-80 transition-all" 
+              onClick={navigateHome}
+              ref={logoRef}
+            >
               <div className="size-9 rounded-lg bg-primary/10 flex items-center justify-center">
                 <MessageSquare className="w-5 h-5 text-primary" />
               </div>
@@ -122,7 +152,10 @@ const Navbar = () => {
                     <Link
                       to="/settings"
                       className="flex items-center gap-3 px-4 py-3 hover:bg-base-200 transition-colors"
-                      onClick={() => setShowMobileMenu(false)}
+                      onClick={() => {
+                        setShowMobileMenu(false);
+                        document.body.style.overflow = "auto";
+                      }}
                     >
                       <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
                         <Settings className="w-4 h-4 text-primary" />
@@ -135,7 +168,10 @@ const Navbar = () => {
                         <Link
                           to="/profile"
                           className="flex items-center gap-3 px-4 py-3 hover:bg-base-200 transition-colors"
-                          onClick={() => setShowMobileMenu(false)}
+                          onClick={() => {
+                            setShowMobileMenu(false);
+                            document.body.style.overflow = "auto";
+                          }}
                         >
                           <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
                             <User className="w-4 h-4 text-primary" />
@@ -146,7 +182,10 @@ const Navbar = () => {
                         <Link
                           to="/code-playground"
                           className="flex items-center gap-3 px-4 py-3 hover:bg-base-200 transition-colors"
-                          onClick={() => setShowMobileMenu(false)}
+                          onClick={() => {
+                            setShowMobileMenu(false);
+                            document.body.style.overflow = "auto";
+                          }}
                         >
                           <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
                             <Code className="w-4 h-4 text-primary" />
@@ -157,6 +196,7 @@ const Navbar = () => {
                         <button
                           onClick={() => {
                             setShowMobileMenu(false);
+                            document.body.style.overflow = "auto";
                             logout();
                           }}
                           className="w-full text-left flex items-center gap-3 px-4 py-3 hover:bg-base-200 transition-colors"

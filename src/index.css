@@ -9,7 +9,13 @@
 @layer base {
   html, body {
     height: 100%;
-    overflow: hidden;
+    position: relative;
+  }
+
+  /* Enable scrolling on the main container instead of the body */
+  #root {
+    height: 100%;
+    overflow: auto;
     position: relative;
   }
 

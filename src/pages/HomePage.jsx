@@ -356,7 +356,7 @@ const HomePage = () => {
   };
 
   return (
-    <div className="flex h-screen pt-16">
+    <div className="flex h-screen pt-16 overflow-auto">
       {/* Left sidebar with nav icons */}
       <Sidebar 
         activeNavItem={activeNavItem}
@@ -364,7 +364,7 @@ const HomePage = () => {
       />
       
       {/* Mid section - varies based on activeNavItem */}
-      <div className="flex flex-1 relative overflow-hidden">
+      <div className="flex flex-1 relative">
         {/* Secondary sidebar - either workspace or user friends */}
         {(activeNavItem === "workSpace" || activeNavItem === "users") && (
           <div className={`${isMobile ? 'absolute inset-0 -z-5' : 'relative min-w-[200px] max-w-[320px] w-[240px] resize-x overflow-hidden'} ${(activeNavItem === "workSpace" || activeNavItem === "users") && isMobile ? 'pointer-events-none' : ''}`}>
