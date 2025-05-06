@@ -77,11 +77,7 @@ const DirectMessage = ({ message, firstInGroup }) => {
       <div className="whitespace-pre-wrap break-words">
         {segments.map((segment, index) => {
           if (segment.type === 'code') {
-            return (
-              <div key={index} className="my-2">
-                {renderCodeBlock(segment.content, segment.language)}
-              </div>
-            );
+            return <div key={index}>{renderCodeBlock(segment.content, segment.language)}</div>;
           } else {
             return (
               <div key={index}>
@@ -109,6 +105,9 @@ const DirectMessage = ({ message, firstInGroup }) => {
     );
   }
 
+  const hasCodeBlocks = message.isCode || 
+    (message.content && parseMessageContent(message.content).some(segment => segment.type === 'code'));
+
   return (
     <div
       id={`message-${message._id}`}
@@ -116,7 +115,7 @@ const DirectMessage = ({ message, firstInGroup }) => {
         isCurrentUser ? "flex-row-reverse justify-start" : "flex-row"
       }`}
     >
-      <div className={`flex flex-col max-w-[75%] `}>
+      <div className={`flex flex-col ${hasCodeBlocks ? "w-full" : "max-w-[75%]"}`}>
         {/* Timestamp for messages */}
         {message.showTimestamp && (
           <div
@@ -139,10 +138,8 @@ const DirectMessage = ({ message, firstInGroup }) => {
           {/* Content Bubble */}
           {message.content && (
             <div
-              className={`rounded-2xl px-4 py-2 text-sm break-words w-full ${
-                message.isCode ? "bg-gray-800 text-gray-100" : ""
-              } ${
-                isCurrentUser
+              className={`${!hasCodeBlocks ? "rounded-2xl px-4 py-2" : "p-0 overflow-visible"} text-sm break-words w-full ${
+                hasCodeBlocks ? "bg-transparent" : isCurrentUser
                   ? `bg-primary text-primary-content ${
                       firstInGroup ? "rounded-tr-none" : ""
                     } ${message.image ? "rounded-b-none" : ""}`
@@ -199,7 +196,7 @@ const DirectMessage = ({ message, firstInGroup }) => {
           )}
 
           {isCurrentUser && (
-            <div className="absolute right-0 top-0 opacity-0 group-hover:opacity-100 transition-opacity">
+            <div className={`absolute right-0 top-0 opacity-0 group-hover:opacity-100 transition-opacity ${hasCodeBlocks ? "right-2" : ""}`}>
               <button
                 className="btn btn-ghost btn-xs text-error"
                 onClick={handleDeleteMessage}
@@ -440,11 +437,7 @@ const ChannelMessage = ({ message, firstInGroup }) => {
       <div className="whitespace-pre-wrap break-words">
         {segments.map((segment, index) => {
           if (segment.type === 'code') {
-            return (
-              <div key={index} className="my-2">
-                {renderCodeBlock(segment.content, segment.language)}
-              </div>
-            );
+            return <div key={index}>{renderCodeBlock(segment.content, segment.language)}</div>;
           } else {
             return (
               <div key={index}>
@@ -456,6 +449,9 @@ const ChannelMessage = ({ message, firstInGroup }) => {
       </div>
     );
   };
+
+  const hasCodeBlocks = message.isCode || 
+    (message.content && parseMessageContent(message.content).some(segment => segment.type === 'code'));
 
   return (
     <div
@@ -475,7 +471,7 @@ const ChannelMessage = ({ message, firstInGroup }) => {
       )}
 
       <div
-        className={`flex flex-col max-w-[75%] ${!firstInGroup ? "ml-10" : ""} ${
+        className={`flex flex-col ${hasCodeBlocks ? "w-full" : "max-w-[75%]"} ${!firstInGroup ? "ml-10" : ""} ${
           isCurrentUser ? "ml-auto" : ""
         }`}
       >
@@ -501,10 +497,8 @@ const ChannelMessage = ({ message, firstInGroup }) => {
           {/* Content Bubble */}
           {message.content && (
             <div
-              className={`rounded-2xl px-4 py-2 text-sm break-words w-full ${
-                message.isCode ? "bg-gray-800 text-gray-100" : ""
-              } ${
-                isCurrentUser
+              className={`${!hasCodeBlocks ? "rounded-2xl px-4 py-2" : "p-0 overflow-visible"} text-sm break-words w-full ${
+                hasCodeBlocks ? "bg-transparent" : isCurrentUser
                   ? `bg-primary text-primary-content ${
                       firstInGroup ? "rounded-tr-none" : ""
                     } ${message.image ? "rounded-b-none" : ""}`

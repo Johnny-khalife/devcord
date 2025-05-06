@@ -91,4 +91,128 @@
 
 .hljs-emphasis {
   font-style: italic;
+}
+
+/* Enhanced Code Highlighting Styles */
+
+/* Code Block Container */
+.code-block-container {
+  position: relative;
+  border-radius: 8px;
+  overflow: hidden;
+  margin: 1rem 0;
+  background-color: #1e1e2e; /* Catppuccin Mocha base */
+  border: 1px solid rgba(108, 112, 134, 0.3); /* Subtle border */
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  transition: all 0.2s ease-in-out;
+}
+
+/* Header for code blocks */
+.code-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.5rem 1rem;
+  background-color: #313244; /* Catppuccin Mocha surface0 */
+  border-bottom: 1px solid rgba(108, 112, 134, 0.2);
+}
+
+/* Language badge styling */
+.language-badge {
+  font-family: 'Fira Code', 'JetBrains Mono', monospace;
+  font-size: 0.7rem;
+  font-weight: 500;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  background-color: #6c7086; /* Catppuccin Mocha overlay0 */
+  color: #cdd6f4; /* Catppuccin Mocha text */
+  letter-spacing: 0.025em;
+}
+
+/* Buttons in code header */
+.code-header button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.7rem;
+  border-radius: 4px;
+  padding: 0.25rem 0.5rem;
+  background-color: #45475a; /* Catppuccin Mocha surface1 */
+  color: #cdd6f4; /* Catppuccin Mocha text */
+  transition: background-color 0.2s ease;
+  cursor: pointer;
+  border: none;
+  outline: none;
+}
+
+.code-header button:hover {
+  background-color: #585b70; /* Catppuccin Mocha surface2 */
+}
+
+.code-header button:active {
+  transform: translateY(1px);
+}
+
+/* Code content area */
+.code-block-container pre {
+  margin: 0;
+  padding: 1rem;
+  overflow: auto;
+  font-family: 'Fira Code', 'JetBrains Mono', 'Cascadia Code', monospace;
+  font-size: 0.875rem;
+  line-height: 1.6;
+  background-color: #1e1e2e; /* Catppuccin Mocha base */
+  color: #cdd6f4; /* Catppuccin Mocha text */
+}
+
+/* Highlight.js overrides */
+.hljs {
+  background-color: transparent !important;
+  padding: 0 !important;
+}
+
+/* Transitions for collapse/expand */
+.code-block-container .collapse-content {
+  transition: max-height 0.3s ease-in-out;
+  overflow: hidden;
+}
+
+/* Full screen mode */
+.code-block-container.fullscreen {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 9999;
+  margin: 0;
+  border-radius: 0;
+  width: 100%;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.code-block-container.fullscreen pre {
+  flex: 1;
+  max-height: none;
+}
+
+/* Animation for collapsible content */
+@keyframes slideDown {
+  from { max-height: 0; }
+  to { max-height: 500px; }
+}
+
+@keyframes slideUp {
+  from { max-height: 500px; }
+  to { max-height: 0; }
+}
+
+.slide-down {
+  animation: slideDown 0.3s ease-in-out forwards;
+}
+
+.slide-up {
+  animation: slideUp 0.3s ease-in-out forwards;
 } 

@@ -1,6 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
 // Import highlight.js for syntax highlighting
 import hljs from 'highlight.js';
+// Import code icon from lucide
+import { Code, ChevronDown, ChevronUp, Maximize } from 'lucide-react';
 // Import default style - you can replace with your preferred style in your CSS imports
 // For example: import 'highlight.js/styles/github.css';
 
@@ -45,7 +47,7 @@ export function formatMessageTime(date) {
 }
 
 /**
- * Renders a code block with syntax highlighting
+ * Renders a code block with syntax highlighting and modern design
  * @param {string} code - The code to highlight
  * @param {string} language - The programming language
  * @returns {JSX.Element} - React element with highlighted code
@@ -53,31 +55,87 @@ export function formatMessageTime(date) {
 export function renderCodeBlock(code, language) {
   if (!code) return null;
   
-  let highlightedCode;
-  const displayLanguage = language && language !== 'multiple' ? language : 'code';
-  
-  try {
-    // If language is specified and supported, use it for highlighting
-    if (language && language !== 'multiple') {
-      highlightedCode = hljs.highlight(code, { language }).value;
-    } else {
-      // Auto-detect language if not specified or multiple
-      highlightedCode = hljs.highlightAuto(code).value;
+  // Use React state for collapsible functionality
+  const CollapsibleCodeBlock = () => {
+    const [isCollapsed, setIsCollapsed] = useState(false);
+    const [isExpanded, setIsExpanded] = useState(false);
+    
+    let highlightedCode;
+    const displayLanguage = language && language !== 'multiple' ? language : 'code';
+    
+    try {
+      // If language is specified and supported, use it for highlighting
+      if (language && language !== 'multiple') {
+        highlightedCode = hljs.highlight(code, { language }).value;
+      } else {
+        // Auto-detect language if not specified or multiple
+        highlightedCode = hljs.highlightAuto(code).value;
+      }
+    } catch (error) {
+      console.error('Error highlighting code:', error);
+      // Fallback to plain text if highlighting fails
+      highlightedCode = hljs.highlight(code, { language: 'plaintext' }).value;
     }
-  } catch (error) {
-    console.error('Error highlighting code:', error);
-    // Fallback to plain text if highlighting fails
-    highlightedCode = hljs.highlight(code, { language: 'plaintext' }).value;
-  }
+    
+    return (
+      <div className={`code-block-container relative my-2 rounded-lg overflow-hidden border border-base-300 bg-[#1e1e2e] shadow-md transition-all duration-300 ${isExpanded ? "w-full fixed top-10 left-0 right-0 z-50 h-[90vh] mx-4 md:mx-auto md:w-[90%] max-w-7xl" : ""}`}>
+        {/* Header with language badge and buttons */}
+        <div className="code-header flex items-center justify-between p-2 bg-[#313244] text-white/80">
+          <div className="flex items-center gap-2">
+            <Code size={14} className="text-[#89dceb]" />
+            <div className="language-badge px-2 py-1 rounded text-xs font-mono bg-[#6c7086] text-white/90">
+              {displayLanguage}
+            </div>
+          </div>
+          <div className="flex items-center gap-1">
+            <button 
+              className="copy-button px-2 py-1 rounded text-xs bg-[#45475a] hover:bg-[#585b70] transition-colors text-white/90"
+              onClick={(e) => {
+                e.stopPropagation();
+                navigator.clipboard.writeText(code);
+                const button = e.target;
+                const originalText = button.textContent;
+                button.textContent = 'Copied!';
+                setTimeout(() => {
+                  button.textContent = originalText;
+                }, 2000);
+              }}
+            >
+              Copy
+            </button>
+            <button
+              className="collapse-button p-1 rounded text-xs bg-[#45475a] hover:bg-[#585b70] transition-colors text-white/90 ml-1"
+              onClick={() => setIsCollapsed(!isCollapsed)}
+              title={isCollapsed ? "Expand code" : "Collapse code"}
+            >
+              {isCollapsed ? <ChevronDown size={14} /> : <ChevronUp size={14} />}
+            </button>
+            <button
+              className="expand-button p-1 rounded text-xs bg-[#45475a] hover:bg-[#585b70] transition-colors text-white/90 ml-1"
+              onClick={() => setIsExpanded(!isExpanded)}
+              title={isExpanded ? "Exit fullscreen" : "Fullscreen"}
+            >
+              <Maximize size={14} />
+            </button>
+          </div>
+        </div>
+        
+        {/* Code content with syntax highlighting */}
+        <div 
+          className={`transition-all duration-300 ease-in-out overflow-hidden ${isCollapsed ? "max-h-0" : isExpanded ? "h-[calc(90vh-40px)]" : "max-h-96"}`}
+        >
+          <pre className={`p-4 m-0 overflow-auto bg-[#1e1e2e] text-[#cdd6f4] ${isExpanded ? "h-full" : ""}`}>
+            <code 
+              dangerouslySetInnerHTML={{ __html: highlightedCode }} 
+              className={`hljs language-${language || 'plaintext'} font-mono text-sm`}
+            />
+          </pre>
+        </div>
+      </div>
+    );
+  };
   
-  return (
-    <pre className="code-block" data-language={displayLanguage}>
-      <code 
-        dangerouslySetInnerHTML={{ __html: highlightedCode }} 
-        className={`hljs language-${language || 'plaintext'}`}
-      />
-    </pre>
-  );
+  return <CollapsibleCodeBlock />;
 }
 
 /**
