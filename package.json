@@ -10,6 +10,12 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@codemirror/lang-css": "^6.2.1",
+    "@codemirror/lang-html": "^6.4.6",
+    "@codemirror/lang-javascript": "^6.2.1",
+    "@codemirror/state": "^6.3.3",
+    "@codemirror/view": "^6.23.1",
+    "@uiw/react-codemirror": "^4.21.25",
     "axios": "^1.8.2",
     "lucide-react": "^0.477.0",
     "react": "^19.0.0",

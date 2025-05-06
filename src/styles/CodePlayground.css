@@ -1,0 +1,154 @@
+/* CodePlayground specific styles */
+
+/* Ensure the code playground takes up the full available viewport height */
+.code-playground-container {
+  min-height: calc(100vh - 64px); /* Adjust based on navbar height */
+}
+
+/* Better styling for CodeMirror editors */
+.code-editor-container {
+  display: flex;
+  flex-direction: column;
+  transition: height 0.2s ease-out;
+}
+
+/* Collapsed editor styles */
+.code-editor-container.collapsed {
+  height: 42px; /* Just the header height */
+  min-height: unset;
+  overflow: hidden;
+}
+
+/* Expanded editor styles */
+.code-editor-expanded {
+  transition: all 0.2s ease;
+}
+
+/* Animation for expanding/collapsing */
+.code-editor-container {
+  transform-origin: center top;
+  transition: transform 0.3s ease, height 0.3s ease;
+}
+
+.code-editor-container.collapsed {
+  transform: translateY(0);
+}
+
+/* Ensure CodeMirror takes full width and adjusts height */
+.code-editor {
+  width: 100%;
+  flex: 1;
+}
+
+/* Add a subtle animation when transitioning to fullscreen */
+.code-editor-expanded .code-editor {
+  animation: fadeInExpand 0.3s ease-out;
+}
+
+@keyframes fadeInExpand {
+  from {
+    opacity: 0.8;
+    transform: scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Styling for editor header buttons */
+.code-editor-container button {
+  opacity: 0.7;
+  transition: opacity 0.2s, transform 0.2s;
+}
+
+.code-editor-container button:hover {
+  opacity: 1;
+  transform: scale(1.1);
+}
+
+/* Override some CodeMirror default styles */
+.cm-editor {
+  font-family: 'Menlo', 'Monaco', 'Courier New', monospace !important;
+  font-size: 14px !important;
+}
+
+/* Custom scrollbar for editors */
+.cm-scroller::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.cm-scroller::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.cm-scroller::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 4px;
+}
+
+.cm-scroller::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.3);
+}
+
+/* Dark mode scrollbar adjustments */
+.dark .cm-scroller::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.dark .cm-scroller::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.dark .cm-scroller::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .code-editor-container {
+    height: 200px; /* Smaller height on mobile */
+  }
+  
+  .code-editor-container.collapsed {
+    height: 42px;
+  }
+}
+
+/* Preview iframe styling */
+.preview-container iframe {
+  background-color: white;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+}
+
+.dark .preview-container iframe {
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+/* Modal backdrop animation */
+.modal-backdrop {
+  animation: fadeIn 0.2s ease-in-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* Modal content animation */
+.modal-content {
+  animation: slideUp 0.3s ease-out;
+}
+
+@keyframes slideUp {
+  from { 
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  to { 
+    transform: translateY(0);
+    opacity: 1;
+  }
+} 
