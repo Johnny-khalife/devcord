@@ -239,60 +239,7 @@ const UserFriends = () => {
       <div className="flex-1 overflow-y-auto">
         <div className="p-2">
           {/* Friend requests section */}
-          {friendRequests.length > 0 && (
-            <div className="mb-4">
-              <div className="px-2 py-1 text-xs font-semibold text-base-content/70 flex items-center justify-between">
-                <span>PENDING REQUESTS</span>
-                <span className="px-1.5 py-0.5 bg-primary/20 text-primary text-xs rounded">
-                  {filteredRequests.length}/{friendRequests.length}
-                </span>
-              </div>
-              
-              {filteredRequests.length === 0 && searchQuery ? (
-                <div className="p-2 text-center text-xs text-base-content/50">
-                  No requests match "{searchQuery}"
-                </div>
-              ) : (
-                filteredRequests.map((request) => (
-                  <div 
-                    key={request.requestId} 
-                    className="flex items-center justify-between p-2 my-1 rounded-md hover:bg-base-300 bg-base-300/40"
-                  >
-                    <div className="flex items-center gap-2">
-                      <div className="relative">
-                        <img
-                          src={request.senderAvatar || "/avatar.png"}
-                          alt=""
-                          className="w-8 h-8 rounded-full"
-                        />
-                      </div>
-                      <div>
-                        <div className="text-sm font-medium">{request.senderUsername}</div>
-                        <div className="text-xs text-base-content/60">Wants to add you</div>
-                      </div>
-                    </div>
-                    <div className="flex gap-1">
-                      <button 
-                        onClick={() => handleAcceptFriendRequest(request.requestId)}
-                        className="p-1.5 bg-primary/20 text-primary hover:bg-primary/30 rounded-md"
-                        title="Accept"
-                      >
-                        <Check size={16} />
-                      </button>
-                      <button 
-                        onClick={() => handleDeclineFriendRequest(request.requestId)}
-                        className="p-1.5 bg-error/20 text-error hover:bg-error/30 rounded-md"
-                        title="Decline"
-                      >
-                        <X size={16} />
-                      </button>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-          )}
-
+          
           {/* Friends list */}
           <div className="space-y-1 mt-4">
             <div className="px-2 py-1 text-xs font-semibold text-base-content/70 flex items-center justify-between">

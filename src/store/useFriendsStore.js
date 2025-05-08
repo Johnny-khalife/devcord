@@ -3,6 +3,14 @@ import { persist } from "zustand/middleware";
 import { axiosInstance } from "../lib/axios.js";
 import toast from "react-hot-toast";
 
+// Add event listener for page refresh
+if (typeof window !== 'undefined') {
+  window.addEventListener('beforeunload', () => {
+    // Clear the friend store data from localStorage
+    localStorage.removeItem('friend-storage');
+  });
+}
+
 export const useFriendStore = create(
   persist(
     (set, get) => ({
@@ -251,8 +259,10 @@ export const useFriendStore = create(
       // Initialize the store by loading all necessary data
       initialize: async () => {
         try {
+          // Force refresh all data
+          set({ dataLoaded: false });
           await Promise.all([
-            get().getFriendsList(),
+            get().getFriendsList(true), // Pass true to force refresh
             get().getFriendRequests(),
             get().getSentFriendRequests(),
             get().getBlockedUsers()
@@ -284,6 +294,15 @@ export const useFriendStore = create(
     {
       name: "friend-storage",
       getStorage: () => localStorage,
+      // Add version to force refresh when needed
+    
+      // Add partialize to only persist specific state
+      partialize: (state) => ({
+        friends: state.friends,
+        friendRequests: state.friendRequests,
+        sentRequests: state.sentRequests,
+        blockedUsers: state.blockedUsers
+      })
     }
   )
 );
