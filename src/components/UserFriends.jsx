@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
   UserPlus,
@@ -24,13 +24,14 @@ import { toast } from "react-hot-toast";
 const UserFriends = () => {
   // State management
   const [activeFriend, setActiveFriend] = useState(null);
+  const [selectedFriend, setSelectedFriend] = useState(null);
   const [showFriendSearchPortal, setShowFriendSearchPortal] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [showFriendActions, setShowFriendActions] = useState(null);
   const [showBlockModal, setShowBlockModal] = useState(false);
   const [showBlockedUsersModal, setShowBlockedUsersModal] = useState(false);
   const [userToBlock, setUserToBlock] = useState(null);
-  const { setSelectedFriend } = useChatStore();
+  const { setSelectedFriend: chatSetSelectedFriend } = useChatStore();
   const navigate = useNavigate();
 
   // Responsive state
@@ -41,6 +42,7 @@ const UserFriends = () => {
   // Add filtered friends and requests state
   const [filteredFriends, setFilteredFriends] = useState([]);
   const [filteredRequests, setFilteredRequests] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
 
   // Check screen size
   useEffect(() => {
@@ -96,6 +98,7 @@ const UserFriends = () => {
     dataLoaded,
     acceptFriendRequest,
     declineFriendRequest,
+    initialize,
   } = useFriendStore();
 
   // Refs for click outside detection
@@ -119,25 +122,59 @@ const UserFriends = () => {
     };
   }, []);
 
+  // Force refresh of data
+  const forceRefresh = useCallback(() => {
+    setIsLoading(true);
+    
+    // Use the friend store functions to refresh data
+    Promise.all([
+      getFriendsList(true),
+      getFriendRequests()
+    ])
+    .then(() => {
+      setIsLoading(false);
+    })
+    .catch(error => {
+      console.error("Error refreshing friends data:", error);
+      setIsLoading(false);
+    });
+  }, [getFriendsList, getFriendRequests]);
+
   // Initialize data on component mount
   useEffect(() => {
     const loadData = async () => {
-      // Only show loading if data isn't already loaded
-      if (!dataLoaded) {
-        // Let the store handle caching instead of always fetching
-        await getFriendsList();
-        await getFriendRequests();
-        await getBlockedUsers();
-      }
+      // Force refresh data to ensure it's up-to-date
+      await forceRefresh();
     };
 
     loadData();
 
     // Reset selectedFriend when the component mounts
     // This ensures that when switching back to the Friends view, no friend is pre-selected
-    setSelectedFriend(null);
+    chatSetSelectedFriend(null);
     setActiveFriend(null);
-  }, []);  // Remove dependencies to prevent refetching
+
+    // Setup event listener for real-time friend updates
+    const handleFriendUpdated = () => {
+      forceRefresh();
+    };
+
+    // Listen for custom events that may occur from socket operations
+    window.addEventListener("friend-added", handleFriendUpdated);
+    window.addEventListener("friend-removed", handleFriendUpdated);
+    window.addEventListener("friend-request-accepted", handleFriendUpdated);
+    window.addEventListener("friend-request-declined", handleFriendUpdated);
+    window.addEventListener("new-friend-request", handleFriendUpdated);
+
+    // Clean up event listeners
+    return () => {
+      window.removeEventListener("friend-added", handleFriendUpdated);
+      window.removeEventListener("friend-removed", handleFriendUpdated);
+      window.removeEventListener("friend-request-accepted", handleFriendUpdated);
+      window.removeEventListener("friend-request-declined", handleFriendUpdated);
+      window.removeEventListener("new-friend-request", handleFriendUpdated);
+    };
+  }, [forceRefresh]);
 
   // Update filtered friends and requests when data or search query changes
   useEffect(() => {
@@ -172,8 +209,28 @@ const UserFriends = () => {
 
   const handleRemoveFriend = async (userId) => {
     if (window.confirm("Are you sure you want to remove this friend?")) {
-      await removeFriend(userId);
-      setShowFriendActions(null);
+      try {
+        setIsLoading(true);
+        await removeFriend(userId);
+        
+        // Clear selected friend if this was the one we were removing
+        if (activeFriend === userId) {
+          setActiveFriend(null);
+          chatSetSelectedFriend(null);
+        }
+        
+        // Dispatch a custom event to notify any listeners
+        window.dispatchEvent(new CustomEvent("friend-removed", { 
+          detail: { friendId: userId } 
+        }));
+        
+        setShowFriendActions(null);
+        setIsLoading(false);
+      } catch (error) {
+        console.error("Error removing friend:", error);
+        toast.error("Failed to remove friend. Please try again.");
+        setIsLoading(false);
+      }
     }
   };
 
@@ -220,7 +277,7 @@ const UserFriends = () => {
 
   const selectedFriendWhenClick = ({ id, friend }) => {
     setActiveFriend(id);
-    setSelectedFriend(friend);
+    chatSetSelectedFriend(friend);
     if (isMobile) {
       setIsUserFriendsSidebarOpen(false);
     }
@@ -238,8 +295,6 @@ const UserFriends = () => {
     return (
       <div className="flex-1 overflow-y-auto">
         <div className="p-2">
-          {/* Friend requests section */}
-          
           {/* Friends list */}
           <div className="space-y-1 mt-4">
             <div className="px-2 py-1 text-xs font-semibold text-base-content/70 flex items-center justify-between">

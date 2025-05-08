@@ -13,6 +13,7 @@ import CodePlayground from "./pages/CodePlayground";
 import { Routes, Route, Navigate } from "react-router-dom";
 import { useAuthStore } from "./store/useAuthStore";
 import { useThemeStore } from "./store/useThemeStore";
+import { useFriendStore } from "./store/useFriendsStore";
 import { useEffect } from "react";
 
 import { Loader } from "lucide-react";
@@ -21,13 +22,22 @@ import { Toaster } from "react-hot-toast";
 const App = () => {
   const { authUser, checkAuth, isCheckingAuth, socket } = useAuthStore();
   const { theme } = useThemeStore();
+  const { initialize: initializeFriendStore } = useFriendStore();
   
   // Check authentication on app load and initialize socket connection if authenticated
   useEffect(() => {
     checkAuth();
   }, [checkAuth]);
+  
+  // Initialize the friend store when auth changes
+  useEffect(() => {
+    if (authUser) {
+      // Initialize the friend store
+      initializeFriendStore();
+    }
+  }, [authUser, initializeFriendStore]);
 
-  // Monitor socket connection status for both DM and Channel sockets
+  // Monitor socket connection status
   useEffect(() => {
     // Set up event handlers
     const onConnect = (socketType) => () => {
@@ -60,6 +70,15 @@ const App = () => {
       socket.channels.on("error", onError("Channel"));
     }
     
+    // Friends socket event listeners
+    if (socket?.friends) {
+      console.log("Friends Socket status:", socket.friends.connected ? "Connected" : "Disconnected");
+      
+      socket.friends.on("connect", onConnect("Friends"));
+      socket.friends.on("disconnect", onDisconnect("Friends"));
+      socket.friends.on("error", onError("Friends"));
+    }
+    
     // Clean up all listeners
     return () => {
       if (socket?.dm) {
@@ -72,6 +91,12 @@ const App = () => {
         socket.channels.off("connect", onConnect("Channel"));
         socket.channels.off("disconnect", onDisconnect("Channel"));
         socket.channels.off("error", onError("Channel"));
+      }
+      
+      if (socket?.friends) {
+        socket.friends.off("connect", onConnect("Friends"));
+        socket.friends.off("disconnect", onDisconnect("Friends"));
+        socket.friends.off("error", onError("Friends"));
       }
     };
   }, [socket]);

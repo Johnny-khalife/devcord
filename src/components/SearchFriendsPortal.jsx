@@ -161,6 +161,9 @@ const SearchFriendsPortal = ({ isOpen, onClose }) => {
             : user
         )
       );
+      
+      // Dispatch event for real-time updates
+      window.dispatchEvent(new CustomEvent("friend-added"));
     } catch (error) {
       console.error('Failed to send friend request:', error);
     } finally {
@@ -175,6 +178,9 @@ const SearchFriendsPortal = ({ isOpen, onClose }) => {
       await acceptFriendRequest(requestId);
       // Refresh the requests after accepting
       await getFriendRequests();
+      
+      // Dispatch event for real-time updates
+      window.dispatchEvent(new CustomEvent("friend-request-accepted"));
     } catch (error) {
       console.error('Failed to accept friend request:', error);
     } finally {
@@ -189,6 +195,9 @@ const SearchFriendsPortal = ({ isOpen, onClose }) => {
       await declineFriendRequest(requestId);
       // Refresh the requests after declining
       await getFriendRequests();
+      
+      // Dispatch event for real-time updates
+      window.dispatchEvent(new CustomEvent("friend-request-declined"));
     } catch (error) {
       console.error('Failed to decline friend request:', error);
     } finally {

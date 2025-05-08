@@ -5,6 +5,7 @@ import toast from "react-hot-toast";
 import { connectSockets, disconnectSockets, setStoreRefs } from "../lib/socket.js";
 import { useChatStore } from "./useChatStore.js";
 import { useWorkspaceStore } from "./useWorkspaceStore.js";
+import { useChannelStore } from "./useChannelStore.js";
 
 export const useAuthStore = create(
   persist(
@@ -43,9 +44,39 @@ export const useAuthStore = create(
         
         const chatStore = useChatStore.getState();
         const workspaceStore = useWorkspaceStore.getState();
+        const channelStore = useChannelStore.getState();
         
-        // Set store references for socket events
-        setStoreRefs(authStore, chatStore, workspaceStore);
+        // Import friend store to set reference
+        try {
+          // Use dynamic import to avoid circular dependency
+          const friendStoreModule = window?.useFriendStore;
+          const friendStore = friendStoreModule ? friendStoreModule.getState() : null;
+          
+          if (friendStore) {
+            // Set store references for socket events
+            setStoreRefs(authStore, chatStore, workspaceStore, channelStore, friendStore);
+          } else {
+            console.warn("Friend store not available yet, will try again later");
+            // Set other store references without friend store
+            setStoreRefs(authStore, chatStore, workspaceStore, channelStore, null);
+            
+            // Try again in a second
+            setTimeout(() => {
+              try {
+                const laterFriendStore = window?.useFriendStore?.getState();
+                if (laterFriendStore) {
+                  setStoreRefs(authStore, chatStore, workspaceStore, channelStore, laterFriendStore);
+                }
+              } catch {
+                console.warn("Friend store still not available after retry");
+              }
+            }, 1000);
+          }
+        } catch (error) {
+          // If friend store is not available, still set other store references
+          console.warn("Friend store not available, setting other store references:", error);
+          setStoreRefs(authStore, chatStore, workspaceStore, channelStore, null);
+        }
         
         // Connect to sockets
         console.log("Connecting to sockets...");
@@ -61,7 +92,11 @@ export const useAuthStore = create(
           console.log("Channels Socket connected status:", socket.channels.connected);
         }
         
-        if (!socket?.dm && !socket?.channels) {
+        if (socket?.friends) {
+          console.log("Friends Socket connected status:", socket.friends.connected);
+        }
+        
+        if (!socket?.dm && !socket?.channels && !socket?.friends) {
           console.log("Socket connections failed");
         }
       },

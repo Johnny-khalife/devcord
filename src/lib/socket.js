@@ -7,19 +7,22 @@ let authStore = null;
 let chatStore = null;
 let workspaceStore = null;
 let channelStore = null;
+let friendStore = null;
 
 // Socket instances - will be initialized in connectSockets
 let dmSocket = null;
 let channelSocket = null;
+let friendsSocket = null;
 
 /**
  * Set the store references for socket event handlers to use
  */
-export const setStoreRefs = (auth, chat, workspace, channel) => {
+export const setStoreRefs = (auth, chat, workspace, channel, friend) => {
   authStore = auth;
   chatStore = chat;
   workspaceStore = workspace;
   channelStore = channel;
+  friendStore = friend;
   
   // Also make channelStore available on window for components that need it
   if (typeof window !== 'undefined') {
@@ -73,10 +76,10 @@ export const connectSockets = () => {
   
   if (!token) {
     console.error('No token found in cookies or localStorage for socket connection');
-    return { dm: null, channels: null };
+    return { dm: null, channels: null, friends: null };
   }
 
-  // Create socket connection options
+  // Get socket connection options
   const socketOptions = {
     withCredentials: true,
     auth: {
@@ -97,57 +100,50 @@ export const connectSockets = () => {
     }
   };
 
+  // Connect to DM namespace
   try {
-    console.log("Creating socket connections with token...");
-    
-    // Disconnect any existing sockets first
-    if (dmSocket) {
-      console.log("Disconnecting existing DM socket before reconnecting...");
-      dmSocket.disconnect();
-      dmSocket = null;
-    }
-    
-    if (channelSocket) {
-      console.log("Disconnecting existing channel socket before reconnecting...");
-      channelSocket.disconnect();
-      channelSocket = null;
-    }
-    
-    // Create DM socket connection
     dmSocket = io(`${BACKEND_URL}/dm`, socketOptions);
-    
-    // Create channel socket connection
-    channelSocket = io(`${BACKEND_URL}/channels`, socketOptions);
-
-    // Set up event listeners
     setupDMSocketListeners();
-    setupChannelSocketListeners();
-    
-    // Add connection status check
-    const checkSocketStatus = () => {
-      if (dmSocket && !dmSocket.connected) {
-        console.log("DM socket not connected, attempting reconnect...");
-        dmSocket.connect();
-      }
-      
-      if (channelSocket && !channelSocket.connected) {
-        console.log("Channel socket not connected, attempting reconnect...");
-        channelSocket.connect();
-      }
-    };
-    
-    // Check connection status after a short delay
-    setTimeout(checkSocketStatus, 2000);
-
-    return {
-      dm: dmSocket,
-      channels: channelSocket
-    };
+    console.log("DM socket connected successfully");
   } catch (error) {
-    console.error('Error connecting to socket:', error);
-    toast.error('Failed to connect to messaging service');
-    return { dm: null, channels: null };
+    console.error("Failed to connect to DM socket:", error);
+    dmSocket = null;
   }
+  
+  // Connect to channels namespace
+  try {
+    channelSocket = io(`${BACKEND_URL}/channels`, socketOptions);
+    setupChannelSocketListeners();
+    console.log("Channel socket connected successfully");
+  } catch (error) {
+    console.error("Failed to connect to channels socket:", error);
+    channelSocket = null;
+  }
+  
+  // Connect to friends namespace
+  try {
+    friendsSocket = io(`${BACKEND_URL}/friends`, socketOptions);
+    setupFriendsSocketListeners();
+    console.log("Friends socket connected successfully");
+  } catch (error) {
+    console.error("Failed to connect to friends socket:", error);
+    friendsSocket = null;
+  }
+  
+  // Store socket connections in window object for components to access
+  if (typeof window !== 'undefined') {
+    window.socket = {
+      dm: dmSocket,
+      channels: channelSocket,
+      friends: friendsSocket
+    };
+  }
+  
+  return { 
+    dm: dmSocket, 
+    channels: channelSocket,
+    friends: friendsSocket
+  };
 };
 
 /**
@@ -163,6 +159,11 @@ export const disconnectSockets = () => {
   if (channelSocket) {
     channelSocket.disconnect();
     channelSocket = null;
+  }
+  
+  if (friendsSocket) {
+    friendsSocket.disconnect();
+    friendsSocket = null;
   }
 };
 
@@ -229,7 +230,7 @@ const setupDMSocketListeners = () => {
       // Force refresh the workspaces list to remove the deleted workspace
       console.log(`Refreshing workspaces after deletion of workspace ${data.workspaceId}`);
       workspaceStore.getUserWorkspaces(true)
-        .then(workspaces => {
+        .then(() => {
           console.log('Workspaces refreshed after deletion');
           
           // Check if the currently selected workspace was deleted
@@ -602,6 +603,109 @@ const setupChannelSocketListeners = () => {
 };
 
 /**
+ * Set up listeners for friends socket events
+ */
+const setupFriendsSocketListeners = () => {
+  if (!friendsSocket) return;
+
+  // Friend request received
+  friendsSocket.on('newFriendRequest', (data) => {
+    console.log('📨 New friend request received:', data);
+    
+    if (friendStore) {
+      // Use the new function to add the friend request to the store
+      friendStore.addFriendRequest(data);
+      
+      // Show toast notification
+      toast.success(`${data.sender.username} sent you a friend request`, {
+        duration: 4000,
+        icon: '👋'
+      });
+      
+      // Dispatch custom event for components to respond to
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent("new-friend-request", { detail: data }));
+      }
+    }
+  });
+
+  // Friend request accepted
+  friendsSocket.on('friendRequestAccepted', (data) => {
+    console.log('✅ Friend request accepted:', data);
+    
+    if (friendStore) {
+      // Update friends list
+      friendStore.getFriendsList(true);
+      
+      // Update sent requests
+      friendStore.getSentFriendRequests();
+      
+      // Show toast notification
+      toast.success(`${data.receiver.username} accepted your friend request`, {
+        duration: 4000,
+        icon: '🎉'
+      });
+    }
+  });
+
+  // Friend request rejected
+  friendsSocket.on('friendRequestRejected', (data) => {
+    console.log('❌ Friend request rejected:', data);
+    
+    if (friendStore) {
+      // Update sent requests
+      friendStore.getSentFriendRequests();
+    }
+  });
+
+  // Friend status changed
+  friendsSocket.on('friendStatusChanged', (data) => {
+    console.log('👤 Friend status changed:', data);
+    
+    if (authStore && authStore.setUserOnlineStatus) {
+      authStore.setUserOnlineStatus(data.userId, data.isOnline);
+    }
+  });
+
+  // Friend removed
+  friendsSocket.on('friendRemoved', (data) => {
+    console.log('🔄 Friend removed:', data);
+    
+    if (friendStore) {
+      // Force refresh friends list
+      friendStore.getFriendsList(true);
+      
+      // Show toast notification
+      toast.info(`${data.username} removed you from their friends list`, {
+        duration: 4000,
+        icon: '❌'
+      });
+      
+      // Dispatch custom event for components to respond to
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent("friend-removed", { detail: data }));
+      }
+    }
+  });
+
+  // Error handling
+  friendsSocket.on('error', (error) => {
+    console.error('❌ Friends socket error:', error);
+    toast.error(error.message || 'An error occurred with friend connections');
+  });
+
+  // Reconnection handling
+  friendsSocket.on('reconnect', (attemptNumber) => {
+    console.log(`🔄 Friends socket reconnected after ${attemptNumber} attempts`);
+    
+    // Refresh data after reconnection
+    if (friendStore) {
+      friendStore.forceRefresh();
+    }
+  });
+};
+
+/**
  * Send a direct message via socket
  */
 export const sendDirectMessage = (receiverId, message) => {
@@ -863,6 +967,11 @@ export const reinitializeSocketConnections = () => {
   if (channelSocket) {
     channelSocket.disconnect();
     channelSocket = null;
+  }
+  
+  if (friendsSocket) {
+    friendsSocket.disconnect(); 
+    friendsSocket = null;
   }
   
   // Reconnect with fresh connections
