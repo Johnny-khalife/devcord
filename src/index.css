@@ -1,9 +1,10 @@
+/* Import code highlighting styles */
+@import './styles/CodeHighlight.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* Import code highlighting styles */
-@import './styles/CodeHighlight.css';
 
 /* Add global styles for better mobile scrolling */
 @layer base {
