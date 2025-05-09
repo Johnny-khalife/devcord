@@ -12,12 +12,23 @@ import {
 } from "lucide-react";
 import toast from "react-hot-toast";
 import MessageSkeleton from "./skeletons/MessageSkeleton";
+import { useNavigate } from "react-router-dom";
+
+// Add this constant at the top of the file with other imports
+const SUPPORTED_LANGUAGES = ['html', 'css', 'javascript', 'js'];
+
+// Helper function to check if code block is supported
+const isSupportedLanguage = (language) => {
+  if (!language) return false;
+  return SUPPORTED_LANGUAGES.includes(language.toLowerCase());
+};
 
 // Direct message component for friend chats
 const DirectMessage = ({ message, firstInGroup }) => {
   const { deleteMessage } = useChatStore();
   const [imageViewer, setImageViewer] = useState(false);
   const { authUser } = useAuthStore();
+  const navigate = useNavigate();
 
   // Use the isSentByMe property set in useChatStore processing
   // If isSentByMe is not explicitly set, check if the message is from the current user
@@ -53,11 +64,57 @@ const DirectMessage = ({ message, firstInGroup }) => {
     }
   };
 
-  // Helper function to render message content with code highlighting
+  // Modify handleImportToPlayground in both DirectMessage and ChannelMessage components
+  const handleImportToPlayground = () => {
+    if (!message.content) {
+      toast.error('No code to import');
+      return;
+    }
+
+    // Check if this is a code message with supported language
+    if (message.isCode && !isSupportedLanguage(message.language)) {
+      toast.error('Only HTML, CSS, and JavaScript code are supported in the playground');
+      return;
+    }
+
+    // For mixed content messages, check if any code blocks are supported
+    const segments = parseMessageContent(message.content);
+    const hasSupportedCode = segments.some(
+      segment => segment.type === 'code' && isSupportedLanguage(segment.language)
+    );
+
+    if (!hasSupportedCode) {
+      toast.error('Only HTML, CSS, and JavaScript code are supported in the playground');
+      return;
+    }
+
+    // Navigate to code playground with the shared code
+    navigate('/code-playground', { 
+      state: { 
+        sharedCode: message.content 
+      }
+    });
+  };
+
+  // Modify the renderMessageContent function to only show button for supported languages
   const renderMessageContent = (content) => {
     // Check if this is specifically marked as a code message
     if (message.isCode) {
-      return renderCodeBlock(content, message.language || 'plaintext');
+      const isSupported = isSupportedLanguage(message.language);
+      return (
+        <div className="relative">
+          {renderCodeBlock(content, message.language || 'plaintext')}
+          {isSupported && (
+            <button
+              className="absolute top-2 right-2 btn btn-xs btn-primary"
+              onClick={handleImportToPlayground}
+              title="Move to Code Playground"
+            >
+              Move to CP
+            </button>
+          )}
+        </div>
+      );
     }
     
     // Otherwise parse the content for code blocks and regular text
@@ -77,7 +134,21 @@ const DirectMessage = ({ message, firstInGroup }) => {
       <div className="whitespace-pre-wrap break-words">
         {segments.map((segment, index) => {
           if (segment.type === 'code') {
-            return <div key={index}>{renderCodeBlock(segment.content, segment.language)}</div>;
+            const isSupported = isSupportedLanguage(segment.language);
+            return (
+              <div key={index} className="relative">
+                {renderCodeBlock(segment.content, segment.language)}
+                {isSupported && (
+                  <button
+                    className="absolute top-2 right-2 btn btn-xs btn-primary"
+                    onClick={handleImportToPlayground}
+                    title="Move to Code Playground"
+                  >
+                    Move to CP
+                  </button>
+                )}
+              </div>
+            );
           } else {
             return (
               <div key={index}>
@@ -197,13 +268,15 @@ const DirectMessage = ({ message, firstInGroup }) => {
           )}
 
           {isCurrentUser && (
-            <div className={`absolute right-0 top-0 opacity-0 group-hover:opacity-100 transition-opacity ${hasCodeBlocks ? "right-2" : ""}`}>
-              <button
-                className="btn btn-ghost btn-xs text-error"
-                onClick={handleDeleteMessage}
-              >
-                <Trash2 size={14} />
-              </button>
+            <div className={`absolute right-0 top-0 opacity-0 group-hover:opacity-100 transition-opacity`}>
+              <div className="flex gap-1">
+                <button
+                  className="btn btn-ghost btn-xs text-error"
+                  onClick={handleDeleteMessage}
+                >
+                  <Trash2 size={14} />
+                </button>
+              </div>
             </div>
           )}
         </div>
@@ -243,6 +316,7 @@ const ChannelMessage = ({ message, firstInGroup }) => {
   const [imageViewer, setImageViewer] = useState(false);
   const { authUser } = useAuthStore();
   const { deleteMessage, addReaction, selectedChannel } = useChatStore();
+  const navigate = useNavigate();
 
   // Common emoji reactions
   const COMMON_EMOJIS = [
@@ -414,11 +488,57 @@ const ChannelMessage = ({ message, firstInGroup }) => {
     });
   };
 
-  // Helper function to render message content with code highlighting
+  // Modify handleImportToPlayground in both DirectMessage and ChannelMessage components
+  const handleImportToPlayground = () => {
+    if (!message.content) {
+      toast.error('No code to import');
+      return;
+    }
+
+    // Check if this is a code message with supported language
+    if (message.isCode && !isSupportedLanguage(message.language)) {
+      toast.error('Only HTML, CSS, and JavaScript code are supported in the playground');
+      return;
+    }
+
+    // For mixed content messages, check if any code blocks are supported
+    const segments = parseMessageContent(message.content);
+    const hasSupportedCode = segments.some(
+      segment => segment.type === 'code' && isSupportedLanguage(segment.language)
+    );
+
+    if (!hasSupportedCode) {
+      toast.error('Only HTML, CSS, and JavaScript code are supported in the playground');
+      return;
+    }
+
+    // Navigate to code playground with the shared code
+    navigate('/code-playground', { 
+      state: { 
+        sharedCode: message.content 
+      }
+    });
+  };
+
+  // Modify the renderMessageContent function to only show button for supported languages
   const renderMessageContent = (content) => {
     // Check if this is specifically marked as a code message
     if (message.isCode) {
-      return renderCodeBlock(content, message.language || 'plaintext');
+      const isSupported = isSupportedLanguage(message.language);
+      return (
+        <div className="relative">
+          {renderCodeBlock(content, message.language || 'plaintext')}
+          {isSupported && (
+            <button
+              className="absolute top-2 right-2 btn btn-xs btn-primary"
+              onClick={handleImportToPlayground}
+              title="Move to Code Playground"
+            >
+              Move to CP
+            </button>
+          )}
+        </div>
+      );
     }
     
     // Otherwise parse the content for code blocks and regular text
@@ -428,7 +548,7 @@ const ChannelMessage = ({ message, firstInGroup }) => {
     if (segments.length === 1 && segments[0].type === 'text') {
       return (
         <div className="whitespace-pre-wrap break-words">
-          {convertUrlsToLinks(content)}
+          {convertUrlsToLinks(content, isCurrentUser)}
         </div>
       );
     }
@@ -438,11 +558,25 @@ const ChannelMessage = ({ message, firstInGroup }) => {
       <div className="whitespace-pre-wrap break-words">
         {segments.map((segment, index) => {
           if (segment.type === 'code') {
-            return <div key={index}>{renderCodeBlock(segment.content, segment.language)}</div>;
+            const isSupported = isSupportedLanguage(segment.language);
+            return (
+              <div key={index} className="relative">
+                {renderCodeBlock(segment.content, segment.language)}
+                {isSupported && (
+                  <button
+                    className="absolute top-2 right-2 btn btn-xs btn-primary"
+                    onClick={handleImportToPlayground}
+                    title="Move to Code Playground"
+                  >
+                    Move to CP
+                  </button>
+                )}
+              </div>
+            );
           } else {
             return (
               <div key={index}>
-                {convertUrlsToLinks(segment.content)}
+                {convertUrlsToLinks(segment.content, isCurrentUser)}
               </div>
             );
           }
@@ -622,12 +756,16 @@ const ChannelMessage = ({ message, firstInGroup }) => {
 
             {/* Only show delete button for the user's own messages */}
             {isCurrentUser && (
-              <button
-                className="btn btn-ghost btn-xs text-error"
-                onClick={handleDeleteMessage}
-              >
-                <Trash2 size={14} />
-              </button>
+              <div className={`absolute right-0 top-0 opacity-0 group-hover:opacity-100 transition-opacity`}>
+                <div className="flex gap-1">
+                  <button
+                    className="btn btn-ghost btn-xs text-error"
+                    onClick={handleDeleteMessage}
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                </div>
+              </div>
             )}
           </div>
         </div>

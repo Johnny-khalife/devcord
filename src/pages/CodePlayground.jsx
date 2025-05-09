@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Send, Play, X, Maximize2, Minimize2, ChevronDown, ChevronUp, RotateCcw } from 'lucide-react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { Send, Play, X, Maximize2, Minimize2, ChevronDown, ChevronUp, RotateCcw, Download } from 'lucide-react';
 import '../styles/CodePlayground.css';
 import { useFriendStore } from '../store/useFriendsStore';
 import { useChatStore } from '../store/useChatStore';
@@ -16,6 +16,7 @@ import { css } from '@codemirror/lang-css';
 
 const CodePlayground = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   
   // Initial code states
   const initialHtmlCode = '<!-- Enter HTML here -->\n<h1>Welcome to Devcord!</h1>\n<p>Start coding to see the preview</p>';
@@ -262,16 +263,58 @@ ${jsCode}
     return `bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden code-editor-container ${collapsedEditors[editorName] ? 'collapsed' : ''}`;
   };
   
+  // Handle importing code from shared message
+  const handleImportCode = () => {
+    try {
+      // Get code from location state
+      const sharedCode = location.state?.sharedCode;
+      
+      if (!sharedCode) {
+        toast.error('No code found to import');
+        return;
+      }
+
+      // Extract code from the shared message
+      const htmlMatch = sharedCode.match(/```html\n([\s\S]*?)\n```/);
+      const cssMatch = sharedCode.match(/```css\n([\s\S]*?)\n```/);
+      const jsMatch = sharedCode.match(/```javascript\n([\s\S]*?)\n```/);
+
+      // Update code editors with the extracted code
+      if (htmlMatch) setHtmlCode(htmlMatch[1]);
+      if (cssMatch) setCssCode(cssMatch[1]);
+      if (jsMatch) setJsCode(jsMatch[1]);
+
+      // Clear the shared code from location state
+      navigate(location.pathname, { replace: true });
+      
+      toast.success('Code imported successfully!');
+    } catch (error) {
+      console.error('Error importing code:', error);
+      toast.error('Failed to import code');
+    }
+  };
+
   return (
     <div className="flex flex-col h-screen bg-gray-100 dark:bg-gray-900 p-4 code-playground-container pt-16">
       <header className="flex justify-between items-center mb-4 pt-2">
         <h1 className="text-2xl font-bold text-gray-800 dark:text-white">Code Playground</h1>
-        <button 
-          onClick={() => navigate(-1)} 
-          className="px-3 py-1 bg-gray-200 dark:bg-gray-700 rounded-md text-gray-700 dark:text-gray-200"
-        >
-          Back
-        </button>
+        <div className="flex gap-2">
+          {location.state?.sharedCode && (
+            <button 
+              onClick={handleImportCode}
+              className="px-3 py-1 bg-green-600 hover:bg-green-700 text-white rounded-md flex items-center gap-2"
+            >
+              <Download size={16} />
+              Import Shared Code
+            </button>
+          )}
+          <button 
+            onClick={() => navigate(-1)} 
+            className="px-3 py-1 bg-gray-200 dark:bg-gray-700 rounded-md text-gray-700 dark:text-gray-200"
+          >
+            Back
+          </button>
+        </div>
       </header>
       
       <div className={`flex flex-col lg:grid lg:grid-cols-2 gap-4 flex-grow ${expandedEditor ? 'hidden' : ''}`}>
