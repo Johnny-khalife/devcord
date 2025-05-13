@@ -186,7 +186,7 @@ const DirectMessage = ({ message, firstInGroup }) => {
         isCurrentUser ? "flex-row-reverse justify-start" : "flex-row"
       }`}
     >
-      <div className={`flex flex-col ${hasCodeBlocks ? "w-full" : "max-w-[75%]"}`}>
+      <div className={`flex flex-col ${hasCodeBlocks ? "max-w-[80%]" : "max-w-[75%]"}`}>
         {/* Timestamp for messages */}
         {message.showTimestamp && (
           <div
@@ -606,7 +606,7 @@ const ChannelMessage = ({ message, firstInGroup }) => {
       )}
 
       <div
-        className={`flex flex-col ${hasCodeBlocks ? "w-full" : "max-w-[75%]"} ${!firstInGroup ? "ml-10" : ""} ${
+        className={`flex flex-col ${hasCodeBlocks ? "max-w-[80%]" : "max-w-[75%]"} ${!firstInGroup ? "ml-10" : ""} ${
           isCurrentUser ? "ml-auto" : ""
         }`}
       >

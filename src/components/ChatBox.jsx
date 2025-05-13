@@ -353,7 +353,7 @@ const ChatBox = ({ activeNavItem, isMobile }) => {
         {/* Scroll to bottom button (visible when user has scrolled up) */}
         {userScrolled && !loading && !isMessagesLoading && messagesForDisplay.length > 0 && (
           <button 
-            className="btn btn-circle btn-sm btn-primary absolute bottom-20 right-5 shadow-lg z-20"
+            className={`btn btn-circle btn-sm btn-primary absolute right-1/2 shadow-lg z-20 ${isMobile ? 'bottom-40' : 'bottom-28'}`} 
             onClick={scrollToBottom}
             aria-label="Scroll to bottom"
           >

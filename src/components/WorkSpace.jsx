@@ -418,9 +418,15 @@ const WorkSpace = ({
 ///////////////////////////////////////////////////////////////
 
 // In WorkSpace.jsx, update the selectedWorkspaceWhenClick function
+// In WorkSpace.jsx, update the handleChannelClick function
 const handleChannelClick = async (channel) => {
   console.log("Channel clicked:", channel);
   setActiveChannel(channel._id);
+  
+  // Close the workspace sidebar on mobile when selecting a channel
+  if (isMobile) {
+    setIsWorkspaceSidebarOpen(false);
+  }
   
   // Create a properly structured selectedWorkspace object with all necessary IDs
   const enrichedChannel = {
