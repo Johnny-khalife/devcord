@@ -352,8 +352,7 @@ const ChannelMessage = ({ message, firstInGroup }) => {
       return {
         username: "You",
         avatar:
-          authUser?.avatar ||
-          "https://ui-avatars.com/api/?name=You&background=random",
+          authUser?.avatar
       };
     }
 
@@ -368,8 +367,8 @@ const ChannelMessage = ({ message, firstInGroup }) => {
       message.sender?.avatar ||
       message.userId?.avatar ||
       (typeof message.userId === "object" ? message.userId.avatar : null) ||
-      (typeof message.senderId === "object" ? message.senderId.avatar : null) ||
-      "https://ui-avatars.com/api/?name=User&background=random";
+      (typeof message.senderId === "object" ? message.senderId.avatar : null) 
+      
 
     return {
       username: username || "Unknown User",
@@ -596,7 +595,7 @@ const ChannelMessage = ({ message, firstInGroup }) => {
         <div className="avatar mt-1">
           <div className="w-8 h-8 rounded-full ring-1 ring-base-300">
             <img
-              src={senderInfo.avatar}
+              src={senderInfo.avatar ? senderInfo.avatar : "avatar.png"}
               alt={senderInfo.username}
               className="object-cover"
             />
