@@ -83,7 +83,7 @@ export const useFriendStore = create(
           await get().getFriendsList(true);
           
           set({ friendRequests: updatedRequests, isLoading: false });
-          toast.success("Friend request accepted");
+          
           return response.data;
         } catch (error) {
           set({ error: error.response?.data?.message || "Failed to accept friend request", isLoading: false });
@@ -113,7 +113,7 @@ export const useFriendStore = create(
           );
           
           set({ friendRequests: updatedRequests, isLoading: false });
-          toast.success("Friend request declined");
+         
           return response.data;
         } catch (error) {
           set({ error: error.response?.data?.message || "Failed to decline friend request", isLoading: false });
@@ -158,7 +158,7 @@ export const useFriendStore = create(
           // Refresh sent requests
           await get().getSentFriendRequests();
           set({ isLoading: false });
-          toast.success("Friend request sent successfully");
+          
           return response.data;
         } catch (error) {
           set({ error: error.response?.data?.message || "Failed to send friend request", isLoading: false });
@@ -191,7 +191,7 @@ export const useFriendStore = create(
             console.error('Error emitting socket event:', socketError);
           }
           
-          toast.success("Friend removed successfully");
+      
           return response.data;
         } catch (error) {
           console.error("Error removing friend:", error);
@@ -215,6 +215,16 @@ export const useFriendStore = create(
           };
           
           const response = await axiosInstance.post(`/friends/${userId}/block`, blockData);
+          
+          // Emit socket event if socket is available
+          try {
+            if (typeof window !== 'undefined' && window.socket && window.socket.friends) {
+              window.socket.friends.emit('blockUser', { blockedId: userId });
+              console.log('Emitted blockUser socket event for:', userId);
+            }
+          } catch (socketError) {
+            console.error('Error emitting socket event:', socketError);
+          }
           
           // Refresh blocked users list
           await get().getBlockedUsers();
@@ -241,7 +251,6 @@ export const useFriendStore = create(
             isLoading: false 
           });
           
-          toast.success("User blocked successfully");
           return response.data;
         } catch (error) {
           set({ error: error.response?.data?.message || "Failed to block user", isLoading: false });
@@ -256,13 +265,23 @@ export const useFriendStore = create(
         try {
           const response = await axiosInstance.delete(`/friends/${userId}/block`, { data: { userId } });
           
+          // Emit socket event if socket is available
+          try {
+            if (typeof window !== 'undefined' && window.socket && window.socket.friends) {
+              window.socket.friends.emit('unblockUser', { unblockedId: userId });
+              console.log('Emitted unblockUser socket event for:', userId);
+            }
+          } catch (socketError) {
+            console.error('Error emitting socket event:', socketError);
+          }
+          
           // Update the blockedUsers list to remove the unblocked user
           const updatedBlockedUsers = get().blockedUsers.filter(
             (user) => user.id !== userId
           );
           
           set({ blockedUsers: updatedBlockedUsers, isLoading: false });
-          toast.success("User unblocked successfully");
+          
           return response.data;
         } catch (error) {
           set({ error: error.response?.data?.message || "Failed to unblock user", isLoading: false });

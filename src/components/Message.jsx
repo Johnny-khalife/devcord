@@ -55,7 +55,6 @@ const DirectMessage = ({ message, firstInGroup }) => {
 
     try {
       await deleteMessage(message._id, null, true);
-      toast.success("Message deleted successfully");
     } catch (error) {
       console.error("Error deleting message:", error);
       toast.error(

@@ -688,6 +688,73 @@ const setupFriendsSocketListeners = () => {
     }
   });
 
+  // User blocked
+  friendsSocket.on('userBlocked', (data) => {
+    console.log('🚫 User blocked:', data);
+    
+    if (friendStore) {
+      // Force refresh blocked users list
+      friendStore.getBlockedUsers();
+      
+      // Dispatch custom event for components to respond to
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent("user-blocked", { detail: data }));
+      }
+    }
+  });
+
+  // Someone blocked you
+  friendsSocket.on('userBlockedYou', (data) => {
+    console.log('🚫 You were blocked by:', data);
+    
+    if (friendStore) {
+      // Force refresh friends list as you'll be removed from their list
+      friendStore.getFriendsList(true);
+      
+      // Show toast notification
+      toast.info(`${data.username} has blocked you`, {
+        duration: 4000,
+        icon: '🚫'
+      });
+      
+      // Dispatch custom event for components to respond to
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent("user-blocked-you", { detail: data }));
+      }
+    }
+  });
+
+  // User unblocked
+  friendsSocket.on('userUnblocked', (data) => {
+    console.log('✅ User unblocked:', data);
+    
+    if (friendStore) {
+      // Force refresh blocked users list
+      friendStore.getBlockedUsers();
+      
+      // Dispatch custom event for components to respond to
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent("user-unblocked", { detail: data }));
+      }
+    }
+  });
+
+  // Someone unblocked you
+  friendsSocket.on('userUnblockedYou', (data) => {
+    console.log('✅ You were unblocked by:', data);
+    
+    // Show toast notification
+    toast.info(`${data.username} has unblocked you`, {
+      duration: 4000,
+      icon: '✅'
+    });
+    
+    // Dispatch custom event for components to respond to
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent("user-unblocked-you", { detail: data }));
+    }
+  });
+
   // Error handling
   friendsSocket.on('error', (error) => {
     console.error('❌ Friends socket error:', error);
