@@ -17,6 +17,21 @@ import { useNavigate } from "react-router-dom";
 // Add this constant at the top of the file with other imports
 const SUPPORTED_LANGUAGES = ['html', 'css', 'javascript', 'js'];
 
+// Bad word filter utility
+const BAD_WORDS = [
+  'badword1', 'badword2', 'inappropriate', 'offensive' // Add your list here
+];
+function filterBadWords(text) {
+  if (!text) return text;
+  let filtered = text;
+  BAD_WORDS.forEach(word => {
+    // Use word boundaries and case-insensitive
+    const regex = new RegExp(`\\b${word}\\b`, 'gi');
+    filtered = filtered.replace(regex, '*'.repeat(word.length));
+  });
+  return filtered;
+}
+
 // Helper function to check if code block is supported
 const isSupportedLanguage = (language) => {
   if (!language) return false;
@@ -123,7 +138,7 @@ const DirectMessage = ({ message, firstInGroup }) => {
     if (segments.length === 1 && segments[0].type === 'text') {
       return (
         <div className="whitespace-pre-wrap break-words">
-          {convertUrlsToLinks(content, isCurrentUser)}
+          {convertUrlsToLinks(filterBadWords(content), isCurrentUser)}
         </div>
       );
     }
@@ -151,7 +166,7 @@ const DirectMessage = ({ message, firstInGroup }) => {
           } else {
             return (
               <div key={index}>
-                {convertUrlsToLinks(segment.content, isCurrentUser)}
+                {convertUrlsToLinks(filterBadWords(segment.content), isCurrentUser)}
               </div>
             );
           }
@@ -546,7 +561,7 @@ const ChannelMessage = ({ message, firstInGroup }) => {
     if (segments.length === 1 && segments[0].type === 'text') {
       return (
         <div className="whitespace-pre-wrap break-words">
-          {convertUrlsToLinks(content, isCurrentUser)}
+          {convertUrlsToLinks(filterBadWords(content), isCurrentUser)}
         </div>
       );
     }
@@ -574,7 +589,7 @@ const ChannelMessage = ({ message, firstInGroup }) => {
           } else {
             return (
               <div key={index}>
-                {convertUrlsToLinks(segment.content, isCurrentUser)}
+                {convertUrlsToLinks(filterBadWords(segment.content), isCurrentUser)}
               </div>
             );
           }
