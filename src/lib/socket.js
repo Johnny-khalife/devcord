@@ -14,6 +14,19 @@ let dmSocket = null;
 let channelSocket = null;
 let friendsSocket = null;
 
+// Add a global flag to prevent multiple unauthorized toasts/logouts
+let unauthorizedToastShown = false;
+
+function handleUnauthorized() {
+  if (!unauthorizedToastShown) {
+    unauthorizedToastShown = true;
+    toast.error("Unauthorized. Please log in again.");
+    if (authStore && typeof authStore.logout === 'function') {
+      authStore.logout();
+    }
+  }
+}
+
 /**
  * Set the store references for socket event handlers to use
  */
@@ -31,37 +44,25 @@ export const setStoreRefs = (auth, chat, workspace, channel, friend) => {
 };
 
 /**
- * Get token from cookies
+ * Get token from localStorage or cookies
  */
-const getTokenFromCookies = () => {
+const getTokenFromStorage = () => {
+  // Prefer localStorage for mobile compatibility
+  const localToken = localStorage.getItem('auth_token');
+  if (localToken) {
+    return localToken;
+  }
+  // Fallback to cookies for desktop
   const cookies = document.cookie.split(';');
-  
-  // Debug cookie contents
-  console.log("All cookies:", document.cookie);
-  
-  // Try to find either the jwt or auth_token cookie
   for (let i = 0; i < cookies.length; i++) {
     const cookie = cookies[i].trim();
-    
     if (cookie.startsWith('jwt=')) {
-      console.log("Found JWT cookie");
       return cookie.substring(4);
     }
-    
     if (cookie.startsWith('auth_token=')) {
-      console.log("Found auth_token cookie");
       return cookie.substring(11);
     }
   }
-  
-  // Fallback: Try to get token from localStorage
-  const localToken = localStorage.getItem('auth_token');
-  if (localToken) {
-    console.log("Found token in localStorage");
-    return localToken;
-  }
-  
-  console.log("No token found in cookies or localStorage");
   return null;
 };
 
@@ -71,11 +72,11 @@ const getTokenFromCookies = () => {
 export const connectSockets = () => {
   console.log("Attempting to connect to sockets...");
   
-  // Get JWT token from cookies or localStorage
-  const token = getTokenFromCookies();
+  // Get JWT token from localStorage or cookies
+  const token = getTokenFromStorage();
   
   if (!token) {
-    console.error('No token found in cookies or localStorage for socket connection');
+    console.error('No token found in localStorage or cookies for socket connection');
     return { dm: null, channels: null, friends: null };
   }
 
@@ -190,7 +191,11 @@ const setupDMSocketListeners = () => {
   // Add event for any socket errors
   dmSocket.on('error', (error) => {
     console.error('🔴 Socket error:', error);
-    toast.error('Messaging service error. Please refresh the page.');
+    if (error && error.message && error.message.toLowerCase().includes('auth')) {
+      handleUnauthorized();
+    } else {
+      toast.error('Messaging service error. Please refresh the page.');
+    }
   });
 
   // Listen for workspace updates
@@ -362,18 +367,26 @@ const setupChannelSocketListeners = () => {
 
   channelSocket.on('connect_error', (error) => {
     console.error('🔴 Channels socket connection error:', error);
-    toast.error('Could not connect to channel service');
+    if (error && error.message && error.message.toLowerCase().includes('auth')) {
+      handleUnauthorized();
+    } else {
+      toast.error('Could not connect to channel service');
+    }
   });
 
   channelSocket.on('disconnect', (reason) => {
     console.log('🟠 Disconnected from Channels socket:', reason);
   });
 
-  // Add event for any socket errors
-  // channelSocket.on('error', (error) => {
-  //   console.error('🔴 Channel socket error:', error);
-  //   toast.error('Channel service error. Please refresh the page.');
-  // });
+  // Optionally, add a general error listener if not present
+  channelSocket.on('error', (error) => {
+    console.error('🔴 Channel socket error:', error);
+    if (error && error.message && error.message.toLowerCase().includes('auth')) {
+      handleUnauthorized();
+    } else {
+      toast.error('Channel service error. Please refresh the page.');
+    }
+  });
 
   // Channel user events
   channelSocket.on('userChannels', (data) => {
@@ -758,7 +771,11 @@ const setupFriendsSocketListeners = () => {
   // Error handling
   friendsSocket.on('error', (error) => {
     console.error('❌ Friends socket error:', error);
-    toast.error(error.message || 'An error occurred with friend connections');
+    if (error && error.message && error.message.toLowerCase().includes('auth')) {
+      handleUnauthorized();
+    } else {
+      toast.error(error.message || 'An error occurred with friend connections');
+    }
   });
 
   // Reconnection handling
@@ -879,7 +896,7 @@ export const joinChannel = (channelId) => {
       console.log(`📡 Channel socket not connected, attempting to reconnect before joining channel ${channelId}`);
       
       // Check if authStore is available for reference
-      const authToken = localStorage.getItem('auth_token') || getTokenFromCookies();
+      const authToken = localStorage.getItem('auth_token') || getTokenFromStorage();
       
       if (!authToken) {
         console.error('❌ No auth token found for socket connection');

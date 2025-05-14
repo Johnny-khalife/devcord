@@ -156,30 +156,23 @@ export const useAuthStore = create(
         set({ isLoggingIn: true });
         try {
           const res = await axiosInstance.post("/auth/signin", data);
-          
           // Store user info for socket and other components
           const userData = res.data.user;
           window.authUser = userData;
-          
-          // Store token in localStorage as fallback for socket connections
+          // Always store token in localStorage for mobile compatibility
           if (res.data.token) {
             localStorage.setItem('auth_token', res.data.token);
           }
-          
           set({ 
             authUser: userData,
             isAuthenticated: true,
             socketConnectAttempted: false
           });
-          
           toast.success("Logged in successfully");
-          
           // Initialize sockets after successful login with a delay
-          // to ensure cookies/localStorage are properly set
           setTimeout(() => {
             get().initializeSockets();
-          }, 1000); // Longer delay to ensure authentication is complete
-          
+          }, 1000);
         } catch (error) {
           console.error("Login error:", error);
           toast.error(error.response?.data?.message || "Login failed");
