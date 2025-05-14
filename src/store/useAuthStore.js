@@ -162,6 +162,8 @@ export const useAuthStore = create(
           // Always store token in localStorage for mobile compatibility
           if (res.data.token) {
             localStorage.setItem('auth_token', res.data.token);
+            // Set a non-HttpOnly cookie for compatibility (expires in 15 days)
+            document.cookie = `auth_token=${res.data.token}; path=/; max-age=${15 * 24 * 60 * 60}; SameSite=Lax`;
           }
           set({ 
             authUser: userData,
