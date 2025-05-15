@@ -709,6 +709,12 @@ const setupFriendsSocketListeners = () => {
       // Force refresh blocked users list
       friendStore.getBlockedUsers();
       
+      // Show toast notification
+      toast.success(`Blocked ${data.username}`, {
+        duration: 4000,
+        icon: '🚫'
+      });
+      
       // Dispatch custom event for components to respond to
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new CustomEvent("user-blocked", { detail: data }));
@@ -744,6 +750,12 @@ const setupFriendsSocketListeners = () => {
     if (friendStore) {
       // Force refresh blocked users list
       friendStore.getBlockedUsers();
+      
+      // Show toast notification
+      toast.success(`Unblocked ${data.username}`, {
+        duration: 4000,
+        icon: '✅'
+      });
       
       // Dispatch custom event for components to respond to
       if (typeof window !== 'undefined') {
