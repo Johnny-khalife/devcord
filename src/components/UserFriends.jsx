@@ -58,7 +58,10 @@ const UserFriends = () => {
         // Convert array to object for easier lookup
         const unreadMessagesMap = {};
         response.data.data.forEach(item => {
-          unreadMessagesMap[item.sender.id] = item.count;
+          // Only add to map if count is greater than 0
+          if (item.count > 0) {
+            unreadMessagesMap[item.sender.id] = item.count;
+          }
         });
         setUnreadMessages(unreadMessagesMap);
         console.log("Fetched unread messages:", unreadMessagesMap);
