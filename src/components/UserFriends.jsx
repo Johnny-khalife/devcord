@@ -20,6 +20,8 @@ import { useChatStore } from "../store/useChatStore";
 import SidebarSkeleton from "./skeletons/SidebarSkeleton";
 import SearchFriendsPortal from "./SearchFriendsPortal";
 import { toast } from "react-hot-toast";
+import { axiosInstance } from "../lib/axios";
+import { markMessagesAsRead } from "../lib/socket";
 
 const UserFriends = () => {
   // State management
@@ -31,8 +33,12 @@ const UserFriends = () => {
   const [showBlockModal, setShowBlockModal] = useState(false);
   const [showBlockedUsersModal, setShowBlockedUsersModal] = useState(false);
   const [userToBlock, setUserToBlock] = useState(null);
+  const [unreadMessages, setUnreadMessages] = useState({});
   const { setSelectedFriend: chatSetSelectedFriend } = useChatStore();
   const navigate = useNavigate();
+
+  // Get socket from auth store
+  const { socket } = useAuthStore();
 
   // Responsive state
   const [isMobile, setIsMobile] = useState(false);
@@ -43,6 +49,113 @@ const UserFriends = () => {
   const [filteredFriends, setFilteredFriends] = useState([]);
   const [filteredRequests, setFilteredRequests] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
+
+  // Get unread messages count
+  const fetchUnreadMessages = useCallback(async () => {
+    try {
+      const response = await axiosInstance.get("/direct-messages/unread");
+      if (response.data.success) {
+        // Convert array to object for easier lookup
+        const unreadMessagesMap = {};
+        response.data.data.forEach(item => {
+          unreadMessagesMap[item.sender.id] = item.count;
+        });
+        setUnreadMessages(unreadMessagesMap);
+        console.log("Fetched unread messages:", unreadMessagesMap);
+      }
+    } catch (error) {
+      console.error("Error fetching unread messages:", error);
+    }
+  }, []);
+
+  // Mark messages from a friend as read
+  const markMessagesAsReadHandler = useCallback(async (friendId) => {
+    try {
+      await axiosInstance.patch(`/direct-messages/read/${friendId}`);
+      // Update local state to remove dot indicator
+      setUnreadMessages(prev => {
+        const updated = { ...prev };
+        delete updated[friendId];
+        return updated;
+      });
+      // Also notify via socket
+      if (socket?.dm) {
+        markMessagesAsRead(friendId);
+      }
+    } catch (error) {
+      console.error("Error marking messages as read:", error);
+    }
+  }, [socket?.dm]);
+
+  // Handle direct message socket events
+  useEffect(() => {
+    if (!socket?.dm) return;
+
+    const dmSocket = socket.dm;
+    
+    // Socket event handler for receiving direct messages
+    const handleReceiveDirectMessage = (data) => {
+      console.log("Socket received direct message:", data);
+      // Add this friend to unread messages if message not from current user
+      const authUser = JSON.parse(localStorage.getItem('auth-store'))?.state?.authUser;
+      if (data.senderId !== authUser?._id) {
+        // If not the currently selected friend, mark as unread
+        if (data.senderId !== activeFriend) {
+          setUnreadMessages(prev => ({
+            ...prev,
+            [data.senderId]: (prev[data.senderId] || 0) + 1
+          }));
+          console.log(`Added unread message for friend ${data.senderId}`);
+        }
+      }
+    };
+
+    // Socket event handler for messages being read
+    const handleMessagesRead = (data) => {
+      console.log("Socket received messages read event:", data);
+      // Update local state if this is for messages we sent
+      if (data.senderId === activeFriend) {
+        // Messages from active friend were read
+        setUnreadMessages(prev => {
+          const updated = { ...prev };
+          delete updated[data.senderId];
+          return updated;
+        });
+      }
+    };
+    
+    // Register socket event handlers
+    dmSocket.on('receiveDirectMessage', handleReceiveDirectMessage);
+    dmSocket.on('messagesRead', handleMessagesRead);
+    
+    // Clean up event listeners
+    return () => {
+      dmSocket.off('receiveDirectMessage', handleReceiveDirectMessage);
+      dmSocket.off('messagesRead', handleMessagesRead);
+    };
+  }, [socket?.dm, activeFriend]);
+
+  // Listen for the chat close event from ChatBox
+  useEffect(() => {
+    // Handle when user clicks X to close the chat in ChatBox
+    const handleDmChatClosed = (event) => {
+      const { friendId } = event.detail;
+      console.log(`Chat closed with friend ${friendId}`);
+      
+      // Reset the active friend to null
+      setActiveFriend(null);
+      // Make sure the chat store also knows no friend is selected
+      chatSetSelectedFriend(null);
+    };
+    
+    // Add event listener
+    window.addEventListener("dm-chat-closed", handleDmChatClosed);
+    
+    // Clean up
+    return () => {
+      window.removeEventListener("dm-chat-closed", handleDmChatClosed);
+    };
+  }, [chatSetSelectedFriend]);
 
   // Check screen size
   useEffect(() => {
@@ -145,6 +258,8 @@ const UserFriends = () => {
     const loadData = async () => {
       // Force refresh data to ensure it's up-to-date
       await forceRefresh();
+      // Fetch unread message counts
+      await fetchUnreadMessages();
     };
 
     loadData();
@@ -158,6 +273,13 @@ const UserFriends = () => {
     const handleFriendUpdated = () => {
       forceRefresh();
     };
+    
+    // Setup event listener for new messages
+    const handleNewMessage = () => {
+      // We no longer need this as we have direct socket integration now
+      // But we'll keep it as a fallback
+      fetchUnreadMessages();
+    };
 
     // Listen for custom events that may occur from socket operations
     window.addEventListener("friend-added", handleFriendUpdated);
@@ -165,6 +287,7 @@ const UserFriends = () => {
     window.addEventListener("friend-request-accepted", handleFriendUpdated);
     window.addEventListener("friend-request-declined", handleFriendUpdated);
     window.addEventListener("new-friend-request", handleFriendUpdated);
+    window.addEventListener("new-message", handleNewMessage);
 
     // Clean up event listeners
     return () => {
@@ -173,8 +296,9 @@ const UserFriends = () => {
       window.removeEventListener("friend-request-accepted", handleFriendUpdated);
       window.removeEventListener("friend-request-declined", handleFriendUpdated);
       window.removeEventListener("new-friend-request", handleFriendUpdated);
+      window.removeEventListener("new-message", handleNewMessage);
     };
-  }, [forceRefresh]);
+  }, [forceRefresh, fetchUnreadMessages]);
 
   // Update filtered friends and requests when data or search query changes
   useEffect(() => {
@@ -278,6 +402,12 @@ const UserFriends = () => {
   const selectedFriendWhenClick = ({ id, friend }) => {
     setActiveFriend(id);
     chatSetSelectedFriend(friend);
+    
+    // Mark messages as read when entering the chat
+    if (unreadMessages[id]) {
+      markMessagesAsReadHandler(id);
+    }
+    
     if (isMobile) {
       setIsUserFriendsSidebarOpen(false);
     }
@@ -343,7 +473,12 @@ const UserFriends = () => {
                       />
                     )}
                   </div>
-                  <span className="text-sm">{friend.username}</span>
+                  <div className="flex items-center">
+                    {unreadMessages[friend.friendId] > 0 && (
+                      <span className="mr-1.5 w-2 h-2 bg-primary rounded-full flex-shrink-0"></span>
+                    )}
+                    <span className="text-sm">{friend.username}</span>
+                  </div>
                 </button>
                 <div className="relative">
                   <button

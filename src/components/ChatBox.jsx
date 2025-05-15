@@ -51,6 +51,11 @@ const ChatBox = ({ activeNavItem, isMobile }) => {
     if (activeNavItem === "users" && selectedFriend) {
       setShowChat(false);
       setSelectedFriend(null);
+      
+      // Dispatch a custom event that UserFriends component can listen for
+      window.dispatchEvent(new CustomEvent("dm-chat-closed", { 
+        detail: { friendId: selectedFriend.friendId }
+      }));
     }
   };
 
