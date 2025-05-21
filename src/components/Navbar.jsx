@@ -131,7 +131,7 @@ const Navbar = () => {
           )}
 
           {/* Mobile Navigation */}
-          {isMobile && (
+          {isMobile && authUser && (
             <div className="relative" ref={mobileMenuRef}>
               <button 
                 onClick={toggleMobileMenu}
@@ -144,7 +144,7 @@ const Navbar = () => {
                   <Menu className="w-5 h-5" />
                 )}
               </button>
-
+               
               {/* Mobile Menu Dropdown */}
               {showMobileMenu && (
                 <div className="absolute right-0 top-full mt-2 w-48 rounded-lg shadow-lg bg-base-100 border border-base-300 overflow-hidden transition-all transform origin-top-right z-50">
@@ -212,6 +212,11 @@ const Navbar = () => {
                 </div>
               )}
             </div>
+          )}
+           {!authUser && isMobile && (
+            <Link to={"/settings"} className="btn btn-sm gap-2">
+                <Settings className="w-5 h-5 text-primary" />
+            </Link>
           )}
         </div>
       </div>
