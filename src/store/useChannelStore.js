@@ -11,8 +11,8 @@ export const useChannelStore = create(
       // Method to create a new channel in a workspace
       createChannel: async (workspaceId, channelData) => {
         try {
-          console.log(channelData.allowedUsers)
-          console.log("it's the workspace id ",channelData)
+          
+          
           const response = await axiosInstance.post(`/workspace/channels/${workspaceId}`, channelData);
           if (response.data.success) {
             // Clear the cache for this workspace since we added a new channel
@@ -34,7 +34,7 @@ export const useChannelStore = create(
           // Check if we have cached channels for this workspace
           const { channelsCache } = get();
           if (!forceRefresh && channelsCache[workspaceId]) {
-            console.log("Using cached channels for workspace:", workspaceId);
+            
             return channelsCache[workspaceId];
           }
           

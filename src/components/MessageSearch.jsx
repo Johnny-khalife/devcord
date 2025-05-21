@@ -50,7 +50,7 @@ const MessageSearch = ({ channelId }) => {
   useEffect(() => {
     const handler = setTimeout(() => {
       if (query.trim() && effectiveChannelId) {
-        console.log("Searching messages with query:", query, "in channel:", effectiveChannelId);
+        
         searchMessages(effectiveChannelId, query, currentPage);
       } else if (!query.trim()) {
         clearSearch();
@@ -108,7 +108,7 @@ const MessageSearch = ({ channelId }) => {
         messageElement.classList.remove("bg-primary", "bg-opacity-10");
       }, 2000);
     } else {
-      console.error("Could not find message element with ID:", `message-${messageId}`);
+      
       toast.error("Could not locate this message in the current view");
     }
   };

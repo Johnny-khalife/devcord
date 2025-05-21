@@ -68,10 +68,10 @@ const HomePage = () => {
       try {
         // Fetch both owned and invited workspaces
         const ownedWorkspaces = await fetchUserWorkspaces();
-        console.log("Raw owned workspaces data:", ownedWorkspaces);
+        
         
         const joinedWorkspaces = await getUserWorkspaces();
-        console.log("Raw joined workspaces data:", joinedWorkspaces);
+        
         
         // Combine workspaces from both sources
         let allWorkspaces = [];
@@ -94,11 +94,11 @@ const HomePage = () => {
         // Process joined workspaces
         if (joinedWorkspaces && joinedWorkspaces.length > 0) {
           const formattedJoinedWorkspaces = joinedWorkspaces.map((ws, index) => {
-            console.log(`Processing joined workspace #${index}:`, ws);
+            
             
             // Extract role information directly from the API response
             const role = ws.role || "member";
-            console.log(`Role for workspace #${index}:`, role);
+            
             
             return {
               id: ws._id || ws.id,
@@ -112,17 +112,11 @@ const HomePage = () => {
             };
           });
           
-          console.log("Formatted joined workspaces:", formattedJoinedWorkspaces);
+          
           allWorkspaces = [...allWorkspaces, ...formattedJoinedWorkspaces];
         }
 
-        console.log("All workspaces after formatting:", allWorkspaces.map(ws => ({
-          id: ws.id,
-          name: ws.name,
-          role: ws.role,
-          isOwned: ws.isOwned,
-          isInvited: ws.isInvited
-        })));
+    
         
         setWorkspaces(allWorkspaces);
 
@@ -131,7 +125,7 @@ const HomePage = () => {
           setActiveWorkspace(allWorkspaces[0].id);
         }
       } catch (error) {
-        console.error("Failed to load workspaces:", error);
+        
       } finally {
         setIsLoading(false);
       }
@@ -171,7 +165,7 @@ const HomePage = () => {
                 _id: currentChannel._id
               };
               
-              console.log("Setting enriched channel from sync:", enrichedChannel);
+              
               setSelectedWorkspace(enrichedChannel);
               
               // Set selected channel in the chat store for proper message filtering
@@ -189,7 +183,7 @@ const HomePage = () => {
             useChatStore.getState().setSelectedChannel(null);
           }
         } catch (error) {
-          console.error("Error syncing selected workspace:", error);
+          
         }
       }
     };
@@ -268,7 +262,7 @@ const HomePage = () => {
           // Reinitialize socket connections for the new workspace
           try {
             const { reinitializeSocketConnections } = await import('../lib/socket');
-            await reinitializeSocketConnections();
+            reinitializeSocketConnections();
             
             // Wait briefly for socket reconnection
             setTimeout(async () => {
@@ -296,18 +290,18 @@ const HomePage = () => {
                 // Import and join the channel's socket room
                 const { joinChannel } = await import('../lib/socket');
                 joinChannel(defaultChannel._id);
-                console.log(`Joined default channel socket room: ${defaultChannel._id}`);
+                
                 
                 // Fetch initial empty messages
                 useChatStore.getState().getMessages(defaultChannel._id);
               }
             }, 1000);
           } catch (error) {
-            console.error("Error setting up new workspace:", error);
+            
           }
         }
       } catch (error) {
-        console.error("Failed to create workspace:", error);
+        
       } finally {
         setIsLoading(false);
       }

@@ -50,7 +50,7 @@ const DirectMessageSearch = ({ friendId }) => {
   useEffect(() => {
     const handler = setTimeout(() => {
       if (query.trim() && effectiveFriendId) {
-        console.log("Searching direct messages with query:", query, "with friend:", effectiveFriendId);
+        
         searchDirectMessages(effectiveFriendId, query, currentPage);
       } else if (!query.trim()) {
         clearSearch();
@@ -108,7 +108,7 @@ const DirectMessageSearch = ({ friendId }) => {
         messageElement.classList.remove("bg-primary", "bg-opacity-10");
       }, 2000);
     } else {
-      console.error("Could not find message element with ID:", `message-${messageId}`);
+      
       toast.error("Could not locate this message in the current view");
     }
   };

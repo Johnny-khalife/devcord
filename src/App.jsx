@@ -42,20 +42,20 @@ const App = () => {
   useEffect(() => {
     // Set up event handlers
     const onConnect = (socketType) => () => {
-      console.log(`${socketType} socket connected!`);
+      
     };
     
     const onDisconnect = (socketType) => (reason) => {
-      console.log(`${socketType} socket disconnected:`, reason);
+      
     };
     
     const onError = (socketType) => (error) => {
-      console.error(`${socketType} socket error:`, error);
+      
     };
     
     // DM socket event listeners
     if (socket?.dm) {
-      console.log("DM Socket status:", socket.dm.connected ? "Connected" : "Disconnected");
+      
       
       socket.dm.on("connect", onConnect("DM"));
       socket.dm.on("disconnect", onDisconnect("DM"));
@@ -64,7 +64,7 @@ const App = () => {
     
     // Channel socket event listeners
     if (socket?.channels) {
-      console.log("Channel Socket status:", socket.channels.connected ? "Connected" : "Disconnected");
+      
       
       socket.channels.on("connect", onConnect("Channel"));
       socket.channels.on("disconnect", onDisconnect("Channel"));
@@ -73,7 +73,7 @@ const App = () => {
     
     // Friends socket event listeners
     if (socket?.friends) {
-      console.log("Friends Socket status:", socket.friends.connected ? "Connected" : "Disconnected");
+      
       
       socket.friends.on("connect", onConnect("Friends"));
       socket.friends.on("disconnect", onDisconnect("Friends"));

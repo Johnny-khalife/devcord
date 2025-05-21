@@ -72,7 +72,7 @@ export function renderCodeBlock(code, language) {
         highlightedCode = hljs.highlightAuto(code).value;
       }
     } catch (error) {
-      console.error('Error highlighting code:', error);
+      
       // Fallback to plain text if highlighting fails
       highlightedCode = hljs.highlight(code, { language: 'plaintext' }).value;
     }

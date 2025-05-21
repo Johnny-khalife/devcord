@@ -131,7 +131,7 @@ const SearchFriendsPortal = ({ isOpen, onClose }) => {
           setSearchResults([]);
         }
       } catch (error) {
-        console.error('Error searching users:', error);
+        
         setSearchResults([]);
       } finally {
         setIsSearching(false);
@@ -165,7 +165,7 @@ const SearchFriendsPortal = ({ isOpen, onClose }) => {
       // Dispatch event for real-time updates
       window.dispatchEvent(new CustomEvent("friend-added"));
     } catch (error) {
-      console.error('Failed to send friend request:', error);
+      
     } finally {
       setIsActionLoading(false);
     }
@@ -182,7 +182,7 @@ const SearchFriendsPortal = ({ isOpen, onClose }) => {
       // Dispatch event for real-time updates
       window.dispatchEvent(new CustomEvent("friend-request-accepted"));
     } catch (error) {
-      console.error('Failed to accept friend request:', error);
+      
     } finally {
       setIsActionLoading(false);
     }
@@ -199,7 +199,7 @@ const SearchFriendsPortal = ({ isOpen, onClose }) => {
       // Dispatch event for real-time updates
       window.dispatchEvent(new CustomEvent("friend-request-declined"));
     } catch (error) {
-      console.error('Failed to decline friend request:', error);
+      
     } finally {
       setIsActionLoading(false);
     }

@@ -137,7 +137,7 @@ const SettingsPage = () => {
     }
 
     try {
-      console.log(deleteAccountPassword);
+      
       const success = await deleteAccount(deleteAccountPassword);
       if (success) {
         // Navigate to login page after successful deletion

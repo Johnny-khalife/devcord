@@ -93,7 +93,7 @@ export const useChatStore = create((set, get) => ({
          
         };
       });
-      console.log("directMessages", messagesData);
+      
       set({ 
         directMessages: processedMessages,
         messages: []
@@ -107,7 +107,7 @@ export const useChatStore = create((set, get) => ({
 
   sendMessage: async (messageData, workspaceId) => {
     if (!workspaceId) {
-      console.error("No workspace ID provided for channel message");
+      
       return;
     }
 
@@ -119,7 +119,7 @@ export const useChatStore = create((set, get) => ({
                       JSON.parse(localStorage.getItem('auth-store'))?.state?.authUser;
       
       if (!authUser) {
-        console.error("No authenticated user found for sending message");
+        
         toast.error("You must be logged in to send messages");
         set({ isSendingMessage: false });
         return;
@@ -155,7 +155,7 @@ export const useChatStore = create((set, get) => ({
         messages: [...state.messages, optimisticMessage]
       }));
       
-      console.log(`Sending message to channel ${channelId} in workspace ${workspaceId}`);
+      
       
       // Get socket from auth store
       const { socket } = useAuthStore.getState();
@@ -164,7 +164,7 @@ export const useChatStore = create((set, get) => ({
       let socketSent = false;
       
       if (socket && socket.channels && socket.channels.connected) {
-        console.log("Sending message via socket");
+        
         socketSent = sendChannelMessage(
           channelId,
           {
@@ -178,9 +178,9 @@ export const useChatStore = create((set, get) => ({
         
         // Use socketSent to avoid linter error
         if (!socketSent) {
-          console.log("Socket message might not have been sent, will mark as delivered anyway");
+          
         } else {
-          console.log("Message sent via socket successfully");
+          
         }
         
         // Socket handling will update the message via updateSentMessage when the server confirms
@@ -205,7 +205,7 @@ export const useChatStore = create((set, get) => ({
           });
         }, 3000);
       } else {
-        console.log("Socket not connected, using API");
+        
         
         // Fall back to API if socket isn't available
         // Prepare API request data
@@ -222,7 +222,7 @@ export const useChatStore = create((set, get) => ({
           apiMessageData
         );
         
-        console.log("API message response:", response.data);
+        
         
         if (response.data && response.data.data) {
           const serverData = response.data.data;
@@ -251,7 +251,7 @@ export const useChatStore = create((set, get) => ({
 
       set({ isSendingMessage: false });
     } catch (error) {
-      console.error("Failed to send message:", error);
+      
       
       // Remove the optimistic message on failure
       set((state) => ({
@@ -321,7 +321,7 @@ export const useChatStore = create((set, get) => ({
       );
       
       const newMessage = response.data.data;
-      console.log("Sending direct message with data:", newMessage);
+      
 
       // Replace the optimistic message with the real one, ensuring correct structure
       set((state) => ({
@@ -336,7 +336,7 @@ export const useChatStore = create((set, get) => ({
       
       return newMessage;
     } catch (error) {
-      console.error("Error in sendDirectMessage:", error);
+      
       if (error.response?.data?.message) {
         toast.error(error.response.data.message);
       } else {
@@ -369,17 +369,17 @@ export const useChatStore = create((set, get) => ({
           
           // Try socket approach first for channel messages
           if (deleteMessage(messageId, channelId)) {
-            console.log("Channel delete message sent via socket");
+            
           } else {
             // Fall back to API if socket approach fails
-            console.log("Channel socket approach failed, using API fallback");
+            
             await axiosInstance.delete(`/messages/${messageId}`);
             // Update state locally when using API
             get().removeChannelMessage(messageId);
           }
         } catch (err) {
           // Handle any socket-related errors
-          console.error("Channel socket error, falling back to API:", err);
+          
           await axiosInstance.delete(`/messages/${messageId}`);
           get().removeChannelMessage(messageId);
         }
@@ -391,23 +391,23 @@ export const useChatStore = create((set, get) => ({
           
           // Try socket approach first for direct messages
           if (deleteDirectMessage(messageId)) {
-            console.log("Direct message delete sent via socket");
+            
           } else {
             // Fall back to API if socket approach fails
-            console.log("Direct message socket approach failed, using API fallback");
+            
             await axiosInstance.delete(`/direct-messages/${messageId}`);
             // Update state locally when using API
             get().removeDirectMessage(messageId);
           }
         } catch (err) {
           // Handle any socket-related errors
-          console.error("Direct message socket error, falling back to API:", err);
+          
           await axiosInstance.delete(`/direct-messages/${messageId}`);
           get().removeDirectMessage(messageId);
         }
       }
     } catch (error) {
-      console.error("Failed to delete message:", error);
+      
       toast.error("Failed to delete message");
     } finally {
       set({ isDeletingMessage: false });
@@ -415,37 +415,37 @@ export const useChatStore = create((set, get) => ({
   },
   
   reactToMessage: async (messageId, emoji, channelId, userId) => {
-    console.log("reactToMessage called with:", { messageId, emoji, channelId, userId });
+    
     
     if (!messageId) {
-      console.error("Missing messageId in reactToMessage");
+      
       toast.error("Message ID is required");
       return;
     }
     
     if (!emoji) {
-      console.error("Missing emoji in reactToMessage");
+      
       toast.error("Emoji is required");
       return;
     }
     
     if (!channelId) {
-      console.error("Missing channelId in reactToMessage");
+      
       toast.error("Channel ID is required to add reactions");
       return;
     }
     
     if (!userId) {
-      console.error("Missing userId in reactToMessage");
+      
       toast.error("User not authenticated");
       return;
     }
     
     set({ isReacting: true });
     try {
-      console.log(`Sending reaction request for message ${messageId} in channel ${channelId}`);
+      
       const response = await axiosInstance.post(`/messages/${messageId}/react`, { emoji });
-      console.log("Reaction response:", response.data);
+      
       
       // Optimistic update - add/toggle user's reaction
       const { messages } = get();
@@ -523,8 +523,8 @@ export const useChatStore = create((set, get) => ({
       set({ messages: updatedMessages });
       
     } catch (error) {
-      console.error("Error reacting to message:", error);
-      console.error("Error details:", error.response?.data);
+      
+      
       toast.error(error.response?.data?.message || "Failed to add reaction");
       
       // Refresh messages from server if optimistic update failed
@@ -537,16 +537,16 @@ export const useChatStore = create((set, get) => ({
   },
   
   searchMessages: async (channelId, query, page = 1, limit = 20) => {
-    console.log("searchMessages called with:", { channelId, query, page, limit });
+    
     
     if (!channelId) {
-      console.error("Missing channelId in searchMessages");
+      
       toast.error("Channel ID is required to search messages");
       return;
     }
     
     if (!query || query.trim() === "") {
-      console.log("Empty query, clearing search results");
+      
       set({ 
         searchResults: [],
         searchQuery: "",
@@ -561,11 +561,11 @@ export const useChatStore = create((set, get) => ({
     });
     
     try {
-      console.log(`Sending search request for query "${query}" in channel ${channelId}`);
+      
       const response = await axiosInstance.get(`/messages/${channelId}/search`, {
         params: { query, page, limit }
       });
-      console.log("Search response:", response.data);
+      
       
       // Check if the response has the expected structure
       if (response.data && response.data.data) {
@@ -579,7 +579,7 @@ export const useChatStore = create((set, get) => ({
           )
         ) || [];
         
-        console.log(`Found ${availableMessages.length} valid search results out of ${messages?.length || 0}`);
+        
         set({ 
           searchResults: availableMessages,
           searchPagination: pagination ? {
@@ -588,7 +588,7 @@ export const useChatStore = create((set, get) => ({
           } : null
         });
       } else {
-        console.error("Unexpected search response format:", response.data);
+        
         set({ 
           searchResults: [],
           searchPagination: null
@@ -596,8 +596,8 @@ export const useChatStore = create((set, get) => ({
         toast.error("Invalid search response from server");
       }
     } catch (error) {
-      console.error("Error searching messages:", error);
-      console.error("Error details:", error.response?.data);
+      
+      
       toast.error(error.response?.data?.message || "Failed to search messages");
       
       set({ 
@@ -611,16 +611,16 @@ export const useChatStore = create((set, get) => ({
   
   // Add function to search direct messages
   searchDirectMessages: async (friendId, query, page = 1, limit = 20) => {
-    console.log("searchDirectMessages called with:", { friendId, query, page, limit });
+    
     
     if (!friendId) {
-      console.error("Missing friendId in searchDirectMessages");
+      
       toast.error("Friend ID is required to search direct messages");
       return;
     }
     
     if (!query || query.trim() === "") {
-      console.log("Empty query, clearing direct message search results");
+      
       set({ 
         directMessageSearchResults: [],
         directMessageSearchQuery: "",
@@ -635,11 +635,11 @@ export const useChatStore = create((set, get) => ({
     });
     
     try {
-      console.log(`Sending direct message search request for query "${query}" with friend ${friendId}`);
+      
       const response = await axiosInstance.get(`/direct-messages/search/${friendId}`, {
         params: { query, page, limit }
       });
-      console.log("Direct message search response:", response.data);
+      
       
       // Check if the response has the expected structure
       if (response.data && response.data.data) {
@@ -653,7 +653,7 @@ export const useChatStore = create((set, get) => ({
           )
         ) || [];
         
-        console.log(`Found ${availableMessages.length} valid direct message search results out of ${messages?.length || 0}`);
+        
         set({ 
           directMessageSearchResults: availableMessages,
           directMessageSearchPagination: pagination ? {
@@ -662,7 +662,7 @@ export const useChatStore = create((set, get) => ({
           } : null
         });
       } else {
-        console.error("Unexpected direct message search response format:", response.data);
+        
         set({ 
           directMessageSearchResults: [],
           directMessageSearchPagination: null
@@ -670,8 +670,8 @@ export const useChatStore = create((set, get) => ({
         toast.error("Invalid search response from server");
       }
     } catch (error) {
-      console.error("Error searching direct messages:", error);
-      console.error("Error details:", error.response?.data);
+      
+      
       toast.error(error.response?.data?.message || "Failed to search direct messages");
       
       set({ 
@@ -700,10 +700,10 @@ export const useChatStore = create((set, get) => ({
   
   // Add a direct message from socket or API
   addDirectMessage: (messageData) => {
-    console.log("Adding direct message to store:", messageData);
+    
     
     if (!messageData) {
-      console.error("Invalid message data received");
+      
       return;
     }
     
@@ -712,20 +712,14 @@ export const useChatStore = create((set, get) => ({
     const authUser = window.authUser || JSON.parse(localStorage.getItem('auth-store'))?.state?.authUser;
     
     if (!authUser) {
-      console.error("Cannot add message: No authenticated user found");
+      
       return;
     }
     
     // Get the sender ID from the message
     const senderId = messageData.sender?.userId || messageData.senderId;
     const isFromCurrentUser = senderId === authUser._id;
-    
-    console.log("Message sender check:", { 
-      senderId, 
-      currentUserId: authUser._id, 
-      isFromCurrentUser,
-      selectedFriendId: selectedFriend?.friendId
-    });
+
     
     // Only add messages that are related to the current chat
     const isRelevantToCurrentChat = selectedFriend && (
@@ -734,7 +728,7 @@ export const useChatStore = create((set, get) => ({
     );
     
     if (!isRelevantToCurrentChat && selectedFriend) {
-      console.log("Message not relevant to current chat, skipping");
+      
       return;
     }
     
@@ -766,11 +760,11 @@ export const useChatStore = create((set, get) => ({
     );
     
     if (messageExists) {
-      console.log("Message already exists in store, skipping", newMessage);
+      
       return;
     }
     
-    console.log("Adding new message to direct messages:", newMessage);
+    
     
     // Add the message to the store
     set({
@@ -780,7 +774,7 @@ export const useChatStore = create((set, get) => ({
   
   // Remove a direct message from the store
   removeDirectMessage: (messageId) => {
-    console.log("Marking direct message as deleted:", messageId);
+    
     const { directMessages } = get();
     
     // Update the message to be marked as deleted instead of removing it
@@ -854,10 +848,10 @@ export const useChatStore = create((set, get) => ({
 
   // Add a channel message received via socket
   addChannelMessage: (messageData) => {
-    console.log("Adding channel message to store:", messageData);
+    
     
     if (!messageData) {
-      console.error("Invalid channel message data received");
+      
       return;
     }
     
@@ -868,7 +862,7 @@ export const useChatStore = create((set, get) => ({
                      useAuthStore.getState().authUser;
     
     if (!authUser) {
-      console.error("Cannot add channel message: No authenticated user found");
+      
       return;
     }
     
@@ -881,7 +875,7 @@ export const useChatStore = create((set, get) => ({
     );
     
     if (msgExists) {
-      console.log("Channel message already exists in store, skipping");
+      
       return;
     }
     
@@ -911,20 +905,20 @@ export const useChatStore = create((set, get) => ({
       isSentByMe: isFromCurrentUser
     };
     
-    console.log("Adding formatted channel message:", newMessage);
+    
     
     // IMPORTANT: Only add messages that are for the currently selected channel
     // This prevents messages appearing in all channels
     const currentChannelId = selectedChannel?._id || selectedChannel?.channelId;
     
     if (newMessage.channelId === currentChannelId) {
-      console.log(`Message is for current channel ${currentChannelId}, adding to messages array`);
+      
       // Add to messages store for the current channel
       set({
         messages: [...messages, newMessage]
       });
     } else {
-      console.log(`Message is for channel ${newMessage.channelId} but current channel is ${currentChannelId}, not adding to messages array`);
+      
       // Don't add messages for other channels to the current view
     }
   },
@@ -1007,12 +1001,12 @@ export const useChatStore = create((set, get) => ({
 
   // Add, update or remove a reaction to/from a message
   updateMessageReactions: (messageId, reactions) => {
-    console.log(`Updating reactions for message ${messageId}:`, reactions);
+    
     const { messages, directMessages } = get();
     
     // First check if the message is in channel messages
     if (messages.some(msg => msg._id === messageId)) {
-      console.log("Updating reactions in channel messages");
+      
       set({
         messages: messages.map(msg => 
           msg._id === messageId ? { ...msg, reactions } : msg
@@ -1021,14 +1015,14 @@ export const useChatStore = create((set, get) => ({
     } 
     // Then check if it's in direct messages
     else if (directMessages.some(msg => msg._id === messageId)) {
-      console.log("Updating reactions in direct messages");
+      
       set({
         directMessages: directMessages.map(msg => 
           msg._id === messageId ? { ...msg, reactions } : msg
         )
       });
     } else {
-      console.log(`Message ${messageId} not found in state, can't update reactions`);
+      
     }
   },
   
@@ -1053,7 +1047,7 @@ export const useChatStore = create((set, get) => ({
       
       // No need to update state here as the socket event will trigger updateMessageReactions
     } catch (error) {
-      console.error("Failed to add reaction:", error);
+      
       toast.error("Failed to add reaction");
     } finally {
       set({ isReacting: false });

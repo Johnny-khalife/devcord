@@ -64,10 +64,10 @@ const UserFriends = () => {
           }
         });
         setUnreadMessages(unreadMessagesMap);
-        console.log("Fetched unread messages:", unreadMessagesMap);
+        
       }
     } catch (error) {
-      console.error("Error fetching unread messages:", error);
+      
     }
   }, []);
 
@@ -86,7 +86,7 @@ const UserFriends = () => {
         markMessagesAsRead(friendId);
       }
     } catch (error) {
-      console.error("Error marking messages as read:", error);
+      
     }
   }, [socket?.dm]);
 
@@ -98,7 +98,7 @@ const UserFriends = () => {
     
     // Socket event handler for receiving direct messages
     const handleReceiveDirectMessage = (data) => {
-      console.log("Socket received direct message:", data);
+      
       // Add this friend to unread messages if message not from current user
       const authUser = JSON.parse(localStorage.getItem('auth-store'))?.state?.authUser;
       if (data.senderId !== authUser?._id) {
@@ -108,14 +108,14 @@ const UserFriends = () => {
             ...prev,
             [data.senderId]: (prev[data.senderId] || 0) + 1
           }));
-          console.log(`Added unread message for friend ${data.senderId}`);
+          
         }
       }
     };
 
     // Socket event handler for messages being read
     const handleMessagesRead = (data) => {
-      console.log("Socket received messages read event:", data);
+      
       // Update local state if this is for messages we sent
       if (data.senderId === activeFriend) {
         // Messages from active friend were read
@@ -143,7 +143,7 @@ const UserFriends = () => {
     // Handle when user clicks X to close the chat in ChatBox
     const handleDmChatClosed = (event) => {
       const { friendId } = event.detail;
-      console.log(`Chat closed with friend ${friendId}`);
+      
       
       // Reset the active friend to null
       setActiveFriend(null);
@@ -251,7 +251,7 @@ const UserFriends = () => {
       setIsLoading(false);
     })
     .catch(error => {
-      console.error("Error refreshing friends data:", error);
+      
       setIsLoading(false);
     });
   }, [getFriendsList, getFriendRequests]);
@@ -354,7 +354,7 @@ const UserFriends = () => {
         setShowFriendActions(null);
         setIsLoading(false);
       } catch (error) {
-        console.error("Error removing friend:", error);
+        
         toast.error("Failed to remove friend. Please try again.");
         setIsLoading(false);
       }
@@ -545,7 +545,7 @@ const UserFriends = () => {
       toast.success("Friend request accepted");
     } catch (error) {
       toast.error("Failed to accept friend request");
-      console.error(error);
+      
     }
   };
 
@@ -555,7 +555,7 @@ const UserFriends = () => {
       toast.success("Friend request declined");
     } catch (error) {
       toast.error("Failed to decline friend request");
-      console.error(error);
+      
     }
   };
 

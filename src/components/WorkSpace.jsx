@@ -252,7 +252,7 @@ const WorkSpace = ({
   useState(false);
   const [isSendingFriendRequest, setIsSendingFriendRequest] = useState(false);
   
-  console.log("friends is jsdsd",friends);
+  
   // State for responsive design
   const [isMobile, setIsMobile] = useState(false);
   const [isWorkspaceSidebarOpen, setIsWorkspaceSidebarOpen] = useState(true);
@@ -308,12 +308,6 @@ const WorkSpace = ({
   const { getFriendsList } = useFriendStore();
   const { sendWorkspaceInvite } = useWorkspaceStore();
 
-  // Add this at the beginning of your component
-  console.log("Workspace component props:", {
-    activeWorkspace,
-    workspaces,
-    activeChannel,
-  });
 
   // Fetch friends list when component mounts or when activeWorkspace changes
   useEffect(() => {
@@ -353,17 +347,17 @@ const WorkSpace = ({
       try {
         // The fetchWorkspaceChannels function now handles caching internally
         const fetchedChannels = await fetchWorkspaceChannels(activeWorkspace);
-        console.log("Fetched channels:", fetchedChannels);
+        
         setChannels(fetchedChannels);
         
         // If there are no channels and there should be a default "general" channel, create it
         if (fetchedChannels.length === 0) {
-          console.log("No channels found in workspace, creating general channel...");
+          
           if (hasAdminPrivileges()) {
             try {
               await createDefaultChannel();
             } catch (error) {
-              console.error("Error creating default channel:", error);
+              
             }
           }
         }
@@ -371,7 +365,7 @@ const WorkSpace = ({
         // Don't automatically set activeChannel - let the user click a channel first
         // This ensures the "No channel selected" state is shown
       } catch (error) {
-        console.error("Failed to load workspace channels:", error);
+        
         toast.error("Failed to load workspace channels");
       } finally {
         setIsChannelsLoading(false);
@@ -384,7 +378,7 @@ const WorkSpace = ({
   }, [activeWorkspace, channelsCache]);
 
   useEffect(() => {
-    console.log("Current user:", currentUser);
+    
   }, [currentUser]);
 
   // Update the workspace members loading effect
@@ -403,7 +397,7 @@ const WorkSpace = ({
         const members = await getWorkspaceMembers(activeWorkspace);
         setWorkspaceMembers(members);
       } catch (error) {
-        console.error("Error fetching workspace members:", error);
+        
       } finally {
         setIsWorkspaceMembersLoading(false);
       }
@@ -420,7 +414,7 @@ const WorkSpace = ({
 // In WorkSpace.jsx, update the selectedWorkspaceWhenClick function
 // In WorkSpace.jsx, update the handleChannelClick function
 const handleChannelClick = async (channel) => {
-  console.log("Channel clicked:", channel);
+  
   setActiveChannel(channel._id);
   
   // Close the workspace sidebar on mobile when selecting a channel
@@ -438,7 +432,7 @@ const handleChannelClick = async (channel) => {
     _id: channel._id
   };
   
-  console.log("Setting enriched channel as selected workspace:", enrichedChannel);
+  
   setSelectedWorkspace(enrichedChannel);
   
   try {
@@ -451,7 +445,7 @@ const handleChannelClick = async (channel) => {
     // Fetch messages for this channel
     useChatStore.getState().getMessages(channel._id);
   } catch (error) {
-    console.error("Error switching channels:", error);
+    
     
     // Fallback to old method
     useChatStore.getState().setSelectedChannel(enrichedChannel);
@@ -483,12 +477,7 @@ const handleChannelClick = async (channel) => {
         return;
       }
 
-      // Add logging to see what's being sent
-      console.log("Creating channel with data:", {
-        channelName,
-        isPrivate: isPrivateChannel,
-        allowedUsers: isPrivateChannel ? selectedChannelUsers : [],
-      });
+   
 
       const newChannel = await createChannel(activeWorkspace, {
         channelName,
@@ -521,7 +510,7 @@ const handleChannelClick = async (channel) => {
       setTimeout(async () => {
         // Join the socket room for this new channel
         joinChannel(newChannel._id);
-        console.log(`Joined new channel socket room: ${newChannel._id}`);
+        
         
         // Fetch empty messages for this new channel
         useChatStore.getState().getMessages(newChannel._id);
@@ -530,7 +519,7 @@ const handleChannelClick = async (channel) => {
       // Reset channel creation states
       resetChannelCreation();
     } catch (error) {
-      console.error("Failed to create channel:", error);
+      
       toast.error("Failed to create channel");
     }
   };
@@ -543,7 +532,7 @@ const handleChannelClick = async (channel) => {
   };
 
   const resetChannelCreation = () => {
-    console.log("Resetting channel creation");
+    
     setShowChannelUserSelector(false);
     setChannelName("");
     setIsPrivateChannel(false);
@@ -552,7 +541,7 @@ const handleChannelClick = async (channel) => {
 
   // Add useEffect to monitor modal state
   useEffect(() => {
-    console.log("Channel creation modal state:", showChannelUserSelector);
+    
   }, [showChannelUserSelector]);
 
   // Delete a channel
@@ -581,7 +570,7 @@ const handleChannelClick = async (channel) => {
         setActiveChannel(null);
       }
     } catch (error) {
-      console.error("Failed to delete channel:", error);
+      
     }
   };
 
@@ -614,7 +603,7 @@ const handleChannelClick = async (channel) => {
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                console.log("Opening channel creation modal from empty state");
+                
                 setShowChannelUserSelector(true);
               }}
               className="px-4 py-2 bg-primary hover:bg-primary/90 text-primary-content rounded-lg transition-colors flex items-center gap-2 mx-auto"
@@ -637,7 +626,7 @@ const handleChannelClick = async (channel) => {
             <button
               className="p-1 hover:bg-base-300 rounded transition-colors text-base-content/70 hover:text-base-content"
               onClick={() => {
-                console.log("Opening channel creation modal from header");
+                
                 setShowChannelUserSelector(true);
               }}
               title="Add Channel"
@@ -686,7 +675,7 @@ const handleChannelClick = async (channel) => {
 
   // Toggle friend selection
   const toggleFriendSelection = (friendId) => {
-    console.log("tony", friends);
+    
     if (selectedFriends.includes(friendId)) {
       setSelectedFriends(selectedFriends.filter((id) => id !== friendId));
     } else {
@@ -718,16 +707,13 @@ const handleChannelClick = async (channel) => {
 
     // If not found, return a default object with null values to prevent undefined errors
     if (!workspace) {
-      console.warn(
-        "Active workspace not found in workspaces array:",
-        activeWorkspace
-      );
+      
       return { id: null, name: "No Workspace", description: "", channels: [] };
     }
 
     // Make sure name property exists
     if (!workspace.name) {
-      console.warn("Workspace missing name property:", workspace);
+      
       return { ...workspace, name: "Unnamed Workspace" };
     }
 
@@ -736,16 +722,11 @@ const handleChannelClick = async (channel) => {
 
   // Add at the beginning of your component
   useEffect(() => {
-    console.log("Workspaces in WorkSpace component:", workspaces);
+    
     // Check if all workspaces have a name property
     if (workspaces && workspaces.length > 0) {
       const missingNames = workspaces.filter((ws) => !ws || !ws.name);
-      if (missingNames.length > 0) {
-        console.warn(
-          "Some workspaces are missing the name property:",
-          missingNames
-        );
-      }
+     
     }
   }, [workspaces]);
 
@@ -768,7 +749,7 @@ const handleChannelClick = async (channel) => {
       setWorkspaceMembers(members);
       setShowMembersModal(true);
     } catch (error) {
-      console.error("Failed to fetch workspace members:", error);
+      
       toast.error("Failed to load workspace members");
     } finally {
       setIsWorkspaceMembersLoading(false);
@@ -802,7 +783,7 @@ const handleChannelClick = async (channel) => {
       // Clear selection
       setSelectedMembers([]);
     } catch (error) {
-      console.error("Failed to toggle admin roles:", error);
+      
     } finally {
       setIsPromotingAdmin(false);
     }
@@ -859,7 +840,7 @@ const handleChannelClick = async (channel) => {
 
       setMemberToRemove(null);
     } catch (error) {
-      console.error("Failed to remove member:", error);
+      
     } finally {
       setIsRemovingMember(false);
     }
@@ -875,7 +856,7 @@ const handleChannelClick = async (channel) => {
       await sendFriendRequest(member.id);
       toast.success(`Friend request sent to ${member.username}`);
     } catch (error) {
-      console.error("Failed to send friend request:", error);
+      
     } finally {
       setIsSendingFriendRequest(false);
     }
@@ -889,7 +870,7 @@ const handleChannelClick = async (channel) => {
 
   // Add this function near the top of the WorkSpace component where other imports and functions are defined
   const handleWorkspaceSwitch = async (workspaceId) => {
-    console.log(`Switching to workspace: ${workspaceId}`);
+    
     setActiveWorkspace(workspaceId);
     setShowWorkspaceMenu(false);
     
@@ -903,7 +884,7 @@ const handleChannelClick = async (channel) => {
     try {
       const { reinitializeSocketConnections, joinAllWorkspaceChannels } = await import('../lib/socket');
       await reinitializeSocketConnections();
-      console.log("Socket connections reinitialized for workspace switch");
+      
       
       // Wait a moment for the socket connections to stabilize
       setTimeout(async () => {
@@ -913,7 +894,7 @@ const handleChannelClick = async (channel) => {
         // Fetch channels for this workspace but don't select any
         try {
           const workspaceChannels = await fetchWorkspaceChannels(workspaceId);
-          console.log(`Fetched ${workspaceChannels.length} channels for workspace ${workspaceId}`);
+          
           
           // Join each channel specifically
           if (workspaceChannels && workspaceChannels.length > 0) {
@@ -922,24 +903,24 @@ const handleChannelClick = async (channel) => {
             // Join each channel
             workspaceChannels.forEach(channel => {
               joinChannel(channel._id);
-              console.log(`Explicitly joined channel: ${channel._id}`);
+              
             });
             
             // Don't automatically select any channel
             // This ensures the "No channel selected" state is shown
           }
         } catch (error) {
-          console.error(`Error fetching channels for workspace ${workspaceId}:`, error);
+          
         }
       }, 1000);
     } catch (error) {
-      console.error("Error reinitializing sockets for workspace switch:", error);
+      
     }
   };
 
   // Function to handle refreshing workspaces and channels
   const refreshWorkspaces = async () => {
-    console.log("Refreshing workspaces and channels");
+    
     
     try {
       // Show loading toast
@@ -947,7 +928,7 @@ const handleChannelClick = async (channel) => {
       
       // First, refresh the workspaces list from the server
       const refreshedWorkspaces = await forceRefresh();
-      console.log("Refreshed workspaces:", refreshedWorkspaces);
+      
       
       // Update the parent component's workspaces state with the refreshed data
       if (refreshedWorkspaces && refreshedWorkspaces.length > 0) {
@@ -971,10 +952,10 @@ const handleChannelClick = async (channel) => {
         try {
           // Force refresh channels by passing true to skip cache
           const refreshedChannels = await fetchWorkspaceChannels(activeWorkspace, true);
-          console.log("Refreshed channels:", refreshedChannels);
+          
           setChannels(refreshedChannels);
         } catch (error) {
-          console.error("Error refreshing channels:", error);
+          
           toast.error("Failed to refresh channels");
         } finally {
           setIsChannelsLoading(false);
@@ -984,7 +965,7 @@ const handleChannelClick = async (channel) => {
       // Success toast
       toast.success("Refresh complete", { id: toastId });
     } catch (error) {
-      console.error("Error during refresh:", error);
+      
       toast.error("Failed to refresh");
     }
   };

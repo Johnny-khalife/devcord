@@ -12,8 +12,6 @@ import { useAuthStore } from "../store/useAuthStore";
 import MessageSkeleton from "./skeletons/MessageSkeleton";
 import { markMessagesAsRead } from "../lib/socket";
 
-// Common emoji reactions
-const COMMON_EMOJIS = ["👍", "❤️", "😂", "😮", "😢", "👏", "🔥", "🎉", "👎", "🤔"];
 
 const ChatBox = ({ activeNavItem, isMobile }) => {
   const messageEndRef = useRef(null);

@@ -241,7 +241,7 @@ const FriendProfilePage = () => {
       toast.success(`${friendProfile.username} has been blocked`);
       setShowBlockModal(false);
     } catch (error) {
-      console.error("Failed to block user:", error);
+      
       toast.error("Failed to block user");
     } finally {
       setActionLoading(false);
@@ -256,7 +256,7 @@ const FriendProfilePage = () => {
       setIsBlocked(false);
       toast.success(`${friendProfile.username} has been unblocked`);
     } catch (error) {
-      console.error("Failed to unblock user:", error);
+      
       toast.error("Failed to unblock user");
     } finally {
       setActionLoading(false);

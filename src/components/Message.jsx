@@ -51,16 +51,6 @@ const DirectMessage = ({ message, firstInGroup }) => {
   const senderId = message.senderId || message.sender?.userId;
   const isCurrentUser = isSentByMe || (authUser && senderId === authUser._id);
 
-  console.log("DirectMessage rendering:", {
-    messageId: message._id,
-    isCurrentUser,
-    isSentByMe: message.isSentByMe,
-    senderId,
-    authUserId: authUser?._id,
-    content: message.content,
-    image: message.image,
-    isDeleted: message.isDeleted,
-  });
 
   // Handle delete direct message
   const handleDeleteMessage = async () => {
@@ -71,7 +61,7 @@ const DirectMessage = ({ message, firstInGroup }) => {
     try {
       await deleteMessage(message._id, null, true);
     } catch (error) {
-      console.error("Error deleting message:", error);
+      
       toast.error(
         "Failed to delete message: " + (error.message || "Unknown error")
       );
@@ -393,16 +383,7 @@ const ChannelMessage = ({ message, firstInGroup }) => {
 
   const senderInfo = getSenderInfo();
 
-  console.log("ChannelMessage rendering:", {
-    messageId: message._id,
-    userId: message.userId,
-    senderId: message.senderId,
-    sender: message.sender,
-    authUserId: authUser?._id,
-    isCurrentUser,
-    senderInfo,
-    content: message.content,
-  });
+
 
   // Handle message deletion using real-time socket function
   const handleDeleteMessage = async () => {
@@ -424,7 +405,7 @@ const ChannelMessage = ({ message, firstInGroup }) => {
 
       // No need for toast notification as the UI will update via socket event
     } catch (error) {
-      console.error("Error deleting message:", error);
+      
       toast.error("Failed to delete message");
     }
   };
@@ -461,7 +442,7 @@ const ChannelMessage = ({ message, firstInGroup }) => {
 
       // No need for toast or local state update as the UI will update via socket event
     } catch (error) {
-      console.error("Error adding reaction:", error);
+      
       toast.error("Failed to add reaction");
     }
   };
@@ -813,12 +794,12 @@ const ChannelMessage = ({ message, firstInGroup }) => {
           <div className="mt-1 flex flex-wrap gap-1">
             {message.reactions.map((reaction, index) => {
               // Log reaction data to help debugging
-              console.log(`Rendering reaction ${index}:`, reaction);
+              
 
               // Get the emoji (handle different formats)
               const emoji = reaction.emoji || reaction.reaction;
               if (!emoji) {
-                console.error("Missing emoji in reaction:", reaction);
+                
                 return null;
               }
 
@@ -882,16 +863,7 @@ const Message = ({ message, activeNavItem, firstInGroup }) => {
       : null) ||
     message.userId?.username;
 
-  // Log message details to debug
-  console.log("Message component rendering:", {
-    id: message._id,
-    content: message.content || message.message,
-    sender: senderName,
-    senderId,
-    authUserId: authUser?._id,
-    isSentByMe: message.isSentByMe,
-    activeNavItem,
-  });
+
 
   // If message is optimistic and lacks proper ID structure, use default values
   const processedMessage = {

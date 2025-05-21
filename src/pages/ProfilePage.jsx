@@ -225,7 +225,7 @@ const ProfilePage = () => {
         useAuthStore.setState({ authUser: updatedUser });
       }
     } catch (error) {
-      console.error("Error resetting avatar:", error);
+      
     }
   };
 

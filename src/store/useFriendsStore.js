@@ -132,10 +132,10 @@ export const useFriendStore = create(
         
         set({ isLoading: true });
         try {
-          console.log("getFriendsList is called", get().friends);	
+          	
           const response = await axiosInstance.get("/friends");
           set({ friends: response.data.data, isLoading: false, dataLoaded: true });
-          console.log(response.data);
+          
           return response.data.data;
         } catch (error) {
           set({ error: error.response?.data?.message || "Failed to fetch friends list", isLoading: false });
@@ -185,16 +185,16 @@ export const useFriendStore = create(
           try {
             if (typeof window !== 'undefined' && window.socket && window.socket.friends) {
               window.socket.friends.emit('removeFriend', { friendId: userId });
-              console.log('Emitted removeFriend socket event for:', userId);
+              
             }
           } catch (socketError) {
-            console.error('Error emitting socket event:', socketError);
+            
           }
           
       
           return response.data;
         } catch (error) {
-          console.error("Error removing friend:", error);
+          
           // Revert the optimistic update on error
           await get().getFriendsList(true);
           set({ error: error.response?.data?.message || "Failed to remove friend", isLoading: false });
@@ -220,10 +220,10 @@ export const useFriendStore = create(
           try {
             if (typeof window !== 'undefined' && window.socket && window.socket.friends) {
               window.socket.friends.emit('blockUser', { blockedId: userId });
-              console.log('Emitted blockUser socket event for:', userId);
+              
             }
           } catch (socketError) {
-            console.error('Error emitting socket event:', socketError);
+            
           }
           
           // Refresh blocked users list
@@ -269,10 +269,10 @@ export const useFriendStore = create(
           try {
             if (typeof window !== 'undefined' && window.socket && window.socket.friends) {
               window.socket.friends.emit('unblockUser', { unblockedId: userId });
-              console.log('Emitted unblockUser socket event for:', userId);
+              
             }
           } catch (socketError) {
-            console.error('Error emitting socket event:', socketError);
+            
           }
           
           // Update the blockedUsers list to remove the unblocked user
@@ -330,7 +330,7 @@ export const useFriendStore = create(
           // We'll no longer try to set socket store references here
           // This will be handled by the auth store
         } catch (error) {
-          console.error("Failed to initialize friend store:", error);
+          
         }
       },
 
@@ -356,7 +356,7 @@ export const useFriendStore = create(
       // Add a new friend request received via socket
       addFriendRequest: (requestData) => {
         if (!requestData || !requestData.sender) {
-          console.error("Invalid friend request data", requestData);
+          
           return;
         }
         
@@ -369,7 +369,7 @@ export const useFriendStore = create(
         );
         
         if (alreadyExists) {
-          console.log("Friend request already exists, not adding duplicate");
+          
           return;
         }
         

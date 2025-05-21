@@ -21,7 +21,7 @@ const CodePlayground = () => {
   // Initial code states
   const initialHtmlCode = '<!-- Enter HTML here -->\n<h1>Welcome to Devcord!</h1>\n<p>Start coding to see the preview</p>';
   const initialCssCode = '/* Enter CSS here */\nbody {\n  font-family: system-ui, sans-serif;\n  color: #333;\n  padding: 2rem;\n}\n\nh1 {\n  color: #2563eb;\n}';
-  const initialJsCode = '// Enter JavaScript here\nconsole.log("Hello from Devcord Code Playground!");\n\n// Example: Add a click event\ndocument.addEventListener("DOMContentLoaded", () => {\n  const heading = document.querySelector("h1");\n  if (heading) {\n    heading.addEventListener("click", () => {\n      heading.style.color = "#" + Math.floor(Math.random()*16777215).toString(16);\n    });\n  }\n});';
+  const initialJsCode = '// Enter JavaScript here\n';
   
   // State for code editors
   const [htmlCode, setHtmlCode] = useState(initialHtmlCode);
@@ -107,7 +107,7 @@ const CodePlayground = () => {
           setChannels(channelsList || []);
           setSelectedChannelId(''); // Reset channel selection when workspace changes
         } catch (error) {
-          console.error('Error fetching channels:', error);
+          
           toast.error('Failed to load channels');
         }
       }
@@ -239,7 +239,7 @@ ${jsCode}
       setSelectedWorkspaceId('');
       setSelectedChannelId('');
     } catch (error) {
-      console.error('Error sharing code snippet:', error);
+      
       toast.error('Failed to share code snippet. Please try again.');
     }
   };
@@ -289,7 +289,7 @@ ${jsCode}
       
       toast.success('Code imported successfully!');
     } catch (error) {
-      console.error('Error importing code:', error);
+      
       toast.error('Failed to import code');
     }
   };

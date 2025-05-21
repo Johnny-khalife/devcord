@@ -46,7 +46,7 @@ export const useWorkspaceStore = create(
           try {
             await get().getUserWorkspaces();
           } catch (refreshError) {
-            console.error("Error refreshing workspaces after deletion:", refreshError);
+            
             // Continue with success flow even if refresh fails
           }
           
@@ -54,7 +54,7 @@ export const useWorkspaceStore = create(
         } catch (error) {
           const errorMessage = error.response?.data?.message || "Failed to delete workspace";
           toast.error(errorMessage);
-          console.log(error.response);
+          
           throw error;
         } finally {
           setIsLoading(false);
@@ -84,12 +84,12 @@ export const useWorkspaceStore = create(
       leaveWorkspace: async (workspaceId, setIsLoading, onWorkspaceUpdated, onClose) => {
         setIsLoading(true);
         try {
-          await axiosInstance.post(`/api/workspaces/${workspaceId}/leave`);
+          await axiosInstance.post(`/workspaces/${workspaceId}/leave`);
           if (onWorkspaceUpdated) onWorkspaceUpdated(workspaceId, null, 'leave');
           if (onClose) onClose();
           toast.success("You have left the workspace");
         } catch (error) {
-          const errorMessage = error.response?.data?.message || "Failed to leave workspace";
+          const errorMessage = error.response?.data?.messsage || "Failed to leave workspace";
           toast.error(errorMessage);
           throw error;
         } finally {
@@ -108,7 +108,7 @@ export const useWorkspaceStore = create(
           }
           return [];
         } catch (error) {
-          console.error("Error fetching owned workspaces:", error);
+          
           toast.error("Failed to load your workspaces");
           return [];
         } finally {
@@ -141,13 +141,13 @@ export const useWorkspaceStore = create(
                 isOwned: membership.role === 'owner',
                 isAdmin: membership.role === 'admin'
               }));
-            console.log("Formatted workspaces with roles:", workspaces);
+            
             set({ workspacesWithRoles: workspaces, workspacesLoaded: true }); // Store workspaces with roles and mark as loaded
             return workspaces;
           }
           return [];
         } catch (error) {
-          console.error("Error fetching joined workspaces:", error);
+          
           toast.error(error.response?.data?.message || "Failed to load joined workspaces");
           return [];
         } finally {
@@ -158,11 +158,11 @@ export const useWorkspaceStore = create(
       // Add function to create a new workspace
       createWorkspace: async (workspaceData) => {
         try {
-          console.log(workspaceData)
+          
           const response = await axiosInstance.post('/workspaces/', {
            ...workspaceData
           });
-          console.log("fgsse")
+          
           
           if (response.data.success) {
             toast.success("Workspace created successfully");
@@ -195,14 +195,14 @@ export const useWorkspaceStore = create(
       getWorkspaceMembers: async (workspaceId) => {
         try {
           if (!workspaceId) {
-            console.error("No workspace ID provided to getWorkspaceMembers");
+            
             return [];
           }
 
           // Check if we have cached members for this workspace
           const { workspaceMembersCache } = get();
           if (workspaceMembersCache[workspaceId]) {
-            console.log("Using cached workspace members");
+            
             return workspaceMembersCache[workspaceId];
           }
 
@@ -217,7 +217,7 @@ export const useWorkspaceStore = create(
               isAdmin: member.role === 'admin',
               isOwner: member.role === 'owner'
             }));
-            console.log("Formatted workspace members:", formattedMembers);
+            
             
             // Cache the members
             set(state => ({
@@ -229,14 +229,14 @@ export const useWorkspaceStore = create(
             
             return formattedMembers;
           } else {
-            console.error("API returned unsuccessful response:", response.data);
+            
             return [];
           }
         } catch (error) {
           const errorMessage = error.response?.data?.message || "Unknown error";
           const status = error.response?.status;
           
-          console.error(`Failed to fetch workspace members (${status}):`, errorMessage);
+          
           toast.error(`Failed to load workspace members: ${errorMessage}`);
           return [];
         }
@@ -253,7 +253,7 @@ export const useWorkspaceStore = create(
           }
           return [];
         } catch (error) {
-          console.error("Failed to send invite", error);
+          
           toast.error(error.response?.data?.message)
           return [];
         }
@@ -339,13 +339,13 @@ export const useWorkspaceStore = create(
       },
 
       setSelectedWorkspace: (selectedWorkspace) => {
-        console.log("Setting selectedWorkspace:", selectedWorkspace);
+        
         
         // Make sure it's a valid object with at least an _id property
         if (!selectedWorkspace) {
-          console.warn("Attempt to set selectedWorkspace to null or undefined");
+          
         } else if (!selectedWorkspace._id) {
-          console.warn("selectedWorkspace is missing _id property:", selectedWorkspace);
+          
         }
         
         set({ selectedWorkspace });

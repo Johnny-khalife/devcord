@@ -52,7 +52,7 @@ const InviteFriendsPortal = ({
     if (!searchTerm.trim()) {
       setFilteredFriends(availableFriends);
       if (availableFriends.length > 0) {
-        console.log("Friend object structure:", availableFriends[0]);
+        
       }
       return;
     }
@@ -71,7 +71,7 @@ const InviteFriendsPortal = ({
   useEffect(() => {
     
     if (isOpen) {
-      console.log("sdadhash",filteredFriends.username)
+      
       document.body.style.overflow = 'hidden';
     } else {
       document.body.style.overflow = 'auto';

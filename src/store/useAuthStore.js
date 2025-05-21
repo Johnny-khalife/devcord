@@ -25,12 +25,12 @@ export const useAuthStore = create(
 
       // Initialize sockets and set store references
       initializeSockets: () => {
-        console.log("Initializing sockets...");
+        
         const authStore = get();
         
         // Don't try to initialize if already attempted and no user
         if (get().socketConnectAttempted && !authStore.authUser) {
-          console.log("Socket connection already attempted without user, skipping");
+          
           return;
         }
         
@@ -38,7 +38,7 @@ export const useAuthStore = create(
         
         // If no user is authenticated, don't connect
         if (!authStore.authUser) {
-          console.log("No authenticated user, not connecting sockets");
+          
           return;
         }
         
@@ -56,7 +56,7 @@ export const useAuthStore = create(
             // Set store references for socket events
             setStoreRefs(authStore, chatStore, workspaceStore, channelStore, friendStore);
           } else {
-            console.warn("Friend store not available yet, will try again later");
+            
             // Set other store references without friend store
             setStoreRefs(authStore, chatStore, workspaceStore, channelStore, null);
             
@@ -68,36 +68,36 @@ export const useAuthStore = create(
                   setStoreRefs(authStore, chatStore, workspaceStore, channelStore, laterFriendStore);
                 }
               } catch {
-                console.warn("Friend store still not available after retry");
+                
               }
             }, 1000);
           }
         } catch (error) {
           // If friend store is not available, still set other store references
-          console.warn("Friend store not available, setting other store references:", error);
+          
           setStoreRefs(authStore, chatStore, workspaceStore, channelStore, null);
         }
         
         // Connect to sockets
-        console.log("Connecting to sockets...");
+        
         const socket = connectSockets();
         set({ socket });
         
         // Log socket status
         if (socket?.dm) {
-          console.log("DM Socket connected status:", socket.dm.connected);
+          
         }
         
         if (socket?.channels) {
-          console.log("Channels Socket connected status:", socket.channels.connected);
+          
         }
         
         if (socket?.friends) {
-          console.log("Friends Socket connected status:", socket.friends.connected);
+          
         }
         
         if (!socket?.dm && !socket?.channels && !socket?.friends) {
-          console.log("Socket connections failed");
+          
         }
       },
 
@@ -128,7 +128,7 @@ export const useAuthStore = create(
           set({ isLoading: false });
           const errorMsg = error.response?.data?.message || "Failed to fetch users";
           toast.error(errorMsg);
-          console.error("Error fetching users:", error);
+          
           return null;
         }
       },
@@ -145,7 +145,7 @@ export const useAuthStore = create(
         } catch (error) {
           const errorMsg = error.response?.data?.message || "Failed to fetch user";
           toast.error(errorMsg);
-          console.error("Error fetching user:", error);
+          
           return null;
         } finally {
           set({ isLoading: false });
@@ -176,7 +176,7 @@ export const useAuthStore = create(
             get().initializeSockets();
           }, 1000);
         } catch (error) {
-          console.error("Login error:", error);
+          
           toast.error(error.response?.data?.message || "Login failed");
         } finally {
           set({ isLoggingIn: false });
@@ -200,7 +200,7 @@ export const useAuthStore = create(
       logout: async () => {
         try {
           // Disconnect sockets before logout
-          console.log("Logging out, disconnecting sockets...");
+          
           disconnectSockets();
           
           // Clear token from localStorage and global references
@@ -221,7 +221,7 @@ export const useAuthStore = create(
           
           toast.success(response.data.message);
         } catch (error) {
-          console.error("Logout error:", error);
+          
           toast.error(error.response?.data?.message || "Logout failed");
           
           // Still clear auth state even if API call fails
@@ -278,14 +278,14 @@ export const useAuthStore = create(
       deleteAccount: async (password) => {
         try {
           // Disconnect sockets before deleting account
-          console.log("Deleting account, disconnecting sockets...");
+          
           disconnectSockets();
           set({ 
             socket: null,
             socketConnectAttempted: false 
           });
           
-          console.log(password);
+          
           const response = await axiosInstance.delete("/users", {
             data: { password },
             headers: {
@@ -314,10 +314,10 @@ export const useAuthStore = create(
 
       checkAuth: async () => {
         try {
-          console.log("Checking authentication status...");
+          
           const res = await axiosInstance.get("/auth/status");
           if (res.data.isAuthenticated) {
-            console.log("User is authenticated:", res.data.user.username);
+            
             
             // Store user info globally for socket handlers
             const userData = res.data.user;
@@ -335,7 +335,7 @@ export const useAuthStore = create(
             }, 1000);
           }
         } catch (error) {
-          console.error("Authentication check failed:", error);
+          
           // Clear any stale auth data
           window.authUser = null;
           set({ 

@@ -210,7 +210,7 @@ const MessageInput = ({ activeNavItem }) => {
     
     // Prevent multiple submissions
     if (isSendingMessage) {
-      console.log("Message already being sent, preventing duplicate submission");
+      
       return;
     }
 
@@ -236,7 +236,7 @@ const MessageInput = ({ activeNavItem }) => {
           isCode: isCodeMode,
           language: isCodeMode ? codeLanguage : null
         };
-        console.log("Sending workspace message:", messageData);
+        
         
         // Stop typing indicator if active
         if (isChannelSocketConnected) {
@@ -247,16 +247,16 @@ const MessageInput = ({ activeNavItem }) => {
         await sendMessage(messageData, selectedWorkspace._id);
       } else if (activeNavItem === "users" && selectedFriend?.friendId) {
         // First, log debugging information
-        console.log("Sending direct message:");
-        console.log("- To friend:", selectedFriend.friendId, selectedFriend.username);
-        console.log("- Message content:", messageContent);
-        console.log("- Is code:", isCodeMode);
-        console.log("- Language:", isCodeMode ? codeLanguage : null);
-        console.log("- Has image:", !!imagePreview);
-        console.log("- Socket connected:", isDmSocketConnected);
+        
+        
+        
+        
+        
+        
+        
         
         // Always use the API first to ensure message persistence
-        console.log("Sending via API...");
+        
         const messageData = {
           message: messageContent,
           isCode: isCodeMode,
@@ -266,17 +266,17 @@ const MessageInput = ({ activeNavItem }) => {
         
         // Wait for API message to be sent and stored
         await sendDirectMessageAPI(messageData, selectedFriend.friendId);
-        console.log("API message sent successfully");
+        
         
         // Then use the socket for real-time delivery (only for text messages)
         if (isDmSocketConnected && messageContent) {
-          console.log("Sending via socket...");
+          
           const success = sendDirectMessage(selectedFriend.friendId, messageContent);
-          console.log("Socket message sent result:", success);
+          
         } else if (!messageContent) {
-          console.log("Skipping socket for image-only message");
+          
         } else {
-          console.warn("Socket not connected, message sent only via API");
+          
         }
         
         // Stop typing indicator
@@ -302,10 +302,10 @@ const MessageInput = ({ activeNavItem }) => {
         }
       }, 0);
     } catch (error) {
-      console.error("Failed to send message:", error);
-      console.error("Error details:", error.message);
+      
+      
       if (error.response) {
-        console.error("Server responded with:", error.response.data);
+        
       }
       toast.error("Failed to send message. Please try again.");
     }

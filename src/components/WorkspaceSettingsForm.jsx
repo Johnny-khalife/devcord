@@ -57,7 +57,7 @@ const WorkspaceSettingsForm = ({ workspaceId, workspace, onClose, onWorkspaceUpd
         onClose
       );
     } catch (error) {
-      console.error('Failed to update workspace:', error);
+      
       setError('Failed to update workspace. Please try again.');
       setIsLoading(false);
     }
@@ -73,7 +73,7 @@ const WorkspaceSettingsForm = ({ workspaceId, workspace, onClose, onWorkspaceUpd
       try {
         await deleteWorkspace(workspaceId, setIsLoading, onWorkspaceUpdated, onClose);
       } catch (error) {
-        console.error('Failed to delete workspace:', error);
+        
         setError('Failed to delete workspace. Please try again.');
       }
     }
@@ -89,7 +89,7 @@ const WorkspaceSettingsForm = ({ workspaceId, workspace, onClose, onWorkspaceUpd
         setInviteUrl(fullInviteUrl);
       }
     } catch (error) {
-      console.error('Failed to get invite URL:', error);
+      
       setError('Failed to generate invite URL. Please try again.');
     }
   };
@@ -105,7 +105,7 @@ const WorkspaceSettingsForm = ({ workspaceId, workspace, onClose, onWorkspaceUpd
       try {
         await leaveWorkspace(workspaceId, setIsLoading, onWorkspaceUpdated, onClose);
       } catch (error) {
-        console.error('Failed to leave workspace:', error);
+        
         setError('Failed to leave workspace. Please try again.');
       }
     }
