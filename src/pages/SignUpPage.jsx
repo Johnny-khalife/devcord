@@ -116,7 +116,15 @@ const SignUpPage = () => {
     if (success === true) {
       const signupSuccess = await signup(formData);
       if (signupSuccess) {
-        navigate("/login");
+        // Check if there's a pending invitation before redirecting
+        const pendingInvite = localStorage.getItem('pendingInvite');
+        if (pendingInvite) {
+          // After signup, redirect to login with a note to go to the invitation page
+          navigate('/login');
+          toast.success('Account created! Log in to access your invitation');
+        } else {
+          navigate("/login");
+        }
       }
     }
   };

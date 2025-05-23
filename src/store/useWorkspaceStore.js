@@ -176,11 +176,24 @@ export const useWorkspaceStore = create(
       },
 
       // Function to join a workspace via invite code
-      joinWorkspace: async (inviteCode) => {
+      joinWorkspace: async (inviteCode, workspaceId) => {
         try {
-          const response = await axiosInstance.post(`/workspaces/${inviteCode}/join`);
+          // Get the auth token from localStorage
+          const token = localStorage.getItem('auth_token');
+          
+          // Include the workspaceId parameter if provided
+          const endpoint = workspaceId 
+            ? `/workspaces/${workspaceId}/join/${inviteCode}?token=${token}` 
+            : `/workspaces/${inviteCode}/join?token=${token}`;
+            
+          const response = await axiosInstance.get(endpoint);
           
           if (response.data.success) {
+            // If the response includes a token, update the localStorage
+            if (response.data.token) {
+              localStorage.setItem('auth_token', response.data.token);
+            }
+            
             toast.success(response.data.message || "Joined workspace successfully");
             return response.data.workspace;
           }

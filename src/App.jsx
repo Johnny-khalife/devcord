@@ -9,6 +9,7 @@ import SettingsPage from "./pages/SettingsPage";
 import ProfilePage from "./pages/ProfilePage";
 import FriendProfilePage from "./pages/FriendProfilePage";
 import CodePlayground from "./pages/CodePlayground";
+import WorkspaceInvitePage from "./pages/WorkspaceInvitePage";
 
 import { Routes, Route, Navigate } from "react-router-dom";
 import { useAuthStore } from "./store/useAuthStore";
@@ -123,6 +124,7 @@ const App = () => {
         <Route path="/profile" element={authUser ? <ProfilePage /> : <Navigate to="/login" />} />
         <Route path="/profile/:id" element={<FriendProfilePage />} />
         <Route path="/code-playground" element={authUser ? <CodePlayground /> : <Navigate to="/login" />} />
+        <Route path="/invite/:inviteCode" element={<WorkspaceInvitePage />} />
       </Routes>
 
       <Toaster />

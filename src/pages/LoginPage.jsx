@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useAuthStore } from "../store/useAuthStore";
 import AuthImagePattern from "../components/AuthImagePattern";
-import { Link } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Eye, EyeOff, Loader2, Lock, Mail, MessageSquare } from "lucide-react";
 
 const LoginPage = () => {
@@ -11,11 +11,29 @@ const LoginPage = () => {
     password: "",
   });
   const { login, isLoggingIn, getUsers } = useAuthStore();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const redirectPath = location.state?.redirectAfterLogin || "/";
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    // Check for pending invitation before login
+    const pendingInvite = localStorage.getItem('pendingInvite');
+    
     // First handle login, then fetch users
     await login(formData);
+    
+    // After successful login, handle redirection to invitation
+    if (!isLoggingIn && pendingInvite) {
+      try {
+        const { path } = JSON.parse(pendingInvite);
+        navigate(path); // Redirect to the invitation link
+        localStorage.removeItem('pendingInvite'); // Clear the pending invite
+      } catch (error) {
+        console.error('Error parsing pending invite:', error);
+      }
+    }
+    
     // After successful login, fetch users
     isLoggingIn? getUsers():"";
   };
