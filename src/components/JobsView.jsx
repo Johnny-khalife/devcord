@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import { Search, Briefcase, MapPin, Building, Calendar, Tag, Clock, X, FilterIcon, ArrowUpDown } from "lucide-react";
-import jobsData from "../data/jobs.json";
+import { axiosInstance } from "../lib/axios";
+
+const PAGE_SIZE = 20;
 
 const JobsView = () => {
   const [jobs, setJobs] = useState([]);
@@ -11,35 +13,31 @@ const JobsView = () => {
   const [filteredJobs, setFilteredJobs] = useState([]);
   const [isMobile, setIsMobile] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
-  
-  // Get unique categories and levels from jobs
-  const categories = [...new Set(jobsData.jobs.map(job => job.category))];
-  const levels = [...new Set(jobsData.jobs.map(job => job.level))];
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [categories, setCategories] = useState([]);
+  const [levels, setLevels] = useState([]);
 
-  // Initialize jobs from JSON file
+  // Fetch jobs from backend API using axiosInstance
   useEffect(() => {
-    setJobs(jobsData.jobs);
-    setFilteredJobs(jobsData.jobs);
-    setLoading(false);
-    
-    const checkIfMobile = () => {
-      const mobile = window.innerWidth < 768;
-      setIsMobile(mobile);
-    };
-    
-    checkIfMobile();
-    window.addEventListener('resize', checkIfMobile);
-    
-    return () => {
-      window.removeEventListener('resize', checkIfMobile);
-    };
-  }, []);
+    setLoading(true);
+    axiosInstance.get(`/jobs?page=${page}&limit=${PAGE_SIZE}`)
+      .then(res => {
+        const data = res.data;
+        setJobs(data.jobs);
+        setFilteredJobs(data.jobs);
+        setTotalPages(data.totalPages);
+        // Extract unique categories and levels from jobs
+        setCategories([...new Set(data.jobs.map(job => job.category))]);
+        setLevels([...new Set(data.jobs.map(job => job.level))]);
+        setLoading(false);
+      })
+      .catch(() => setLoading(false));
+  }, [page]);
 
   // Filter jobs based on search term, category, and level
   useEffect(() => {
     let filtered = jobs;
-
-    // Apply search filter
     if (searchTerm.trim() !== "") {
       filtered = filtered.filter(job => 
         job.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -47,17 +45,12 @@ const JobsView = () => {
         job.location.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
-
-    // Apply category filter
     if (selectedCategory) {
       filtered = filtered.filter(job => job.category === selectedCategory);
     }
-
-    // Apply level filter
     if (selectedLevel) {
       filtered = filtered.filter(job => job.level === selectedLevel);
     }
-
     setFilteredJobs(filtered);
   }, [searchTerm, selectedCategory, selectedLevel, jobs]);
 
@@ -71,6 +64,28 @@ const JobsView = () => {
     setShowFilters(!showFilters);
   };
 
+  useEffect(() => {
+    const checkIfMobile = () => {
+      const mobile = window.innerWidth < 768;
+      setIsMobile(mobile);
+    };
+    checkIfMobile();
+    window.addEventListener('resize', checkIfMobile);
+    return () => {
+      window.removeEventListener('resize', checkIfMobile);
+    };
+  }, []);
+
+  const activeFiltersCount = [
+    searchTerm.trim() !== "",
+    selectedCategory !== "",
+    selectedLevel !== ""
+  ].filter(Boolean).length;
+
+  // Pagination controls
+  const handlePrevPage = () => setPage(prev => Math.max(prev - 1, 1));
+  const handleNextPage = () => setPage(prev => Math.min(prev + 1, totalPages));
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-full">
@@ -78,12 +93,6 @@ const JobsView = () => {
       </div>
     );
   }
-
-  const activeFiltersCount = [
-    searchTerm.trim() !== "",
-    selectedCategory !== "",
-    selectedLevel !== ""
-  ].filter(Boolean).length;
 
   return (
     <div className="flex flex-col h-full bg-base-100 relative">
@@ -272,6 +281,12 @@ const JobsView = () => {
               </div>
             ))
           )}
+        </div>
+        {/* Pagination controls */}
+        <div className="flex justify-center items-center gap-2 pb-4">
+          <button className="btn btn-sm" onClick={handlePrevPage} disabled={page === 1}>Prev</button>
+          <span>Page {page} of {totalPages}</span>
+          <button className="btn btn-sm" onClick={handleNextPage} disabled={page === totalPages}>Next</button>
         </div>
       </div>
 
