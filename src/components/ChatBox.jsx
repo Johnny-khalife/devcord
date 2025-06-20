@@ -347,7 +347,7 @@ const ChatBox = ({ activeNavItem, isMobile }) => {
         {/* Messages Area (Scrollable) */}
         <div 
           ref={chatAreaRef} 
-          className="flex-1 overflow-y-auto px-4 py-4 pb-4 overscroll-contain"
+          className="flex-1 overflow-y-auto overflow-x-hidden px-4 py-4 pb-4 overscroll-contain"
           style={{ WebkitOverflowScrolling: 'touch' }}
         >
           {mainContent}

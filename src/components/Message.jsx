@@ -106,7 +106,7 @@ const DirectMessage = ({ message, firstInGroup }) => {
     if (message.isCode) {
       const isSupported = isSupportedLanguage(message.language);
       return (
-        <div className="relative">
+        <div className="overflow-x-auto max-w-full">
           {renderCodeBlock(content, message.language || 'plaintext')}
           {isSupported && (
             <button
@@ -127,7 +127,7 @@ const DirectMessage = ({ message, firstInGroup }) => {
     // If no code blocks detected, just do the normal URL conversion
     if (segments.length === 1 && segments[0].type === 'text') {
       return (
-        <div className="whitespace-pre-wrap break-words">
+        <div className="whitespace-pre-wrap break-words break-all">
           {convertUrlsToLinks(filterBadWords(content), isCurrentUser)}
         </div>
       );
@@ -135,13 +135,15 @@ const DirectMessage = ({ message, firstInGroup }) => {
     
     // Render mixed content with code blocks and text
     return (
-      <div className="whitespace-pre-wrap break-words">
+      <div className="whitespace-pre-wrap break-words break-all">
         {segments.map((segment, index) => {
           if (segment.type === 'code') {
             const isSupported = isSupportedLanguage(segment.language);
             return (
               <div key={index} className="relative">
-                {renderCodeBlock(segment.content, segment.language)}
+                <div className="overflow-x-auto max-w-full">
+                  {renderCodeBlock(segment.content, segment.language)}
+                </div>
                 {isSupported && (
                   <button
                     className="absolute top-2 right-2 btn btn-xs btn-primary"
@@ -254,7 +256,7 @@ const DirectMessage = ({ message, firstInGroup }) => {
                 <img
                   src={message.image}
                   alt="Message attachment"
-                  className={`w-full max-h-64 object-cover hover:scale-[1.02] transition-transform cursor-pointer ${
+                  className={`w-full max-w-full max-h-64 object-cover hover:scale-[1.02] transition-transform cursor-pointer ${
                     message.content ? "rounded-b-lg" : "rounded-lg"
                   }`}
                   onClick={() => setImageViewer(true)}
@@ -520,7 +522,7 @@ const ChannelMessage = ({ message, firstInGroup }) => {
     if (message.isCode) {
       const isSupported = isSupportedLanguage(message.language);
       return (
-        <div className="relative">
+        <div className="overflow-x-auto max-w-full">
           {renderCodeBlock(content, message.language || 'plaintext')}
           {isSupported && (
             <button
@@ -541,7 +543,7 @@ const ChannelMessage = ({ message, firstInGroup }) => {
     // If no code blocks detected, just do the normal URL conversion
     if (segments.length === 1 && segments[0].type === 'text') {
       return (
-        <div className="whitespace-pre-wrap break-words">
+        <div className="whitespace-pre-wrap break-words break-all">
           {convertUrlsToLinks(filterBadWords(content), isCurrentUser)}
         </div>
       );
@@ -549,13 +551,15 @@ const ChannelMessage = ({ message, firstInGroup }) => {
     
     // Render mixed content with code blocks and text
     return (
-      <div className="whitespace-pre-wrap break-words">
+      <div className="whitespace-pre-wrap break-words break-all">
         {segments.map((segment, index) => {
           if (segment.type === 'code') {
             const isSupported = isSupportedLanguage(segment.language);
             return (
               <div key={index} className="relative">
-                {renderCodeBlock(segment.content, segment.language)}
+                <div className="overflow-x-auto max-w-full">
+                  {renderCodeBlock(segment.content, segment.language)}
+                </div>
                 {isSupported && (
                   <button
                     className="absolute top-2 right-2 btn btn-xs btn-primary"
@@ -666,7 +670,7 @@ const ChannelMessage = ({ message, firstInGroup }) => {
                 <img
                   src={message.image}
                   alt="Message attachment"
-                  className={`w-full max-h-64 object-cover hover:scale-[1.02] transition-transform cursor-pointer ${
+                  className={`w-full max-w-full max-h-64 object-cover hover:scale-[1.02] transition-transform cursor-pointer ${
                     message.content ? "rounded-b-lg" : "rounded-lg"
                   }`}
                   onClick={() => setImageViewer(true)}
