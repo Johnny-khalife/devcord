@@ -38,11 +38,11 @@ function App() {
 }`;
   
   // State for code editors
-  const [htmlCode, setHtmlCode] = useState(initialHtmlCode);
-  const [cssCode, setCssCode] = useState(initialCssCode);
-  const [jsCode, setJsCode] = useState(initialJsCode);
-  const [reactCode, setReactCode] = useState(initialReactCode);
-  const [reactLanguage, setReactLanguage] = useState('jsx'); // 'jsx' or 'tsx'
+  const [htmlCode, setHtmlCode] = useState(() => localStorage.getItem('playground_html') ?? initialHtmlCode);
+  const [cssCode, setCssCode] = useState(() => localStorage.getItem('playground_css') ?? initialCssCode);
+  const [jsCode, setJsCode] = useState(() => localStorage.getItem('playground_js') ?? initialJsCode);
+  const [reactCode, setReactCode] = useState(() => localStorage.getItem('playground_react') ?? initialReactCode);
+  const [reactLanguage, setReactLanguage] = useState(() => localStorage.getItem('playground_react_lang') ?? 'jsx'); // 'jsx' or 'tsx'
   
   // State for preview
   const [previewCode, setPreviewCode] = useState('');
@@ -331,13 +331,40 @@ function App() {
     }
   };
 
-  // Handle reset button click
+  // On mount, load code from localStorage if present
+  useEffect(() => {
+    const savedHtml = localStorage.getItem('playground_html');
+    const savedCss = localStorage.getItem('playground_css');
+    const savedJs = localStorage.getItem('playground_js');
+    const savedReact = localStorage.getItem('playground_react');
+    const savedReactLang = localStorage.getItem('playground_react_lang');
+    if (savedHtml !== null) setHtmlCode(savedHtml);
+    if (savedCss !== null) setCssCode(savedCss);
+    if (savedJs !== null) setJsCode(savedJs);
+    if (savedReact !== null) setReactCode(savedReact);
+    if (savedReactLang === 'jsx' || savedReactLang === 'tsx') setReactLanguage(savedReactLang);
+  }, []);
+
+  // Save code to localStorage on change
+  useEffect(() => { localStorage.setItem('playground_html', htmlCode); }, [htmlCode]);
+  useEffect(() => { localStorage.setItem('playground_css', cssCode); }, [cssCode]);
+  useEffect(() => { localStorage.setItem('playground_js', jsCode); }, [jsCode]);
+  useEffect(() => { localStorage.setItem('playground_react', reactCode); }, [reactCode]);
+  useEffect(() => { localStorage.setItem('playground_react_lang', reactLanguage); }, [reactLanguage]);
+
+  // In handleReset, also clear localStorage
   const handleReset = () => {
     setHtmlCode(initialHtmlCode);
     setCssCode(initialCssCode);
     setJsCode(initialJsCode);
     setReactCode(initialReactCode);
     setPreviewCode('');
+    setReactLanguage('jsx');
+    localStorage.removeItem('playground_html');
+    localStorage.removeItem('playground_css');
+    localStorage.removeItem('playground_js');
+    localStorage.removeItem('playground_react');
+    localStorage.removeItem('playground_react_lang');
   };
 
   // Determine container classes based on expanded state
