@@ -22,11 +22,27 @@ const CodePlayground = () => {
   const initialHtmlCode = '<!-- Enter HTML here -->\n<h1>Welcome to Devcord!</h1>\n<p>Start coding to see the preview</p>';
   const initialCssCode = '/* Enter CSS here */\nbody {\n  font-family: system-ui, sans-serif;\n  color: #333;\n  padding: 2rem;\n}\n\nh1 {\n  color: #2563eb;\n}';
   const initialJsCode = '// Enter JavaScript here\n';
+  const initialReactCode = `// Write a React component (JSX or TSX)
+// Example: Counter with a button
+function App() {
+  const [count, setCount] = useState(0);
+  return (
+    <div style={{ textAlign: 'center', marginTop: 40 }}>
+      <h1>React Counter</h1>
+      <p>Count: {count}</p>
+      <button onClick={() => setCount(count + 1)} style={{ padding: '8px 16px', fontSize: 16 }}>
+        Increment
+      </button>
+    </div>
+  );
+}`;
   
   // State for code editors
   const [htmlCode, setHtmlCode] = useState(initialHtmlCode);
   const [cssCode, setCssCode] = useState(initialCssCode);
   const [jsCode, setJsCode] = useState(initialJsCode);
+  const [reactCode, setReactCode] = useState(initialReactCode);
+  const [reactLanguage, setReactLanguage] = useState('jsx'); // 'jsx' or 'tsx'
   
   // State for preview
   const [previewCode, setPreviewCode] = useState('');
@@ -54,7 +70,8 @@ const CodePlayground = () => {
   const [collapsedEditors, setCollapsedEditors] = useState({
     html: false,
     css: false,
-    js: false
+    js: false,
+    react: false
   });
 
   // State for workspace dropdown
@@ -64,6 +81,19 @@ const CodePlayground = () => {
   // State for channel dropdown
   const [showChannelDropdown, setShowChannelDropdown] = useState(false);
   const channelDropdownRef = useRef(null);
+  
+  // Add mode state
+  const [mode, setMode] = useState('html'); // 'html' or 'react'
+  
+  // State for React warning
+  const [reactWarning, setReactWarning] = useState('');
+  
+  // On mount, if reactCode is present, set mode to 'react'
+  useEffect(() => {
+    if (reactCode && reactCode.trim() && reactCode !== initialReactCode) {
+      setMode('react');
+    }
+  }, []);
   
   // Handle click outside dropdowns to close them
   useEffect(() => {
@@ -106,8 +136,7 @@ const CodePlayground = () => {
           const channelsList = await fetchWorkspaceChannels(selectedWorkspaceId);
           setChannels(channelsList || []);
           setSelectedChannelId(''); // Reset channel selection when workspace changes
-        } catch (error) {
-          
+        } catch {
           toast.error('Failed to load channels');
         }
       }
@@ -133,8 +162,78 @@ const CodePlayground = () => {
     }));
   };
   
+  // Add a warning if user types import/export in React code
+  useEffect(() => {
+    if (mode === 'react') {
+      if (/\bimport\b|\bexport\b/.test(reactCode)) {
+        setReactWarning('⚠️ Do not use import or export statements in React code. Just define a component called App.');
+      } else {
+        setReactWarning('');
+      }
+    }
+  }, [reactCode, mode]);
+
+  // Debounced auto-preview
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setPreviewCode(generateDocument());
+    }, 500);
+    return () => clearTimeout(handler);
+  }, [htmlCode, cssCode, jsCode, reactCode, reactLanguage, mode]);
+
+  // Robustly strip export default and import statements
+  const stripReactCode = (code) => {
+    // Remove all import lines
+    let result = code.replace(/^[ \t]*import[^;\n]+;?[ \t]*$/gm, '');
+    // Remove all export default (function, class, const, let, var, arrow)
+    result = result.replace(/^[ \t]*export\s+default\s+/gm, '');
+    // Remove all export { ... } or export *
+    result = result.replace(/^[ \t]*export\s+\{[^}]*\};?[ \t]*$/gm, '');
+    result = result.replace(/^[ \t]*export\s+\*.*$/gm, '');
+    return result;
+  };
+
   // Generate full HTML document for preview
   const generateDocument = () => {
+    if (mode === 'react' && reactCode.trim()) {
+      const babelPresets = reactLanguage === 'tsx' ? "react,typescript" : "react";
+      let processedReactCode = stripReactCode(reactCode);
+      return `
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <style>${cssCode}</style>
+          <style>
+            #error-overlay { position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(255,0,0,0.1);color:#b91c1c;z-index:9999;display:flex;align-items:center;justify-content:center;font-size:1.2rem;font-family:monospace;padding:2rem;white-space:pre-wrap; }
+          </style>
+        </head>
+        <body>
+          <div id="root"></div>
+          <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+          <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+          <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+          <script type="text/babel" data-type="module" data-presets="${babelPresets}">
+          try {
+            var exports = {};
+            // Make React hooks available globally
+            const { useState, useEffect, useRef, useMemo, useCallback, useReducer, useContext, useLayoutEffect, useImperativeHandle, useDebugValue, useTransition, useDeferredValue, useId, useSyncExternalStore } = React;
+            // User code (must define App)
+            ${processedReactCode}
+            App = (typeof App !== 'undefined' ? App : (typeof exports !== 'undefined' && exports.default ? exports.default : undefined));
+            if (!App) throw new Error('No App component found. Please define a component called App.');
+            const root = ReactDOM.createRoot(document.getElementById('root'));
+            root.render(React.createElement(App));
+          } catch (e) {
+            document.body.innerHTML += '<div id="error-overlay">' + e + '</div>';
+          }
+          </script>
+        </body>
+        </html>
+      `;
+    }
+    // Fallback to HTML/CSS/JS preview
     return `
       <!DOCTYPE html>
       <html lang="en">
@@ -182,30 +281,19 @@ const CodePlayground = () => {
       let codeContent;
       let language = 'multiple';
       
-      // Use code blocks format, which will be automatically highlighted
-      if (htmlCode.trim() && cssCode.trim() && jsCode.trim()) {
-        codeContent = `
-**Code Snippet from Devcord Code Playground**
-
-\`\`\`html
-${htmlCode}
-\`\`\`
-
-\`\`\`css
-${cssCode}
-\`\`\`
-
-\`\`\`javascript
-${jsCode}
-\`\`\`
-`;
-      } else if (htmlCode.trim()) {
+      if (mode === 'react' && reactCode.trim()) {
+        codeContent = `\n**React Code from Devcord Code Playground**\n\n\`\`\`${reactLanguage}\n${reactCode}\n\`\`\``;
+        language = reactLanguage;
+      } else if (mode === 'html' && htmlCode.trim() && cssCode.trim() && jsCode.trim()) {
+        codeContent = `\n**Code Snippet from Devcord Code Playground**\n\n\`\`\`html\n${htmlCode}\n\`\`\`\n\`\`\`css\n${cssCode}\n\`\`\`\n\`\`\`javascript\n${jsCode}\n\`\`\``;
+        language = 'multiple';
+      } else if (mode === 'html' && htmlCode.trim()) {
         codeContent = `\`\`\`html\n${htmlCode}\n\`\`\``;
         language = 'html';
-      } else if (cssCode.trim()) {
+      } else if (mode === 'css' && cssCode.trim()) {
         codeContent = `\`\`\`css\n${cssCode}\n\`\`\``;
         language = 'css';
-      } else if (jsCode.trim()) {
+      } else if (mode === 'js' && jsCode.trim()) {
         codeContent = `\`\`\`javascript\n${jsCode}\n\`\`\``;
         language = 'javascript';
       } else {
@@ -238,8 +326,7 @@ ${jsCode}
       setSelectedFriendId('');
       setSelectedWorkspaceId('');
       setSelectedChannelId('');
-    } catch (error) {
-      
+    } catch {
       toast.error('Failed to share code snippet. Please try again.');
     }
   };
@@ -249,6 +336,7 @@ ${jsCode}
     setHtmlCode(initialHtmlCode);
     setCssCode(initialCssCode);
     setJsCode(initialJsCode);
+    setReactCode(initialReactCode);
     setPreviewCode('');
   };
 
@@ -264,35 +352,87 @@ ${jsCode}
   };
   
   // Handle importing code from shared message
-  const handleImportCode = () => {
+  const handleImportCode = (blockType, code) => {
+    if (blockType && code) {
+      if (blockType === 'html') {
+        setHtmlCode(code);
+        setMode('html');
+      } else if (blockType === 'css') {
+        setCssCode(code);
+        setMode('html');
+      } else if (blockType === 'js' || blockType === 'javascript') {
+        setJsCode(code);
+        setMode('html');
+      } else if (blockType === 'jsx') {
+        setReactCode(code);
+        setReactLanguage('jsx');
+        setMode('react');
+      } else if (blockType === 'tsx') {
+        setReactCode(code);
+        setReactLanguage('tsx');
+        setMode('react');
+      }
+      toast.success(`Imported ${blockType.toUpperCase()} code to playground!`);
+      return;
+    }
+    // Fallback: import all code blocks as before
     try {
-      // Get code from location state
       const sharedCode = location.state?.sharedCode;
-      
       if (!sharedCode) {
         toast.error('No code found to import');
         return;
       }
-
-      // Extract code from the shared message
       const htmlMatch = sharedCode.match(/```html\n([\s\S]*?)\n```/);
       const cssMatch = sharedCode.match(/```css\n([\s\S]*?)\n```/);
       const jsMatch = sharedCode.match(/```javascript\n([\s\S]*?)\n```/);
-
-      // Update code editors with the extracted code
+      const jsxMatch = sharedCode.match(/```jsx\n([\s\S]*?)\n```/);
+      const tsxMatch = sharedCode.match(/```tsx\n([\s\S]*?)\n```/);
       if (htmlMatch) setHtmlCode(htmlMatch[1]);
       if (cssMatch) setCssCode(cssMatch[1]);
       if (jsMatch) setJsCode(jsMatch[1]);
-
-      // Clear the shared code from location state
+      if (jsxMatch) {
+        setReactCode(jsxMatch[1]);
+        setReactLanguage('jsx');
+      }
+      if (tsxMatch) {
+        setReactCode(tsxMatch[1]);
+        setReactLanguage('tsx');
+      }
       navigate(location.pathname, { replace: true });
-      
       toast.success('Code imported successfully!');
-    } catch (error) {
-      
+    } catch {
       toast.error('Failed to import code');
     }
   };
+
+  // Add this useEffect after state declarations
+  useEffect(() => {
+    if (location.state?.sharedCode && location.state?.sharedLanguage) {
+      const lang = location.state.sharedLanguage.toLowerCase();
+      const code = location.state.sharedCode;
+      if (lang === 'html') {
+        setHtmlCode(code);
+        setMode('html');
+      } else if (lang === 'css') {
+        setCssCode(code);
+        setMode('html');
+      } else if (lang === 'js' || lang === 'javascript') {
+        setJsCode(code);
+        setMode('html');
+      } else if (lang === 'jsx') {
+        setReactCode(code);
+        setReactLanguage('jsx');
+        setMode('react');
+      } else if (lang === 'tsx') {
+        setReactCode(code);
+        setReactLanguage('tsx');
+        setMode('react');
+      }
+      // Optionally clear the state after import
+      navigate(location.pathname, { replace: true });
+      toast.success(`Imported ${lang.toUpperCase()} code to playground!`);
+    }
+  }, []);
 
   return (
     <div className="flex flex-col h-screen bg-gray-100 dark:bg-gray-900 p-4 code-playground-container pt-16">
@@ -301,7 +441,7 @@ ${jsCode}
         <div className="flex gap-2">
           {location.state?.sharedCode && (
             <button 
-              onClick={handleImportCode}
+              onClick={() => handleImportCode(null, location.state.sharedCode)}
               className="px-3 py-1 bg-green-600 hover:bg-green-700 text-white rounded-md flex items-center gap-2"
             >
               <Download size={16} />
@@ -317,9 +457,26 @@ ${jsCode}
         </div>
       </header>
       
-      <div className={`flex flex-col lg:grid lg:grid-cols-2 gap-4 flex-grow ${expandedEditor ? 'hidden' : ''}`}>
+      {/* Mode picker UI (add after header) */}
+      <div className="flex items-center gap-4 mb-4">
+        <span className={`font-semibold ${mode === 'html' ? 'text-blue-600' : 'text-gray-400 dark:text-gray-500'}`}>HTML / CSS / JS</span>
+        <label className="relative inline-flex items-center cursor-pointer">
+          <input
+            type="checkbox"
+            checked={mode === 'react'}
+            onChange={e => setMode(e.target.checked ? 'react' : 'html')}
+            className="sr-only peer"
+            aria-label="Toggle React mode"
+          />
+          <div className="w-14 h-8 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-500 dark:bg-gray-700 rounded-full peer peer-checked:bg-purple-600 transition-colors duration-300"></div>
+          <div className="absolute left-1 top-1 bg-white w-6 h-6 rounded-full shadow-md transition-transform duration-300 peer-checked:translate-x-6"></div>
+        </label>
+        <span className={`font-semibold ${mode === 'react' ? 'text-purple-600' : 'text-gray-400 dark:text-gray-500'}`}>React (JSX / TSX)</span>
+      </div>
+      
+      <div className={`flex flex-col lg:grid lg:grid-cols-2 gap-4 flex-grow min-h-0`}>
         {/* Editors Section */}
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-4 h-full min-h-0 relative">
           {/* Instructions */}
           <div className="text-sm text-gray-500 dark:text-gray-400 mb-2 hidden md:block">
             <span><ChevronUp size={14} className="inline" /> Collapse | </span>
@@ -327,132 +484,195 @@ ${jsCode}
           </div>
           
           {/* HTML Editor */}
-          <div className={getEditorContainerClass('html')}>
-            <div className="bg-gray-200 dark:bg-gray-700 px-4 py-2 font-medium flex justify-between items-center">
-              <span className="flex items-center">
-                <span className="inline-block w-3 h-3 bg-red-500 rounded-full mr-2"></span>
-                HTML
-              </span>
-              <div className="flex items-center gap-2">
-                <button 
-                  onClick={() => toggleCollapseEditor('html')} 
-                  className="p-1 rounded-md hover:bg-gray-300 dark:hover:bg-gray-600"
-                  aria-label={collapsedEditors.html ? "Expand HTML editor" : "Collapse HTML editor"}
-                >
-                  {collapsedEditors.html ? <ChevronDown size={16} /> : <ChevronUp size={16} />}
-                </button>
-                <button 
-                  onClick={() => toggleExpandEditor('html')} 
-                  className="p-1 rounded-md hover:bg-gray-300 dark:hover:bg-gray-600"
-                  aria-label={expandedEditor === 'html' ? "Minimize HTML editor" : "Maximize HTML editor"}
-                >
-                  {expandedEditor === 'html' ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
-                </button>
+          {mode === 'html' && (
+            <div className={getEditorContainerClass('html')}>
+              <div className="bg-gray-200 dark:bg-gray-700 px-4 py-2 font-medium flex justify-between items-center">
+                <span className="flex items-center">
+                  <span className="inline-block w-3 h-3 bg-red-500 rounded-full mr-2"></span>
+                  HTML
+                </span>
+                <div className="flex items-center gap-2">
+                  <button 
+                    onClick={() => toggleCollapseEditor('html')} 
+                    className="p-1 rounded-md hover:bg-gray-300 dark:hover:bg-gray-600"
+                    aria-label={collapsedEditors.html ? "Expand HTML editor" : "Collapse HTML editor"}
+                  >
+                    {collapsedEditors.html ? <ChevronDown size={16} /> : <ChevronUp size={16} />}
+                  </button>
+                  <button 
+                    onClick={() => toggleExpandEditor('html')} 
+                    className="p-1 rounded-md hover:bg-gray-300 dark:hover:bg-gray-600"
+                    aria-label={expandedEditor === 'html' ? "Minimize HTML editor" : "Maximize HTML editor"}
+                  >
+                    {expandedEditor === 'html' ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
+                  </button>
+                </div>
               </div>
+              {!collapsedEditors.html && (
+                <CodeMirror
+                  value={htmlCode}
+                  height={expandedEditor === 'html' ? 'calc(100vh - 160px)' : '180px'}
+                  onChange={(value) => setHtmlCode(value)}
+                  extensions={[html()]}
+                  theme="dark"
+                  basicSetup={{
+                    lineNumbers: true,
+                    highlightActiveLine: true,
+                    highlightSelectionMatches: true,
+                    autocompletion: true,
+                  }}
+                  className="code-editor"
+                />
+              )}
             </div>
-            {!collapsedEditors.html && (
-              <CodeMirror
-                value={htmlCode}
-                height={expandedEditor === 'html' ? 'calc(100vh - 160px)' : '180px'}
-                onChange={(value) => setHtmlCode(value)}
-                extensions={[html()]}
-                theme="dark"
-                basicSetup={{
-                  lineNumbers: true,
-                  highlightActiveLine: true,
-                  highlightSelectionMatches: true,
-                  autocompletion: true,
-                }}
-                className="code-editor"
-              />
-            )}
-          </div>
+          )}
           
           {/* CSS Editor */}
-          <div className={getEditorContainerClass('css')}>
-            <div className="bg-gray-200 dark:bg-gray-700 px-4 py-2 font-medium flex justify-between items-center">
-              <span className="flex items-center">
-                <span className="inline-block w-3 h-3 bg-blue-500 rounded-full mr-2"></span>
-                CSS
-              </span>
-              <div className="flex items-center gap-2">
-                <button 
-                  onClick={() => toggleCollapseEditor('css')} 
-                  className="p-1 rounded-md hover:bg-gray-300 dark:hover:bg-gray-600"
-                  aria-label={collapsedEditors.css ? "Expand CSS editor" : "Collapse CSS editor"}
-                >
-                  {collapsedEditors.css ? <ChevronDown size={16} /> : <ChevronUp size={16} />}
-                </button>
-                <button 
-                  onClick={() => toggleExpandEditor('css')} 
-                  className="p-1 rounded-md hover:bg-gray-300 dark:hover:bg-gray-600"
-                  aria-label={expandedEditor === 'css' ? "Minimize CSS editor" : "Maximize CSS editor"}
-                >
-                  {expandedEditor === 'css' ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
-                </button>
+          {mode === 'html' && (
+            <div className={getEditorContainerClass('css')}>
+              <div className="bg-gray-200 dark:bg-gray-700 px-4 py-2 font-medium flex justify-between items-center">
+                <span className="flex items-center">
+                  <span className="inline-block w-3 h-3 bg-blue-500 rounded-full mr-2"></span>
+                  CSS
+                </span>
+                <div className="flex items-center gap-2">
+                  <button 
+                    onClick={() => toggleCollapseEditor('css')} 
+                    className="p-1 rounded-md hover:bg-gray-300 dark:hover:bg-gray-600"
+                    aria-label={collapsedEditors.css ? "Expand CSS editor" : "Collapse CSS editor"}
+                  >
+                    {collapsedEditors.css ? <ChevronDown size={16} /> : <ChevronUp size={16} />}
+                  </button>
+                  <button 
+                    onClick={() => toggleExpandEditor('css')} 
+                    className="p-1 rounded-md hover:bg-gray-300 dark:hover:bg-gray-600"
+                    aria-label={expandedEditor === 'css' ? "Minimize CSS editor" : "Maximize CSS editor"}
+                  >
+                    {expandedEditor === 'css' ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
+                  </button>
+                </div>
               </div>
+              {!collapsedEditors.css && (
+                <CodeMirror
+                  value={cssCode}
+                  height={expandedEditor === 'css' ? 'calc(100vh - 160px)' : '180px'}
+                  onChange={(value) => setCssCode(value)}
+                  extensions={[css()]}
+                  theme="dark"
+                  basicSetup={{
+                    lineNumbers: true,
+                    highlightActiveLine: true,
+                    highlightSelectionMatches: true,
+                    autocompletion: true,
+                  }}
+                  className="code-editor"
+                />
+              )}
             </div>
-            {!collapsedEditors.css && (
-              <CodeMirror
-                value={cssCode}
-                height={expandedEditor === 'css' ? 'calc(100vh - 160px)' : '180px'}
-                onChange={(value) => setCssCode(value)}
-                extensions={[css()]}
-                theme="dark"
-                basicSetup={{
-                  lineNumbers: true,
-                  highlightActiveLine: true,
-                  highlightSelectionMatches: true,
-                  autocompletion: true,
-                }}
-                className="code-editor"
-              />
-            )}
-          </div>
+          )}
           
           {/* JavaScript Editor */}
-          <div className={getEditorContainerClass('js')}>
-            <div className="bg-gray-200 dark:bg-gray-700 px-4 py-2 font-medium flex justify-between items-center">
-              <span className="flex items-center">
-                <span className="inline-block w-3 h-3 bg-yellow-500 rounded-full mr-2"></span>
-                JavaScript
-              </span>
-              <div className="flex items-center gap-2">
-                <button 
-                  onClick={() => toggleCollapseEditor('js')} 
-                  className="p-1 rounded-md hover:bg-gray-300 dark:hover:bg-gray-600"
-                  aria-label={collapsedEditors.js ? "Expand JS editor" : "Collapse JS editor"}
-                >
-                  {collapsedEditors.js ? <ChevronDown size={16} /> : <ChevronUp size={16} />}
-                </button>
-                <button 
-                  onClick={() => toggleExpandEditor('js')} 
-                  className="p-1 rounded-md hover:bg-gray-300 dark:hover:bg-gray-600"
-                  aria-label={expandedEditor === 'js' ? "Minimize JS editor" : "Maximize JS editor"}
-                >
-                  {expandedEditor === 'js' ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
-                </button>
+          {mode === 'html' && (
+            <div className={getEditorContainerClass('js')}>
+              <div className="bg-gray-200 dark:bg-gray-700 px-4 py-2 font-medium flex justify-between items-center">
+                <span className="flex items-center">
+                  <span className="inline-block w-3 h-3 bg-yellow-500 rounded-full mr-2"></span>
+                  JavaScript
+                </span>
+                <div className="flex items-center gap-2">
+                  <button 
+                    onClick={() => toggleCollapseEditor('js')} 
+                    className="p-1 rounded-md hover:bg-gray-300 dark:hover:bg-gray-600"
+                    aria-label={collapsedEditors.js ? "Expand JS editor" : "Collapse JS editor"}
+                  >
+                    {collapsedEditors.js ? <ChevronDown size={16} /> : <ChevronUp size={16} />}
+                  </button>
+                  <button 
+                    onClick={() => toggleExpandEditor('js')} 
+                    className="p-1 rounded-md hover:bg-gray-300 dark:hover:bg-gray-600"
+                    aria-label={expandedEditor === 'js' ? "Minimize JS editor" : "Maximize JS editor"}
+                  >
+                    {expandedEditor === 'js' ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
+                  </button>
+                </div>
               </div>
+              {!collapsedEditors.js && (
+                <CodeMirror
+                  value={jsCode}
+                  height={expandedEditor === 'js' ? 'calc(100vh - 160px)' : '180px'}
+                  onChange={(value) => setJsCode(value)}
+                  extensions={[javascript()]}
+                  theme="dark"
+                  basicSetup={{
+                    lineNumbers: true,
+                    highlightActiveLine: true,
+                    highlightSelectionMatches: true,
+                    autocompletion: true,
+                  }}
+                  className="code-editor"
+                />
+              )}
             </div>
-            {!collapsedEditors.js && (
-              <CodeMirror
-                value={jsCode}
-                height={expandedEditor === 'js' ? 'calc(100vh - 160px)' : '180px'}
-                onChange={(value) => setJsCode(value)}
-                extensions={[javascript()]}
-                theme="dark"
-                basicSetup={{
-                  lineNumbers: true,
-                  highlightActiveLine: true,
-                  highlightSelectionMatches: true,
-                  autocompletion: true,
-                }}
-                className="code-editor"
-              />
-            )}
-          </div>
+          )}
           
-          <div className="flex gap-2">
+          {/* React/JSX/TSX Editor */}
+          {mode === 'react' && (
+            <div className={getEditorContainerClass('react') + ' flex flex-col flex-1 min-h-0 h-full'}>
+              <div className="bg-gray-200 dark:bg-gray-700 px-4 py-2 font-medium flex justify-between items-center">
+                <span className="flex items-center">
+                  <span className="inline-block w-3 h-3 bg-purple-500 rounded-full mr-2"></span>
+                  React ({reactLanguage.toUpperCase()})
+                </span>
+                <div className="flex items-center gap-2">
+                  <select
+                    value={reactLanguage}
+                    onChange={e => setReactLanguage(e.target.value)}
+                    className="text-xs rounded px-1 py-0.5 bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-600"
+                  >
+                    <option value="jsx">JSX</option>
+                    <option value="tsx">TSX</option>
+                  </select>
+                  <button 
+                    onClick={() => toggleCollapseEditor('react')} 
+                    className="p-1 rounded-md hover:bg-gray-300 dark:hover:bg-gray-600"
+                    aria-label={collapsedEditors.react ? "Expand React editor" : "Collapse React editor"}
+                  >
+                    {collapsedEditors.react ? <ChevronDown size={16} /> : <ChevronUp size={16} />}
+                  </button>
+                  <button 
+                    onClick={() => toggleExpandEditor('react')} 
+                    className="p-1 rounded-md hover:bg-gray-300 dark:hover:bg-gray-600"
+                    aria-label={expandedEditor === 'react' ? "Minimize React editor" : "Maximize React editor"}
+                  >
+                    {expandedEditor === 'react' ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
+                  </button>
+                </div>
+              </div>
+              {!collapsedEditors.react && (
+                <CodeMirror
+                  value={reactCode}
+                  height="100%"
+                  onChange={value => setReactCode(value)}
+                  extensions={[javascript({ jsx: true, typescript: reactLanguage === 'tsx' })]}
+                  theme="dark"
+                  basicSetup={{
+                    lineNumbers: true,
+                    highlightActiveLine: true,
+                    highlightSelectionMatches: true,
+                    autocompletion: true,
+                  }}
+                  className="code-editor flex-1 min-h-0 h-full"
+                />
+              )}
+              {reactWarning && (
+                <div className="text-xs text-red-600 dark:text-red-400 px-4 py-1">{reactWarning}</div>
+              )}
+              <div className="text-xs text-gray-500 dark:text-gray-400 px-4 py-1">Do not use <code>import</code> or <code>export</code>. Just define a component called <b>App</b>. You can use hooks, etc. (No imports needed)</div>
+            </div>
+          )}
+          
+          {/* Buttons at the bottom, sticky */}
+          <div className="flex gap-2 mt-auto sticky bottom-0 bg-gray-100 dark:bg-gray-900 py-4 z-10">
             <button 
               onClick={handlePreview}
               className="flex-1 flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md"

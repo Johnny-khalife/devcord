@@ -71,11 +71,7 @@ export function renderCodeBlock(code, language) {
         // Auto-detect language if not specified or multiple
         highlightedCode = hljs.highlightAuto(code).value;
       }
-    } catch (error) {
-      
-      // Fallback to plain text if highlighting fails
-      highlightedCode = hljs.highlight(code, { language: 'plaintext' }).value;
-    }
+    } catch {}
     
     return (
       <div className={`code-block-container relative my-2 rounded-lg overflow-hidden border border-base-300 bg-[#1e1e2e] shadow-md transition-all duration-300 ${isExpanded ? "w-full fixed top-10 left-0 right-0 z-50 h-[90vh] mx-4 md:mx-auto md:w-[90%] max-w-7xl" : ""}`}>
