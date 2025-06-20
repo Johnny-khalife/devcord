@@ -206,6 +206,8 @@ const MessageInput = ({ activeNavItem }) => {
 
   const handleSendMessage = async (e) => {
     e.preventDefault();
+    setText("");
+    setImagePreview(null);
     if (!text.trim() && !imagePreview) return;
     
     // Prevent multiple submissions
